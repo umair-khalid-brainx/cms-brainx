@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+/*
+ * Shell tokens: the chrome around a tenant site (the dev comparison view).
+ * Deliberately neutral so it never reads as part of a tenant's brand.
+ * Tenant colours arrive at runtime as --site-* on a SiteThemeRoot subtree.
+ */
+:root {
+  --shell-bg: #f6f6f4;
+  --shell-panel: #ffffff;
+  --shell-ink: #16181a;
+  --shell-muted: #63676c;
+  --shell-line: #d9dad6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shell-bg: #0c0d0e;
+    --shell-panel: #15171a;
+    --shell-ink: #ecedee;
+    --shell-muted: #8f959c;
+    --shell-line: #262a2e;
+  }
+}
+
+body {
+  background-color: var(--shell-bg);
+  color: var(--shell-ink);
+}
+
+/* ---- tenant textures -------------------------------------------------- */
+/* Painted between the tenant background and its content, never over it. */
+
+.site-texture-grain,
+.site-texture-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+.site-texture-grain::before,
+.site-texture-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.site-texture-grain::before {
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+.site-texture-grid::before {
+  opacity: 0.36;
+  background-image:
+    repeating-linear-gradient(to right, var(--site-line) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(to bottom, var(--site-line) 0 1px, transparent 1px 88px);
+}
+
+/* ---- rich text -------------------------------------------------------- */
+
+.site-richtext > * + * {
+  margin-top: 1.15em;
+}
+
+.site-richtext strong {
+  color: var(--site-ink);
+  font-weight: 600;
+}
+
+.site-richtext a {
+  color: var(--site-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--site-accent);
+  text-underline-offset: 3px;
+}
+
+/* ---- entrance ---------------------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-rise {
+    animation: site-rise 620ms cubic-bezier(0.16, 0.84, 0.32, 1) both;
+  }
+
+  .site-rise-delay {
+    animation-delay: 140ms;
+  }
+}
+
+@keyframes site-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

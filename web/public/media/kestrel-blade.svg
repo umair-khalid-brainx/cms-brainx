@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="64 138 1076 604" role="img" aria-label="Wind turbine blade elevation with inspection stations marked along the leading edge">
+  <rect width="1200" height="800" fill="#0E1116"/>
+
+  <!-- hairline engineering grid -->
+  <g stroke="#2A323C" stroke-width="1" opacity="0.85">
+    <path d="M0 100 H1200 M0 200 H1200 M0 300 H1200 M0 400 H1200 M0 500 H1200 M0 600 H1200 M0 700 H1200"/>
+    <path d="M100 0 V800 M200 0 V800 M300 0 V800 M400 0 V800 M500 0 V800 M600 0 V800 M700 0 V800 M800 0 V800 M900 0 V800 M1000 0 V800 M1100 0 V800"/>
+  </g>
+
+  <!-- blade: root at left, tip at right -->
+  <path d="M92 300 C 300 268, 620 300, 1096 386 C 620 402, 300 412, 92 452 Z" fill="#171C23" stroke="#3C4753" stroke-width="2"/>
+  <!-- spar cap -->
+  <path d="M108 372 C 340 358, 660 366, 1078 388" fill="none" stroke="#2A323C" stroke-width="2" stroke-dasharray="10 8"/>
+  <!-- leading edge -->
+  <path d="M92 300 C 300 268, 620 300, 1096 386" fill="none" stroke="#FF6B1A" stroke-width="4"/>
+
+  <!-- root flange -->
+  <g stroke="#3C4753" stroke-width="2" fill="none">
+    <path d="M92 292 v168"/>
+    <ellipse cx="92" cy="376" rx="16" ry="84"/>
+  </g>
+
+  <!-- inspection stations -->
+  <g stroke="#8E9AAA" stroke-width="1.5">
+    <path d="M260 262 v-52 M430 268 v-58 M600 282 v-72 M770 306 v-96 M940 340 v-130"/>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="21" fill="#8E9AAA" letter-spacing="2">
+    <text x="238" y="196">S1</text>
+    <text x="408" y="196">S2</text>
+    <text x="578" y="196">S3</text>
+    <text x="748" y="196">S4</text>
+    <text x="918" y="196">S5</text>
+  </g>
+
+  <!-- graded finding at S4 -->
+  <circle cx="770" cy="306" r="30" fill="none" stroke="#F2C230" stroke-width="3"/>
+  <circle cx="770" cy="306" r="5" fill="#F2C230"/>
+  <path d="M800 306 h96" stroke="#F2C230" stroke-width="2"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#F2C230" letter-spacing="1.5">
+    <text x="904" y="300">LE-04</text>
+    <text x="904" y="322">GRADE 3</text>
+  </g>
+
+  <!-- span scale -->
+  <g stroke="#3C4753" stroke-width="1.5">
+    <path d="M92 620 H1096 M92 610 v20 M344 610 v20 M596 610 v20 M848 610 v20 M1096 610 v20"/>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#8E9AAA" letter-spacing="1.5">
+    <text x="82" y="656">0 m</text>
+    <text x="326" y="656">18</text>
+    <text x="578" y="656">36</text>
+    <text x="830" y="656">54</text>
+    <text x="1058" y="656">72 m</text>
+    <text x="92" y="712" fill="#E6EAEF">WTG-07 · BLADE B · LEADING EDGE</text>
+  </g>
+</svg>
