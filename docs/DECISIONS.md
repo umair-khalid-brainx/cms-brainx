@@ -8,6 +8,30 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-012 — 2026-09-24 — One git repository for api/web/admin, not three
+
+**Decision:** `api`, `web` and `admin` now live under a single git repository at the `CMS/` root,
+alongside `docs/`. Each keeps its own `package.json`, `node_modules` and `.gitignore`; no npm
+workspaces, no hoisting, no shared root config. They still communicate only over REST — this
+changes version control only, not the runtime or build architecture.
+
+**Supersedes:** D-001 (three independent repositories). Also resolves `BACKLOG.md` B-01 (docs were
+unversioned because the container had no repo of its own) and B-04 (nothing was committed).
+
+**Why:** owner's call — the doc-versioning gap in D-011 (`CMS/` not being a git repo) and the
+overhead of three CI pipelines / three places to commit outweighed the isolation benefit for a
+single-owner proof-of-concept. The REST-only boundary between services was the part of D-001 worth
+keeping; the separate-repos part was not.
+
+**Cost accepted:** the three prior repos each had exactly one trivial commit (`done`, `oh my yes`,
+similar) with no other branches or uncommitted work, so that history was discarded rather than
+merged — starting from one clean initial commit was judged not to lose anything real. Going forward,
+a change spanning `api` + `web`/`admin` lands in one commit instead of two coordinated ones, and
+there is no `.gitignore` at the root controlling anything beyond OS/editor files — each subfolder's
+own `.gitignore` still governs its `node_modules`/build output/`.env` as before.
+
+---
+
 ## D-011 — 2026-08-31 — Documentation lives at the container root, not in a repo
 
 **Decision:** `CLAUDE.md` and `docs/` live at `CMS/` (the folder containing the three repos). Each

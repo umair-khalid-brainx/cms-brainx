@@ -1,14 +1,14 @@
 # Multi-Tenant CMS
 
-Three **independent** projects, each its own git repository and its own
+Three **independent** projects sharing one git repository, each with its own
 `node_modules`. Nothing is shared between them at build time; they communicate
 only over REST.
 
-| Folder  | Repo         | What it is                                        | Dev port |
-| ------- | ------------ | ------------------------------------------------- | -------- |
-| `api/`  | `cms-api`    | NestJS + Prisma + Postgres — owns the data         | 4001*    |
-| `web/`  | `cms-web`    | Next.js (SSR + ISR) — all public tenant sites      | 3000     |
-| `admin/`| `cms-admin`  | React SPA (Vite) — admin panel                     | 5173     |
+| Folder  | What it is                                        | Dev port |
+| ------- | -------------------------------------------------- | -------- |
+| `api/`  | NestJS + Prisma + Postgres — owns the data         | 4001*    |
+| `web/`  | Next.js (SSR + ISR) — all public tenant sites      | 3000     |
+| `admin/`| React SPA (Vite) — admin panel                     | 5173     |
 
 \* Canonical port is 4000 (per the scope doc); 4000 is held by Local (the
 WordPress tool) on this machine, so `api/.env` overrides it via `API_PORT`.

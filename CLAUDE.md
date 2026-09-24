@@ -10,14 +10,15 @@ host with its own branding and content. Built as a client-facing demo for an age
 as an engineering training project — **the architecture decisions are the assessed deliverable,
 not code volume.**
 
-Three **independent** repositories. No shared build, no workspace, no cross-imports except one
-published package. They communicate over REST only.
+Three **independent** projects sharing one git repository (`CMS/` root, see `docs/DECISIONS.md`
+D-012). No shared build, no workspace, no cross-imports except one published package. Each keeps
+its own `package.json`/`node_modules`/`.gitignore`. They communicate over REST only.
 
-| Folder   | Repo         | Owns                                             | Dev port |
-| -------- | ------------ | ------------------------------------------------ | -------- |
-| `api/`   | `cms-api`    | NestJS + Prisma. The only thing touching Postgres | 4001     |
-| `web/`   | `cms-web`    | Next.js App Router. All public tenant sites (SSR + ISR) | 3000 |
-| `admin/` | `cms-admin`  | React SPA (Vite). Admin panel and block editor    | 5173     |
+| Folder   | Owns                                             | Dev port |
+| -------- | ------------------------------------------------ | -------- |
+| `api/`   | NestJS + Prisma. The only thing touching Postgres | 4001     |
+| `web/`   | Next.js App Router. All public tenant sites (SSR + ISR) | 3000 |
+| `admin/` | React SPA (Vite). Admin panel and block editor    | 5173     |
 
 Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` → admin static build,
 `api.<domain>` → api.

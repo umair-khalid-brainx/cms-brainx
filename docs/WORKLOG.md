@@ -5,6 +5,25 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-24 — Repos folded into one; folders renamed to match README; docs moved to `docs/`
+
+**What changed**
+- Renamed `cms-nestjs` → `api`, `cms-nextjs` → `web`, `cms-reactjs` → `admin` to match the names
+  `README.md` and `CLAUDE.md` already used.
+- Moved `ARCHITECTURE.md`, `DECISIONS.md`, `WORKLOG.md`, `BACKLOG.md`, `EXECUTION_PLAN.md` and
+  `README.md` into `docs/`; `CLAUDE.md` stays at the `CMS/` root so Claude Code still auto-loads it.
+- Removed the three per-repo `.git` directories (each held a single trivial commit) and `git init`
+  at the `CMS/` root instead. Added a root `.gitignore` for OS/editor files only — each project's
+  own `.gitignore` still governs its `node_modules`, build output and `.env` files. First commit
+  made at root. See `DECISIONS.md` D-012 (supersedes D-001).
+
+**Verified** — `git status --short` was clean in all three repos before their `.git` dirs were
+removed (nothing uncommitted lost); staged diff checked for `node_modules`/`.env` before committing.
+
+**Not done** — no code changed in this entry.
+
+---
+
 ## 2026-08-31 — Documentation system created; DEC-1 resolved
 
 **What changed**
