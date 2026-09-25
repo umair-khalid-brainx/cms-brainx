@@ -1,16 +1,16 @@
-const apiUrl = import.meta.env.VITE_API_URL ?? 'not configured'
+import { Navigate, Route, Routes } from 'react-router'
+import LoginPage from './pages/LoginPage.tsx'
+import LostPasswordPage from './pages/LostPasswordPage.tsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.tsx'
 
 function App() {
   return (
-    <main>
-      <p className="eyebrow">apps/admin</p>
-      <h1>Admin panel</h1>
-      <p>
-        Single-page admin for the multi-tenant CMS: content editing, block
-        editor, media, and per-site settings.
-      </p>
-      <p className="mono">API: {apiUrl}</p>
-    </main>
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/lost-password" element={<LostPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+    </Routes>
   )
 }
 
