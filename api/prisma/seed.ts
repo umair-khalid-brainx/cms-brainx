@@ -56,6 +56,36 @@ async function main(): Promise<void> {
     create: { userId: user.id, siteId: site.id, role: 'owner' },
   });
 
+  // One real page so `admin`'s Pages list isn't empty on a fresh clone, now
+  // that CNT-01 replaced the localStorage-backed pagesStore. Blocks use the
+  // flat contract from cms-blocks/types.ts (invariant 7) directly — `api`
+  // doesn't depend on that package, so this is hand-written, not imported.
+  await prisma.content.upsert({
+    where: { siteId_path: { siteId: site.id, path: '/' } },
+    update: {},
+    create: {
+      siteId: site.id,
+      title: 'Home',
+      slug: 'home',
+      path: '/',
+      status: 'published',
+      blocks: [
+        {
+          type: 'hero',
+          eyebrow: 'Lot 14 · Harvested at low water',
+          headline: 'Oysters that taste like the tide that raised them',
+          body: 'We grow in floating bags on the east bank of the Damariscotta, where the river turns salt twice a day.',
+          primaryAction: { label: 'Reserve a spring share', href: '#shares' },
+        },
+        {
+          type: 'richText',
+          heading: 'About the farm',
+          html: '<p>Family-run since 2011. Everything shipped left the water that morning.</p>',
+        },
+      ],
+    },
+  });
+
   console.log(`Seeded ${user.email} as owner of ${site.name} (${site.host})`);
 }
 
