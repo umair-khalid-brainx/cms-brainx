@@ -98,14 +98,6 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
   found blocking it, it's just not in the DOM. `EditorPage.tsx` uses its own `<button>` instead; see
   `docs/DECISIONS.md` D-019 before assuming Puck's native one will show up.
 
-## Root-level scripts
-
-- `node --experimental-strip-types scripts/check-content-parity.mjs` — checks `web/src/fixtures/
-  corrick.ts` and `admin/src/data/corrickPages.ts` haven't drifted (same pages, same block sequence
-  per page). The two are independently-authored duplicates, not shared code — see `docs/DECISIONS.md`
-  D-017 for why, D-019 for how the checker itself stays inside the "no cross-repo imports" rule. Not
-  wired into CI (`XRP-02`, not built yet) — run it by hand after editing either file.
-
 ## Docs index
 
 | File | Read it when |
