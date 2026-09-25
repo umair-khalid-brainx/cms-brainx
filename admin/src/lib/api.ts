@@ -25,7 +25,7 @@ function handleUnauthorized(status: number): void {
   }
 }
 
-/** Unauthenticated POST — only /auth/login uses this; a 401 there means wrong password. */
+/** Unauthenticated POST — /auth/login and /invites/:token/accept; a 401 here means bad credentials, not a dead session. */
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     method: 'POST',
@@ -40,6 +40,12 @@ export async function apiGet<T>(path: string, accessToken: string): Promise<T> {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   handleUnauthorized(response.status);
+  return handle<T>(response);
+}
+
+/** Unauthenticated GET — for invite preview, reached before any session exists. */
+export async function apiGetPublic<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`);
   return handle<T>(response);
 }
 

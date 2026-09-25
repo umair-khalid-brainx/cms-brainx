@@ -1,5 +1,7 @@
+import type { Role } from './roles';
+
 export type AuthenticatedUser = { id: string; email: string; name: string };
-export type Membership = { siteId: string; siteName: string; role: string };
+export type Membership = { siteId: string; siteName: string; role: Role };
 export type Session = { accessToken: string; user: AuthenticatedUser; memberships: Membership[] };
 
 const STORAGE_KEY = 'cms-admin.session';

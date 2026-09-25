@@ -1,0 +1,292 @@
+.team-header {
+  margin: 0 0 1.25rem;
+}
+
+.team-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.team-loading {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.team-error {
+  font-size: 0.8125rem;
+  color: #c0392b;
+  margin: 0 0 0.75rem;
+}
+
+.team-empty {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1.25rem;
+  align-items: start;
+  max-width: 1000px;
+}
+
+@media (max-width: 780px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.team-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.team-card {
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  padding: 0 1.25rem 1.25rem;
+}
+
+.team-card-title {
+  margin: 0 -1.25rem 1rem;
+  padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.team-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.team-table th {
+  text-align: left;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+  font-weight: 600;
+  color: #3c434a;
+}
+
+.team-table td {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #f0f0f1;
+  vertical-align: middle;
+}
+
+.team-table tr:last-child td {
+  border-bottom: none;
+}
+
+.team-member-name {
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.team-member-email {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+/* .team-role-select just constrains width here — the dropdown's own look
+   (components/Select.css) handles border/padding/background/dark mode. */
+.team-role-select {
+  width: 160px;
+}
+
+.team-invite-expires {
+  color: #6b7280;
+}
+
+.team-row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.team-row-remove {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #b32d2e;
+  font-weight: 500;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.team-row-remove:hover {
+  text-decoration: underline;
+}
+
+.team-row-remove:disabled {
+  color: #b0b0b0;
+  cursor: default;
+  text-decoration: none;
+}
+
+.team-invite-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.team-invite-form label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+  margin-top: 0.85rem;
+}
+
+.team-invite-form label:first-of-type {
+  margin-top: 0;
+}
+
+.team-invite-form input {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #949494;
+  border-radius: 4px;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.team-invite-form input:focus {
+  outline: 2px solid #2271b1;
+  outline-offset: -1px;
+  border-color: #2271b1;
+}
+
+.team-invite-submit {
+  align-self: flex-start;
+  margin-top: 1.5rem;
+  background: #2271b1;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.team-invite-submit:hover {
+  background: #135e96;
+}
+
+.team-invite-submit:disabled {
+  background: #a7aaad;
+  cursor: default;
+}
+
+.team-invite-created {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+  font-size: 0.8125rem;
+  color: #3c434a;
+}
+
+.team-invite-link-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.team-invite-link {
+  flex: 1;
+  font: inherit;
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #949494;
+  border-radius: 4px;
+  background: #f6f7f7;
+  color: #3c434a;
+  box-sizing: border-box;
+}
+
+.team-invite-copy {
+  flex-shrink: 0;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  background: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #2271b1;
+  cursor: pointer;
+}
+
+.team-invite-copy:hover {
+  border-color: #2271b1;
+  background: #f0f6fb;
+}
+
+@media (prefers-color-scheme: dark) {
+  .team-title {
+    color: #ededed;
+  }
+
+  .team-card {
+    background: #18191b;
+    border-color: #3c434a;
+  }
+
+  .team-card-title {
+    color: #ededed;
+    border-bottom-color: #2c3338;
+  }
+
+  .team-table th {
+    color: #b0b0b0;
+    border-bottom-color: #3c434a;
+  }
+
+  .team-table td {
+    border-bottom-color: #2c3338;
+  }
+
+  .team-member-name {
+    color: #ededed;
+  }
+
+  .team-invite-form input {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .team-invite-form label {
+    color: #d4d4d4;
+  }
+
+  .team-invite-created {
+    border-top-color: #2c3338;
+    color: #d4d4d4;
+  }
+
+  .team-invite-link {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #d4d4d4;
+  }
+
+  .team-invite-copy {
+    color: #72aee6;
+    border-color: #3c434a;
+  }
+
+  .team-invite-copy:hover {
+    border-color: #72aee6;
+    background: #101b26;
+  }
+}

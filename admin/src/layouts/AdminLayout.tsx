@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router'
 import { clearSession, getSession } from '../lib/auth'
+import { canManageTeam } from '../lib/roles'
 import './AdminLayout.css'
 
 const navItems = [
@@ -31,6 +32,16 @@ const navItems = [
     ),
   },
   {
+    to: '/team',
+    label: 'Team',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M7 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7-1.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1.5 16c0-2.9 2.46-5 5.5-5s5.5 2.1 5.5 5v.5h-11V16Zm12.7-4c2.3.35 3.8 1.9 3.8 4v.5h-3v-.5c0-1.5-.42-2.72-1.1-3.63.1-.1.2-.24.3-.37Z" />
+      </svg>
+    ),
+    requiresTeamManage: true,
+  },
+  {
     to: '/settings',
     label: 'Settings',
     icon: (
@@ -55,6 +66,12 @@ function AdminLayout() {
   const session = getSession()
   const siteName = session?.memberships[0]?.siteName ?? 'No site'
   const userName = session?.user.name ?? 'Unknown user'
+  // Affordance only (admin/CLAUDE.md invariant 3) — hiding the nav item for
+  // a role that can't manage the team is UX, not the real gate; the API
+  // enforces members:manage for real on every team/invite route.
+  const visibleNavItems = navItems.filter(
+    (item) => !item.requiresTeamManage || canManageTeam(session?.memberships[0]?.role),
+  )
 
   function handleLogout() {
     clearSession()
@@ -70,7 +87,7 @@ function AdminLayout() {
         </div>
 
         <nav className="admin-nav">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
