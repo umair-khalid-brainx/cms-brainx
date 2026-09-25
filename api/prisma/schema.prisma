@@ -11,3 +11,83 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// MVP schema — the minimum needed to log a user in, know which site they
+// belong to, and let them save a page's block array through the editor.
+// Deliberately excludes: named roles/permissions (GOV-06), publish-state
+// transitions (CNT-03), page hierarchy + path recomputation (CNT-05/CNT-06),
+// custom content types (TYP-*), media, SEO, taxonomy, menus, revisions.
+
+model Site {
+  id        String   @id @default(cuid())
+  host      String   @unique
+  name      String
+  themeJson Json     @default("{}") @map("theme_json")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships SiteMembership[]
+  content     Content[]
+
+  @@map("sites")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  memberships SiteMembership[]
+
+  @@map("users")
+}
+
+// Ties a user to a site with a role. This is what a JWT's "site memberships"
+// claim (ARCHITECTURE.md security model) reads from. `role` is a plain string
+// for now — the 5 named roles / permission sets (GOV-06) are still undecided.
+model SiteMembership {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  siteId    String   @map("site_id")
+  role      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, siteId])
+  @@map("site_memberships")
+}
+
+enum ContentStatus {
+  draft
+  published
+
+  @@map("content_status")
+}
+
+// The pages. `blocks` stores the flat `{ type, ...props }` contract defined
+// by cms-blocks/types.ts (invariant 7), NOT Puck's native nested shape —
+// admin is responsible for translating Puck's ComponentData into this shape
+// before it ever reaches the API (see DECISIONS.md D-013 addendum).
+model Content {
+  id        String        @id @default(cuid())
+  siteId    String        @map("site_id")
+  title     String
+  slug      String
+  path      String
+  status    ContentStatus @default(draft)
+  blocks    Json          @default("[]")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  // Matches the actual read pattern (ARCHITECTURE.md: "fetch content by
+  // (site_id, path)"). path === slug for now since hierarchy is deferred.
+  @@unique([siteId, path])
+  @@map("content")
+}
