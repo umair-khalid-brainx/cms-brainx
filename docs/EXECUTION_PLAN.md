@@ -166,7 +166,7 @@ What makes it read as a real product rather than a page editor: roles, review, h
 | `GOV-03` | Nested menu builder | C | 0.90 | 4 | CNT-01 | ⬜ todo |
 | `GOV-04` | Header and footer content and branding | A | 0.20 | 4 | BLK-01 | ⬜ todo |
 | `GOV-05` | Redirect engine and auto-redirect on slug change | B | 0.40 | 4 | CNT-04 | ⬜ todo |
-| `GOV-06` | Roles as data, five seeded, site members | B | 0.55 | 4 | FND-05 | ⬜ todo |
+| `GOV-06` | Roles as data, five seeded, site members | B | 0.55 | 4 | FND-05 | ✅ done — 5 fixed roles (`Role` enum), permission sets hardcoded and enforced via `PermissionsGuard` in the API, not just hidden UI; also built a team-invite flow beyond this ticket's literal scope (one-time links, no email infra exists) since "site members" needed a real way to get people in, not just the seed script (D-014's flagged gap) — see `DECISIONS.md` D-023. No per-author content ownership (Author/Contributor are permission tiers only, not content-scoped) |
 | `GOV-07` | Submit for review and reviewer queue | B | 0.40 | 5 | CNT-03, GOV-06 | ⬜ todo |
 | `GOV-08b` | Second tenant branding, content, cross-tenant bug hunt | D | 0.70 | 5 | GOV-08a, GOV-04 | ⬜ todo |
 

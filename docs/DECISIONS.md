@@ -8,6 +8,63 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-023 — 2026-09-25 — Real roles (`GOV-06`) and a team-invite flow, built together
+
+**Decision:** `SiteMembership.role` becomes a Prisma `Role` enum (`owner`, `administrator`, `editor`,
+`author`, `contributor`) instead of a free-text string, backed by a hand-fixed migration (Prisma
+refused to auto-generate a cast for existing data — `role = 'owner'` on the seeded row — so the
+`ALTER COLUMN` in `20260925130620_add_roles_and_invites` was rewritten by hand to
+`USING ("role"::"member_role")` rather than the drop-and-recreate Prisma proposed). `ROLE_PERMISSIONS`
+(`api/src/auth/permission.ts`) hardcodes each role's permission set; `PermissionsGuard` +
+`@RequirePermission(...)` enforce it in the API — not just a hidden button in `admin`
+(`admin/CLAUDE.md` invariant 3). A new `Invite` model and `TeamModule` let an owner/administrator
+invite people by email + role; since no email-sending infrastructure exists anywhere in this repo,
+accepting an invite works via a one-time link the inviter copies and shares manually, not an email.
+
+**Enum, not a table — corrects this doc's own earlier wording.** `ARCHITECTURE.md`'s Security model
+table and this ticket's `EXECUTION_PLAN.md` row both said "a `roles` table... five seeded." Built as
+an enum instead: the 5 permission sets are hardcoded in code and never edited at runtime (no
+permission-builder UI — the owner picks one of 5 fixed presets per member, matching root `CLAUDE.md`
+invariant 8's "fixed palettes are deliberate"), so a table's only real payoff never applied. Both docs
+corrected in this same change, per this repo's own rule: "if a doc contradicts the code, the code
+wins — fix the doc in the same pass."
+
+**Author/Contributor have no real content ownership.** Real WordPress restricts these roles to their
+own posts; this app's `Content` table has no `authorId`, and Author/Contributor here differ from
+Editor only by permission level (Contributor can't publish), not by whose page it is. Deliberate
+simplification, not an oversight — flagged so the role names don't silently imply more than they
+enforce.
+
+**Invite tokens are SHA-256 hashed, not bcrypt** — a 256-bit random token has no keyspace to
+brute-force, so bcrypt's deliberate slowness buys nothing, and a fast hash supports the O(1)
+lookup-by-token bcrypt can't do without storing the raw token. **Accepting an invite for an email that
+already has an account always requires that account's real password**, verified with `bcrypt.compare`
+before anything happens — never trusts simply having the link, since a forwarded/leaked link
+shouldn't let someone attach themselves to a stranger's account.
+
+**Two real bugs, caught by testing the built thing, not by reading the code:**
+1. `MembershipRepository`/`InviteRepository` were leaking `passwordHash` and `tokenHash` into API
+   responses via `include: { user: true }` / a bare `findMany`. Fixed with explicit Prisma `select`s
+   before this ever shipped anywhere.
+2. `TeamController`'s class-level `@RequirePermission('members:manage')` silently enforced nothing —
+   `Reflector.get(key, context.getHandler())` only reads metadata attached to the specific method, not
+   inherited from a class-level decorator, so every authenticated user of any role could list and
+   manage a site's team. Confirmed via a real request as a non-owner (200 instead of the expected
+   403) before being traced to the guard and fixed with `getAllAndOverride([handler, class])`, then
+   re-verified the same way.
+
+**Verified, not assumed:** full loop over curl + `psql` — created an invite as owner, confirmed only
+the hash (not the raw token) landed in Postgres, accepted it as a brand-new account, confirmed the
+real session shape came back; separately invited an already-registered email on a second site,
+confirmed a wrong password was rejected (401) and the right one attached a membership to the
+*existing* user id rather than creating a duplicate. Then the same loop again through a real Chrome
+tab over CDP driving the actual `admin` UI: sent an invite from `/team`, opened the generated link in
+a fresh tab, accepted it, landed on `/dashboard` with a real session, watched the new member appear
+in the owner's team list, changed their role and removed them via the real controls — each step
+re-confirmed in Postgres, not just the UI's own state. All test data cleaned up afterward.
+
+---
+
 ## D-022 — 2026-09-25 — `corrickPages.ts` deleted, exactly as D-017 said it would be; its parity checker goes with it
 
 **Decision:** `admin/src/data/corrickPages.ts` deleted — D-017 explicitly named this file as something

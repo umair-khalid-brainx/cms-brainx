@@ -129,7 +129,7 @@ mechanics rather than hand-rolled drag/drop and portal code.
 | Concern | Approach |
 | ------- | -------- |
 | Authentication | Stateless JWT carrying user id and site memberships. No session store; revocation would need a denylist and is out of scope |
-| Authorisation | Roles as data — a `roles` table with permission sets, five seeded. Checks resolve at runtime, enforced in the API not just the UI |
+| Authorisation | 5 fixed roles (a Prisma enum, not a table — the permission set per role is hardcoded in `api/src/auth/permission.ts`, never edited at runtime; see D-023), checked in the API via `PermissionsGuard`/`@RequirePermission(...)`, not just hidden in the UI |
 | Tenant isolation | Repository-layer scoping plus tests asserting tenant A cannot read tenant B |
 | Rich text | Sanitised on write. Stored HTML is already safe; rendering does not sanitise |
 | Media | Files on local disk scoped by site; a guessed URL must not cross tenants |

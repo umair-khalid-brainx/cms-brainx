@@ -5,6 +5,72 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-25 — Custom dropdowns, and a real "Add Page" flow into the editor
+
+Two fixes from a UI review, same day as the roles/invites work below.
+
+- **Native `<select>` elements replaced with a custom dropdown** (`admin/src/components/Select.tsx` +
+  `.css`, this repo's first shared UI component). The native ones rendered as plain white
+  OS-chrome popups that didn't take the app's dark theme at all, with the browser's own default
+  arrow glued to the box's right edge without the padding the rest of the UI uses everywhere else.
+  Used in `TeamPage.tsx`'s two role selects (member row, invite form); confirmed via a real
+  screenshot with the popup open, not just "it compiles."
+- **"Open Page Builder" now actually opens the page builder.** It pointed at `/pages` (the list) —
+  there was no way to create a new page from it, or from the Pages screen at all except the
+  Dashboard's separate Quick Draft widget. Added `/pages/new` (`CreatePagePage.tsx`): a title field
+  that creates the page via the same `createPage` call Quick Draft uses (renamed from
+  `createDraftPage` — it's no longer only that widget's function) and redirects straight into
+  `/editor/:slug`. Dashboard's button and a new "Add Page" button on `/pages` both point here now.
+
+**Verified, not assumed:** CDP-driven — opened both dropdowns and screenshotted them mid-open (dark
+popup, selected role highlighted, arrow with real spacing, not the OS default); clicked "Add Page" on
+`/pages`, filled a title, submitted, confirmed it landed in the real Puck editor at the server-slugified
+URL with the right title in the topbar. Test page deleted afterward.
+
+**Not done:** `AdminLayout`'s site-switcher button is still decorative (unrelated to this — flagged
+already in D-020/D-023, still open, no site-switching feature exists yet).
+
+---
+
+## 2026-09-25 — Real roles (`GOV-06`) and a team-invite flow
+
+Full technical design in a plan file, approved before building (see `DECISIONS.md` D-023 for the
+complete reasoning — this entry is the changelog, D-023 has the "why").
+
+**`api`:**
+- `Role` enum (`owner`/`administrator`/`editor`/`author`/`contributor`) replaces the free-text
+  `SiteMembership.role`; new `Invite` model. Migration's auto-generated column-type change had to be
+  hand-fixed (Prisma refused to cast existing data automatically).
+- `PermissionsGuard` + `@RequirePermission(...)` (`api/src/auth/`), backed by a hardcoded
+  `ROLE_PERMISSIONS` map — real enforcement, wired into `ContentController` (all 5 routes) and a new
+  `TeamModule` (`sites/:siteId/team/*` for members/invites, public `invites/:token` +
+  `invites/:token/accept` for the accept flow).
+- Invite flow: one-time SHA-256-hashed tokens (no email infra exists — the link is copied/shared
+  manually), 7-day expiry, auto-revoke on re-invite, last-owner protection on remove/demote, and an
+  accept endpoint that creates a new account or attaches a membership to an existing one — always
+  password-verified either way.
+
+**`admin`:** new `/team` page (members table with inline role change/remove, pending invites with
+revoke, an invite form that surfaces the one-time link with copy-to-clipboard) and public
+`/accept-invite` page (new account or existing-account attach, ending in a real auto-login). Nav item
+hidden for roles that can't manage the team — UI affordance only, confirmed by navigating there
+directly as a non-owner and getting a real 403 from the API, not a silent client-side bypass.
+
+**Two real bugs caught by testing, not code review** — full detail in D-023: a `passwordHash`/
+`tokenHash` leak into API responses (fixed with explicit Prisma `select`s), and a completely
+unenforced class-level `@RequirePermission` on `TeamController` (any authenticated user could manage
+a team) caused by `Reflector.get` not reading class-level metadata — fixed with `getAllAndOverride`.
+
+**Verified, not assumed:** full loop over curl + `psql`, then the same loop again through a real
+Chrome tab over CDP driving the actual UI — described in full in D-023. All test data cleaned up
+afterward; `api`/`admin` typecheck, lint, build, and `api`'s e2e suite all still pass.
+
+**Not done:** no per-author content ownership (deliberate, see D-023); no real "active site" concept
+(team/invite calls use the caller's first membership, same as the rest of `admin` already does); no
+rate limiting on the accept-invite password check (logged, not silently ignored).
+
+---
+
 ## 2026-09-25 — `corrickPages.ts` and its parity checker deleted
 
 Follow-up to the two entries below, same day. Asked whether to delete `admin/src/data/corrickPages.ts`
