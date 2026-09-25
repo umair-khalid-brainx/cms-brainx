@@ -5,6 +5,37 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-25 — A site's Owner is permanent and singular
+
+Follow-up restriction on the roles/invites feature below, requested after it shipped: an Owner's
+role can never be changed via team management, and a site can never have a second Owner.
+
+- **API**: `TeamService.updateMemberRole` now refuses (409) any attempt to change a membership whose
+  role is already `owner`, and refuses (409) any attempt to set a role *to* `owner`.
+  `TeamService.createInvite` refuses (409) an invite with `role: 'owner'`. `assignableRoleSchema`
+  (`api/src/team/dto/membership.dto.ts`) narrows the Zod schema for both the update-member and
+  create-invite request bodies to `administrator | editor | author | contributor`, so a bad request
+  fails validation with a 400 before it even reaches the service — the service check is a deliberate
+  second layer on top, not a substitute for it. Existing last-owner-removal protection needed no
+  change; it now always fires correctly since owner count can never exceed 1. See `DECISIONS.md`
+  D-024 for the full reasoning, including why "permanent" rather than "transferable" (no transfer
+  flow requested or built — tracked as `BACKLOG.md` B-11).
+- **Admin**: `admin/src/lib/roles.ts` adds `ASSIGNABLE_ROLE_OPTIONS` (excludes Owner); both role
+  `<Select>`s on `/team` (invite form, per-member row) use it instead of the full role list. The
+  Owner's own row now renders a static "Owner" label instead of an editable dropdown, and its Remove
+  button is disabled with an explanatory title.
+
+**Verified, not assumed:** the dev API was running stale code (not in `--watch` mode), caught when an
+owner-role invite was accepted that should have been rejected — restarted it, then re-ran the same
+request and confirmed 400. Full pass after restart, all via curl against the real API: invite as
+`owner` → 400; PATCH the Owner's own membership → 409; PATCH a real second member's role to `owner` →
+400; a legitimate role change on that same member → 200; DELETE the Owner's membership → 409
+(unchanged). Test invite/member/user rows cleaned up from the database afterward. Admin UI confirmed
+via CDP screenshot: Owner row shows the disabled label + disabled Remove button; invite dropdown
+lists only the four assignable roles.
+
+---
+
 ## 2026-09-25 — Custom dropdowns, and a real "Add Page" flow into the editor
 
 Two fixes from a UI review, same day as the roles/invites work below.

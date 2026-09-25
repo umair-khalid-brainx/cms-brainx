@@ -8,6 +8,46 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-024 — 2026-09-25 — A site's Owner is singular and permanent
+
+**Decision:** Extends D-023. A site has exactly one Owner, assigned once at creation (the seed
+script / whoever creates the site), and that never changes through the team-management routes:
+`TeamService.updateMemberRole` refuses any change to a membership whose current role is `owner`
+(409), and refuses to set any membership's role *to* `owner` (409) — so an Owner can't be demoted
+and no one else can be promoted into it. `TeamService.createInvite` refuses `role: 'owner'` the same
+way, so an invite can't mint a second Owner either. `assignableRoleSchema`
+(`api/src/team/dto/membership.dto.ts`) — `administrator | editor | author | contributor`, no `owner`
+— is the first line of defense at the Zod layer (plain 400 for a bad request body); the service-level
+checks are a deliberate second layer, not redundant with the DTO, matching this codebase's existing
+pattern of also checking `content:publish` in `ContentService` on top of the route guard. The existing
+last-owner protection on `removeMember` (refuses to delete the sole Owner) already composed correctly
+with this and needed no change — with promotion-to-owner blocked, owner count can now only ever be
+exactly 1, so that check's `ownerCount <= 1` branch is always the one that fires.
+
+**Admin UI matches, not just the API.** `admin/src/lib/roles.ts` adds `ASSIGNABLE_ROLES`/
+`ASSIGNABLE_ROLE_OPTIONS` (excludes `owner`) for both the invite-role `<Select>` and the per-member
+role `<Select>` in `TeamPage.tsx` — Owner is never offered as a choice, not just rejected after the
+fact. The Owner's own row renders a static "Owner" label instead of a `<Select>`, and its Remove
+button is disabled with a title explaining why — same "affordance only" spirit as
+`admin/CLAUDE.md` invariant 3, since the API is what actually enforces this.
+
+**Why permanent rather than transferable:** no "transfer ownership" flow was requested or built.
+Making Owner immutable is the simpler, safer default for a POC — the alternative (a real transfer
+flow: current Owner explicitly hands it to someone else, old Owner demoted in the same transaction)
+is a real feature with its own UX and is not needed yet. Noted in `docs/BACKLOG.md` as a real gap,
+not silently precluded.
+
+**Verified for real**, restarting the dev API first since it wasn't running in watch mode and had
+stale code (confirmed the hard way — an owner-role invite was accepted by the pre-restart process,
+then cleaned up from the database before re-testing): invite with `role: 'owner'` → 400; PATCH the
+Owner's own membership to `administrator` → 409 ("The owner's role cannot be changed"); PATCH a real
+second member to `role: 'owner'` → 400; a legitimate role change (administrator → editor) on that
+same member → 200; DELETE the Owner's membership → 409 (unchanged last-owner behavior). Admin UI
+verified via CDP screenshot: Owner row shows a disabled "Owner" label and greyed-out Remove button;
+the invite Role dropdown lists only Administrator/Editor/Author/Contributor.
+
+---
+
 ## D-023 — 2026-09-25 — Real roles (`GOV-06`) and a team-invite flow, built together
 
 **Decision:** `SiteMembership.role` becomes a Prisma `Role` enum (`owner`, `administrator`, `editor`,
