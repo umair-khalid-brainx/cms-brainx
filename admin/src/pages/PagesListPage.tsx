@@ -48,6 +48,9 @@ function PagesListPage() {
       <div className="pages-header">
         <h1 className="pages-title">Pages</h1>
         <span className="pages-count">{load.status === 'ready' ? `${pages.length} pages` : ''}</span>
+        <Link to="/pages/new" className="pages-add">
+          Add Page
+        </Link>
       </div>
 
       {load.status === 'error' && <p className="pages-error">{load.message}</p>}

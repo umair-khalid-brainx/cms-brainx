@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { createDraftPage, listPages, type PageSummary } from '../lib/contentApi'
+import { createPage, listPages, type PageSummary } from '../lib/contentApi'
 import { currentSite, siteUrl } from '../data/site'
 import { ApiError } from '../lib/api'
 import './DashboardPage.css'
@@ -50,7 +50,7 @@ function DashboardPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const page = await createDraftPage(title, body)
+      const page = await createPage(title, body)
       setPages((prev) => [...prev, page])
       setTitle('')
       setBody('')
@@ -71,7 +71,7 @@ function DashboardPage() {
             Visit Site
             <span aria-hidden="true">&#8599;</span>
           </a>
-          <Link to="/pages" className="dash-new-page">
+          <Link to="/pages/new" className="dash-new-page">
             Open Page Builder
           </Link>
         </div>

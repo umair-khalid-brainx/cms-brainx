@@ -17,6 +17,22 @@
   color: #6b7280;
 }
 
+.pages-add {
+  margin-left: auto;
+  align-self: center;
+  background: #2271b1;
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.pages-add:hover {
+  background: #135e96;
+}
+
 .pages-loading {
   font-size: 0.8125rem;
   color: #6b7280;

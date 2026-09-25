@@ -132,7 +132,10 @@ function escapeHtml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-export async function createDraftPage(title: string, body: string): Promise<PageSummary> {
+// Used by both Dashboard's Quick Draft (title + body text, wrapped as one
+// RichText block) and the "New Page" flow (title only, body '' -> no
+// blocks, straight into an empty page in the editor).
+export async function createPage(title: string, body = ''): Promise<PageSummary> {
   const session = requireSession();
   const blocks: FlatBlock[] = body.trim() ? [{ type: 'richText', html: `<p>${escapeHtml(body.trim())}</p>` }] : [];
   const record = await apiSend<ContentRecord>(
