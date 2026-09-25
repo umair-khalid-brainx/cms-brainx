@@ -1,0 +1,252 @@
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 1.25rem;
+}
+
+.dash-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dash-new-page {
+  background: #2271b1;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.dash-new-page:hover {
+  background: #135e96;
+}
+
+.dash-visit-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  color: #2271b1;
+  text-decoration: none;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.dash-visit-site:hover {
+  border-color: #2271b1;
+  background: #f0f6fb;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 780px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dash-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dash-widget {
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  padding: 0 1rem 1rem;
+}
+
+.dash-widget-title {
+  margin: 0 -1rem 0.75rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.dash-glance {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #3c434a;
+}
+
+.dash-glance strong {
+  color: #1e1e1e;
+  font-weight: 700;
+}
+
+.dash-activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.dash-activity li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.dash-activity-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+  text-decoration: none;
+}
+
+.dash-activity-title:hover {
+  color: #2271b1;
+  text-decoration: underline;
+}
+
+.dash-activity-meta {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.dash-quick-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dash-quick-draft input,
+.dash-quick-draft textarea {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #949494;
+  border-radius: 4px;
+  resize: vertical;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.dash-quick-draft input:focus,
+.dash-quick-draft textarea:focus {
+  outline: 2px solid #2271b1;
+  outline-offset: -1px;
+  border-color: #2271b1;
+}
+
+.dash-quick-draft button {
+  align-self: flex-start;
+  background: #2271b1;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.dash-quick-draft button:hover {
+  background: #135e96;
+}
+
+.dash-quick-draft-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #00762c;
+}
+
+.dash-quick-draft-note a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.dash-health {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #3c434a;
+}
+
+.dash-health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00a32a;
+  flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dash-title {
+    color: #ededed;
+  }
+
+  .dash-visit-site {
+    color: #72aee6;
+    border-color: #3c434a;
+  }
+
+  .dash-visit-site:hover {
+    border-color: #72aee6;
+    background: #101b26;
+  }
+
+  .dash-quick-draft-note {
+    color: #4fd67a;
+  }
+
+  .dash-widget {
+    background: #18191b;
+    border-color: #3c434a;
+  }
+
+  .dash-widget-title {
+    color: #ededed;
+    border-bottom-color: #2c3338;
+  }
+
+  .dash-glance,
+  .dash-activity-meta,
+  .dash-health {
+    color: #b0b0b0;
+  }
+
+  .dash-glance strong,
+  .dash-activity-title {
+    color: #ededed;
+  }
+
+  .dash-quick-draft input,
+  .dash-quick-draft textarea {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #ededed;
+  }
+}
