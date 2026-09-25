@@ -3,7 +3,8 @@
 How the system fits together. Update only when a structural invariant changes — a new component,
 a changed data flow, a new integration. Decisions and their reasoning live in `DECISIONS.md`.
 
-Last structural change: 2026-08-31 (editor canvas architecture settled — D-008).
+Last structural change: 2026-09-24 (editor canvas built on Puck instead of hand-rolled — D-013,
+extends D-008).
 
 ## Topology
 
@@ -94,10 +95,10 @@ GET https://corrick.<domain>/about
 ## Data flow: an author edits and publishes
 
 ```
-1  Editor loads the page's blocks[] into admin's React state
-2  Author adds / edits / reorders → the in-memory array changes
-3  The canvas re-renders: an about:blank same-origin iframe with the real block
-   components portalled into it (style isolation + correct media queries)
+1  Editor loads the page's blocks[] into Puck's data model (content: [{ type, props, id }])
+2  Author adds / edits / reorders via Puck → the data payload changes
+3  Puck's canvas re-renders in its same-origin iframe, with the real block
+   components (style isolation + correct media queries)
 4  Save → PATCH /content/:id { blocks } → api validates (Zod), writes JSONB,
    snapshots a revision
 5  Publish → status = published → api triggers revalidation for that host + path
@@ -105,13 +106,14 @@ GET https://corrick.<domain>/about
 ```
 
 The iframe is a mirror, not a pipe: nothing saves through it. Steps 4–6 are what update the
-public site. See `DECISIONS.md` D-008.
+public site. See `DECISIONS.md` D-008 and D-013.
 
 ## Editor canvas
 
-Same-origin `about:blank` iframe. Admin creates it, so it inherits admin's origin and admin's
-JavaScript has full DOM access — React mounts into it via `createPortal`. The iframe exists for
-two reasons only:
+Built on **Puck** (MIT, see D-013), which provides its own same-origin iframe canvas rather than a
+hand-rolled `about:blank` mount. Existing block components are registered as `config.components[type]
+= { fields, render }`, where `render` is the same component `BlockRenderer` uses on the public site.
+The iframe still exists for the same two reasons D-008 identified:
 
 1. **Style isolation** — admin's reset, fonts and heading sizes cannot reach the tenant's blocks,
    and the tenant's theme cannot restyle admin's chrome.
@@ -119,9 +121,8 @@ two reasons only:
    browser window, so a device-width toggle shows the layout a real device would get.
 
 Inline editing works because the block components inside the iframe are our own React components
-with our own handlers. Block reordering is dragged in the block list beside the canvas (parent
-document, ordinary dnd-kit); dragging inside the canvas requires pointing dnd-kit's sensors at the
-iframe's document and is optional.
+with our own handlers. Reordering, add/delete/duplicate and the settings panel are Puck's built-in
+mechanics rather than hand-rolled drag/drop and portal code.
 
 ## Security model
 

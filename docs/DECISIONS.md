@@ -8,6 +8,78 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-014 — 2026-09-24 — `admin` is self-serve for client companies; super-admin panel deferred
+
+**Decision:** `admin` is used directly by **client companies themselves** — a client's own staff log
+in and build/manage their own site's pages. It is not an internal tool operated by us on clients'
+behalf. `web` is what that client's own customers/visitors see. A platform-operator ("super-admin")
+panel — for us to create new tenant sites, see all clients, manage billing/plans — is **explicitly
+deferred**, not decided, not refused. This is distinct from the out-of-scope refuse-list in
+`EXECUTION_PLAN.md`: refused items are decided-against, this one is simply not yet decided.
+
+**Why:** owner's clarification. Matters structurally because it decides who ends up in the `roles`
+table (`GOV-06`) — real external client users, not internal staff — and who the pitch demo's admin
+experience is actually designed for.
+
+**Cost accepted / open consequence:** `ARCHITECTURE.md` already notes "no provisioning code" for
+creating a tenant site. With `admin` confirmed as client-facing rather than internal, the related gap
+— no registration/invite flow for a client's own users, no named roles yet — is now a sharper
+question than before: a real external client needs an actual way to get their first login, not just
+a seed script. Still open, not yet turned into a ticket or a numbered decision.
+
+---
+
+## D-013 — 2026-09-24 — Editor canvas built on Puck, not hand-rolled; Gutenberg rejected
+
+**Decision:** the editor canvas mechanics (drag/drop, selection, reorder, duplicate, settings panel)
+are built on **Puck** (`puckeditor/puck`, MIT) rather than hand-rolled from a plain `createPortal`
+iframe mount. Existing block components are wired in through Puck's `config.components[type] =
+{ fields, render }`, where `render` is the same React component `BlockRenderer` already uses —
+Puck's own iframe canvas mode replaces the custom same-origin `about:blank` iframe.
+
+**Extends, does not supersede, D-008.** The underlying architecture — shared `cms-blocks` package,
+same-origin iframe canvas for style isolation and correct `@media` measurement, one component
+serving both the editor and the public page — is unchanged. This decision only changes *what builds
+the canvas mechanics*, not the architecture D-008 settled.
+
+**Alternative considered and rejected: Gutenberg (`@wordpress/block-editor`).** Evaluated because
+D-008 already cites it as the architecture's reference point. Rejected for:
+- **Licensing** — GPL-2.0-or-later; bundling it into a distributed commercial `admin` build risks
+  obligating the combined work to be GPL-compatible. Unresolved without legal review, and resolving
+  it isn't worth doing when a clean MIT alternative (Puck) covers the same need.
+- **Data model conflict** — Gutenberg's canonical format is HTML with comment-delimited JSON
+  attributes (`<!-- wp:hero {...} --></div>`), not a JSON array. Storing that, or translating it,
+  breaks or duplicates the `content.blocks` JSONB contract (invariant 7 / `cms-blocks/types.ts`).
+  Puck's data model (`{ content: [{ type, props, id }], root }`) maps onto that contract directly.
+- **Save/render pipeline mismatch** — Gutenberg's `save()` typically emits static markup; keeping
+  "one component renders both surfaces" would mean bypassing `save()` and re-driving render through
+  the existing registry anyway, absorbing Gutenberg's registration complexity without using the part
+  of it meant to save the work.
+- **Unused strength, irrelevant strength** — nested `InnerBlocks` is Gutenberg's biggest edge and the
+  current block list is flat; its larger core block library is inapplicable because invariant 8 fixes
+  the palette to code-defined, colour-agnostic, shared components already.
+- **Purpose fit** — adopting WordPress's own editor architecture wholesale sits oddly against
+  `CLAUDE.md`'s framing that the architecture decisions, not code volume, are the deliverable.
+
+**Why Puck:** MIT-licensed (no licensing question), data model matches the existing JSONB contract
+closely, `config.components` maps onto the existing exhaustive typed registry (`Registry = { [T in
+BlockType]: BlockDefinition<T> }`) without a translation layer, and it ships the same same-origin
+iframe canvas mechanism D-008 already committed to.
+
+**Cost accepted:** a new external dependency (bus-factor / breaking-change risk that self-owned code
+doesn't carry); Puck ships no built-in block library — irrelevant here since the palette is
+code-defined regardless of tool; Puck's overrides API is marked experimental by its own docs, so
+deep editor-chrome customisation may need rework later; the `content.blocks` array items gain an
+`id` field from Puck's `ComponentData` shape (no migration impact — nothing is stored yet, `FND-01`
+hasn't shipped).
+
+**Not yet verified:** the integration has not been hands-on tested against a real block. A spike —
+wire the Hero block through Puck's config — is recommended before `BLK-03` starts and before day
+estimates for `BLK-03`/`BLK-04`/`BLK-07` are re-baselined, the same caution D-008's implementation
+note gives for the package extraction.
+
+---
+
 ## D-012 — 2026-09-24 — One git repository for api/web/admin, not three
 
 **Decision:** `api`, `web` and `admin` now live under a single git repository at the `CMS/` root,

@@ -10,6 +10,11 @@ host with its own branding and content. Built as a client-facing demo for an age
 as an engineering training project — **the architecture decisions are the assessed deliverable,
 not code volume.**
 
+`admin` is used directly by **client companies themselves** — a client's own staff log in and
+build/manage their own site — not by us on their behalf. `web` is what that client's own
+customers see. A platform-operator ("super-admin") panel for us to create/manage tenants is
+deliberately deferred, not decided. See `docs/DECISIONS.md` D-014.
+
 Three **independent** projects sharing one git repository (`CMS/` root, see `docs/DECISIONS.md`
 D-012). No shared build, no workspace, no cross-imports except one published package. Each keeps
 its own `package.json`/`node_modules`/`.gitignore`. They communicate over REST only.

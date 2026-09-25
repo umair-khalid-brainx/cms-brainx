@@ -99,12 +99,17 @@ Edit, publish, live. Once this closes there is always something demonstrable —
 
 The centrepiece of the pitch and the least-compressible engineering work. Ship four blocks working before building the rest.
 
+Canvas mechanics (`BLK-03`, `BLK-04`, `BLK-07`) build on **Puck** rather than a hand-rolled iframe/
+portal — see `DECISIONS.md` D-013. Days below are carried over unchanged from the from-scratch
+estimate; treat them as provisional until the recommended Puck spike (wire the Hero block through
+Puck's config) validates the integration.
+
 | ID | Ticket | Band | Days | Wk | Depends on | Status |
 | -- | ------ | ---- | ---- | -- | ---------- | ------ |
 | `BLK-01` | Block registry, renderer, six blocks, theme tokens | A | 0.60 | — | — | ✅ done |
 | `BLK-02` | Remaining render blocks: gallery, embed, FAQ | A | 0.40 | 2 | BLK-01 | ⬜ todo |
-| `BLK-03` | Editor canvas: add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 | ⬜ todo |
-| `BLK-04` | Per-block settings panel | C | 0.60 | 3 | BLK-03 | ⬜ todo |
+| `BLK-03` | Editor canvas (Puck): add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 | ⬜ todo |
+| `BLK-04` | Per-block settings panel (Puck fields config) | C | 0.60 | 3 | BLK-03 | ⬜ todo |
 | `BLK-05` | TipTap integration and sanitisation on write | B | 0.40 | 3 | BLK-04 | ⬜ todo |
 | `BLK-06` | Form block, submissions table, admin list | B | 0.50 | 3 | BLK-04, FND-02 | ⬜ todo |
 | `BLK-07` | Inline editing: Editable primitive + TipTap in canvas | C | 0.30 | 3 | XRP-01, BLK-04 | ⬜ todo |

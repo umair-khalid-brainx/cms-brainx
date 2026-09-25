@@ -5,6 +5,49 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-24 — Critical doc pass: fixed a stale gotcha, recorded the business-model decision
+
+**What changed**
+- Removed the leftover dnd-kit-in-iframe gotcha from `admin/CLAUDE.md` — it described the
+  hand-rolled canvas D-013 already replaced with Puck, and was left un-updated in that edit.
+- Recorded `DECISIONS.md` D-014: `admin` is confirmed as self-serve for client companies
+  themselves (not agency staff acting on their behalf), `web` is their customers' view. A
+  platform-operator panel is explicitly deferred, not refused. Updated `CLAUDE.md`'s "What this
+  is" section to state this plainly.
+- Left two items unresolved on request: D-012's "single-owner" framing (owner said ignore for
+  now — `EXECUTION_PLAN.md`'s Open Decisions table lists both "Saad" and "CEO" as separate people,
+  so that line may still be inaccurate) and the still-untracked registration/roles/super-admin gap
+  (`GOV-06` has no named roles, no invite flow, no tenant-provisioning UI).
+
+**Not done** — no code changed. DEC-3 (demo tenant identities) and the Week 1 schedule-slip question
+raised in the same review are still open, not addressed in this pass.
+
+---
+
+## 2026-09-24 — Editor canvas: adopt Puck, reject Gutenberg
+
+**What changed**
+- Evaluated Puck (`puckeditor/puck`, MIT) and Gutenberg (`@wordpress/block-editor`, GPL-2.0-or-later)
+  as alternatives to hand-rolling the editor canvas (`BLK-03`/`BLK-04`/`BLK-07`). Chose Puck.
+  Gutenberg rejected on licensing risk, a data-model conflict with the `content.blocks` JSONB
+  contract, and two of its main strengths (nested blocks, large core block library) not applying
+  given the fixed, code-defined block palette (invariant 8). Recorded as `DECISIONS.md` D-013
+  (extends D-008, does not supersede it).
+- Updated `BLK-03`/`BLK-04` ticket text in `EXECUTION_PLAN.md` to reference Puck; day estimates left
+  unchanged and marked provisional. Updated `ARCHITECTURE.md`'s editor-canvas section and
+  `admin/CLAUDE.md` invariant 2 to describe Puck's iframe mechanism instead of a hand-rolled
+  `createPortal` mount.
+
+**Verified** — licensing and data-model claims checked against Puck's and Gutenberg's own docs (MIT
+license, `ComponentData` shape, GPL-2.0-or-later, HTML-comment serialization). The integration itself
+— wiring an existing block component through Puck's `config.components` — has **not** been hands-on
+tested.
+
+**Not done** — no code written. Recommended next step is a spike: wire the Hero block through Puck
+before `BLK-03` starts, to validate the integration before day estimates are re-baselined.
+
+---
+
 ## 2026-09-24 — Repos folded into one; folders renamed to match README; docs moved to `docs/`
 
 **What changed**
