@@ -18,6 +18,12 @@ export const ROLE_LABELS: Record<Role, string> = {
 /** Options shape the custom Select component (components/Select.tsx) wants. */
 export const ROLE_OPTIONS = ROLES.map((value) => ({ value, label: ROLE_LABELS[value] }));
 
+// A site has exactly one owner, set at creation — the API rejects any invite
+// or role-change that names 'owner' (see api/src/team/dto), so it's left out
+// of the choices offered here too, not just hidden after the fact.
+export const ASSIGNABLE_ROLES: Role[] = ['administrator', 'editor', 'author', 'contributor'];
+export const ASSIGNABLE_ROLE_OPTIONS = ASSIGNABLE_ROLES.map((value) => ({ value, label: ROLE_LABELS[value] }));
+
 export function canManageTeam(role: Role | undefined): boolean {
   return role === 'owner' || role === 'administrator';
 }

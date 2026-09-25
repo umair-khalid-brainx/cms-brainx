@@ -12,7 +12,7 @@ import {
   type Invite,
   type Member,
 } from '../lib/teamApi'
-import { ROLE_LABELS, ROLE_OPTIONS, type Role } from '../lib/roles'
+import { ASSIGNABLE_ROLE_OPTIONS, ROLE_LABELS, type Role } from '../lib/roles'
 import Select from '../components/Select'
 import './TeamPage.css'
 
@@ -143,18 +143,23 @@ function TeamPage() {
                         <div className="team-member-email">{member.user.email}</div>
                       </td>
                       <td>
-                        <Select
-                          className="team-role-select"
-                          value={member.role}
-                          options={ROLE_OPTIONS}
-                          onChange={(newRole) => handleRoleChange(member, newRole)}
-                        />
+                        {member.role === 'owner' ? (
+                          <span className="team-role-fixed">{ROLE_LABELS.owner}</span>
+                        ) : (
+                          <Select
+                            className="team-role-select"
+                            value={member.role}
+                            options={ASSIGNABLE_ROLE_OPTIONS}
+                            onChange={(newRole) => handleRoleChange(member, newRole)}
+                          />
+                        )}
                       </td>
                       <td className="team-row-actions">
                         <button
                           type="button"
                           className="team-row-remove"
-                          disabled={member.userId === currentUserId}
+                          disabled={member.role === 'owner' || member.userId === currentUserId}
+                          title={member.role === 'owner' ? 'The owner cannot be removed' : undefined}
                           onClick={() => handleRemove(member)}
                         >
                           Remove
@@ -213,7 +218,7 @@ function TeamPage() {
                 />
 
                 <label htmlFor="invite-role">Role</label>
-                <Select id="invite-role" value={role} options={ROLE_OPTIONS} onChange={setRole} disabled={inviting} />
+                <Select id="invite-role" value={role} options={ASSIGNABLE_ROLE_OPTIONS} onChange={setRole} disabled={inviting} />
 
                 <button type="submit" className="team-invite-submit" disabled={inviting}>
                   {inviting ? 'Sending…' : 'Send Invite'}

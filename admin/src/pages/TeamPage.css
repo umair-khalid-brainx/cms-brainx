@@ -101,6 +101,13 @@
   width: 160px;
 }
 
+.team-role-fixed {
+  display: inline-block;
+  width: 160px;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
 .team-invite-expires {
   color: #6b7280;
 }
