@@ -19,4 +19,12 @@ export class UserRepository {
       include: { memberships: { include: { site: true } } },
     });
   }
+
+  findMembership(userId: string, siteId: string) {
+    return this.prisma.siteMembership.findUnique({ where: { userId_siteId: { userId, siteId } } });
+  }
+
+  createUser(data: { email: string; name: string; passwordHash: string }) {
+    return this.prisma.user.create({ data });
+  }
 }
