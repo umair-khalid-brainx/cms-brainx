@@ -28,8 +28,15 @@ export class TeamService {
   async updateMemberRole(siteId: string, membershipId: string, role: Role) {
     const membership = await this.memberships.findById(siteId, membershipId);
     if (!membership) throw new NotFoundException('Member not found');
-    if (membership.role === 'owner' && role !== 'owner') {
-      await this.assertNotLastOwner(siteId, 'demote');
+    // A site has exactly one owner. That membership's role never changes
+    // through this route, and no other membership can be promoted into it —
+    // the DTO already narrows `role` to exclude 'owner' (assignableRoleSchema);
+    // this is defense-in-depth against the same rule being bypassed.
+    if (membership.role === 'owner') {
+      throw new ConflictException("The owner's role cannot be changed");
+    }
+    if ((role as Role) === 'owner') {
+      throw new ConflictException('A site can only have one owner');
     }
     await this.memberships.updateRole(siteId, membershipId, role);
     return this.memberships.findById(siteId, membershipId);
@@ -49,6 +56,12 @@ export class TeamService {
   }
 
   async createInvite(siteId: string, invitedByUserId: string, dto: CreateInviteDto) {
+    // Same one-owner-per-site rule as updateMemberRole: the DTO already
+    // excludes 'owner' from what's selectable, this is the service-side backstop.
+    if ((dto.role as Role) === 'owner') {
+      throw new ConflictException('A site can only have one owner — invite this person as Administrator instead');
+    }
+
     const email = normalizeEmail(dto.email);
 
     const existingUser = await this.users.findByEmail(email);

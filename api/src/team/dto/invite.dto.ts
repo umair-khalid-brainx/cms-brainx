@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { roleSchema } from './membership.dto.js';
+import { assignableRoleSchema } from './membership.dto.js';
 
 export const createInviteSchema = z.object({
   email: z.string().email(),
-  role: roleSchema,
+  role: assignableRoleSchema,
 });
 
 export type CreateInviteDto = z.infer<typeof createInviteSchema>;
