@@ -30,3 +30,4 @@ Status: **open** / **done** (with date) / **accepted** (deliberately not acting)
 | - | ---- | ---- | ----- |
 | B-01 | Docs were unversioned. | 2026-09-24 | Resolved by folding `api`/`web`/`admin` into one repo at `CMS/` root — see `DECISIONS.md` D-012 |
 | B-04 | Commit the three repos. | 2026-09-24 | Superseded by B-01's fix — one repo, one initial commit, instead of three |
+| B-10 | Dashboard "Visit Site" link (opens `web`'s preview of the current site in a new tab) and a basic `/settings` screen (site identity fields, read-only account info). | 2026-09-25 | Ad-hoc, no `EXECUTION_PLAN.md` ticket covers a site-settings screen. Settings form doesn't persist — no settings API exists |

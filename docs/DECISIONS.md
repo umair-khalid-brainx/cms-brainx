@@ -8,6 +8,179 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-019 — 2026-09-25 — Editor persistence lives in `localStorage`; a hand-rolled Publish button, not Puck's
+
+**Decision:** `EditorPage.tsx` now autosaves — Puck's `onChange` writes the current page data to
+`localStorage` (key `cms-admin.draft.<slug>`, 500ms debounced) via a new `admin/src/lib/
+pagesStore.ts`. On load, a page's autosaved draft (if any) is overlaid on top of its seed data from
+`corrickPages.ts`, so navigating away and back — or a full reload — no longer loses in-progress
+edits. The Dashboard's Quick Draft is wired to the same store: submitting it calls `createDraftPage`,
+which slugifies the title, wraps the body in a single `RichText` block, and appends a wholly new page
+to a second key (`cms-admin.extra-pages`) — so it really does create a new page, not just decorate
+the form.
+
+**The Publish button is our own, not Puck's.** `<Puck onPublish={save} />` is Puck's own README
+example, followed exactly — and it does not render a visible Publish button in the installed
+`@puckeditor/core@0.23.0`. This was traced into their bundled source
+(`node_modules/@puckeditor/core/dist/chunk-55V3NZVF.mjs`), not just observed as a missing DOM
+element: `CustomHeaderActions` resolves to `overrides.headerActions || defaultHeaderActionsRender`,
+`defaultHeaderActionsRender` returns `DefaultOverride` (`({children}) => <Fragment>{children}</Fragment>`,
+i.e. a pass-through, not a suppressor), and the actual `<Button onClick={() => onPublish?.(data)}>`
+JSX is present in that render tree with no permission or `menuOpen` gate found anywhere upstream of
+it — the code path says the button should exist, and empirically (confirmed via `document.
+querySelectorAll` for any element bearing its `lucide-globe` icon class or an aria-label containing
+"Publish", across the whole rendered tree) it does not. Root cause not fully resolved — could be a
+version-specific regression, an i18n `useMessage("header-publish")` resolving empty without a
+`messages` config we don't provide, or something else entirely.
+
+**Why build our own instead of chasing the root cause further:** a Publish action the user can
+actually click matters more than which code renders the button, and the fix is small — one `<button>`
+in our own `.editor-topbar`, backed by a ref that tracks the latest `onChange` data (`latestDataRef`)
+so the click handler doesn't need access to Puck's internal store. `onPublish` stayed wired on
+`<Puck>` too, calling the same save path, in case a future Puck version fixes whatever is suppressing
+its own button — cheap forward-compatibility, not load-bearing.
+
+**Verified, not assumed:** the whole loop was driven through a real, running Chrome tab over the
+DevTools Protocol — clicked the actual rendered Hero block inside Puck's real (same-origin) canvas
+iframe, edited its real `headline` field, waited past the debounce, confirmed the value in
+`localStorage`, clicked the real Publish button, then opened a **fresh** tab at the same URL and
+confirmed the edited headline is what renders — proving the save-and-reload round trip, not just that
+a function got called.
+
+**Cost accepted:** none of this is real persistence — it's `localStorage`, scoped to one browser, one
+machine. `CNT-01`/`CNT-02` still replace this entirely; `pagesStore.ts` is a placeholder consistent
+with `corrickPages.ts`'s existing role (D-015), not a permanent architecture.
+
+---
+
+## D-018 — 2026-09-25 — Real auth: JWT in `localStorage`, hand-rolled guard, no `@Roles` yet
+
+**Decision:** `api` gets a real `AuthModule` — `POST /auth/login` (email/password against `bcryptjs`-
+hashed `User.passwordHash`, returns a signed JWT + session), `GET /auth/me`, and a `JwtAuthGuard`
+that verifies the `Authorization: Bearer` header directly via `@nestjs/jwt`'s `JwtService` — no
+`passport`/`passport-jwt`. `admin`'s `LoginPage` calls it for real, stores `{accessToken, user,
+memberships}` in `localStorage`, and a `RequireAuth` route wrapper redirects to `/login` when that's
+absent.
+
+**Why no passport:** one guard, one strategy. `@nestjs/jwt`'s `JwtService.verifyAsync` is the entire
+mechanism passport-jwt would wrap; pulling in passport's strategy/session machinery for that is
+weight without payoff at this scale.
+
+**Why `localStorage`, not an httpOnly cookie:** simpler for a pure SPA with no server-rendered admin
+pages to protect, and there's no XSS surface here beyond what Vite/React already control (`admin`
+renders no user-supplied HTML). Revisit if `admin` ever renders untrusted content or needs
+cross-subdomain auth with `web`.
+
+**Cost accepted — no role enforcement yet:** `SiteMembership.role` is stored (seeded as `'owner'`)
+and returned in the session, but nothing checks it. `RequireAuth` only proves *a* valid session
+exists, matching `api/CLAUDE.md` invariant 3 — "permission checks in `admin` are UI affordance, not
+enforcement" — which was already true before this and remains true now. `FND-05`'s "role decorators"
+half is still open, tracked in `EXECUTION_PLAN.md`.
+
+**Seed data:** `api/prisma/seed.ts` (`npm run db:seed`, manual — not `prisma migrate reset`'s seed
+hook) creates one real `Site` (Corrick Oyster Co., `themeJson` matching the theme already duplicated
+into `web`'s fixture and `admin`'s Puck config per D-017) and one real `User`/`SiteMembership`. This
+is the first real row in every table `FND-01` defined — everything before this was fixtures.
+
+---
+
+## D-017 — 2026-09-25 — Multi-page fixtures; `admin`'s demo content is its own dataset, not shared
+
+**Decision:** `SiteFixture.page: SitePage` became `SiteFixture.pages: SitePage[]` in `web`. The
+temporary `/preview/[site]` route became `/preview/[site]/[[...path]]`, resolving a page by matching
+`path` against the URL's remaining segments (`/` for home). `admin` gets a matching multi-page
+surface — a `/pages` list and `/editor/:slug` — reading from a new local module,
+`admin/src/data/corrickPages.ts`, written independently to match `web/src/fixtures/corrick.ts` in
+content and voice, not imported from it.
+
+**Why not share the content between repos:** `admin` cannot import from `web` — no cross-repo
+imports except the published `cms-blocks` package (root `CLAUDE.md`), and fixture/page content isn't
+part of that package; it's demo data standing in for rows in `content`, same reasoning as D-016's
+`cms-blocks` extraction not covering content. The alternative — a second shared package just for
+fixture data — was rejected as overbuilding for something that gets deleted once `CNT-01`/`CNT-02`
+land and both sides fetch the same rows from `api` instead.
+
+**No schema change needed:** `FND-01`'s `Content` model (`docs/WORKLOG.md` 2026-09-25) already has
+`@@unique([siteId, path])` — it was multi-page-shaped from the start. This decision is the UI/fixture
+layer catching up to a schema that already assumed it, not a new data-modelling choice.
+
+**A real bug found doing this, not just described:** the temporary preview route's nav/footer links
+needed a `/preview/corrick` prefix that fixture data (production-shaped: `/wholesale`, not
+`/preview/corrick/wholesale`) doesn't have. First fix only prefixed `settings.nav`/`settings.footer`
+— missed that block props (`Hero.secondaryAction`, `Cta.action`, ...) carry the same kind of
+same-site links, scattered across all 14 block types. Caught by grepping the rendered page's actual
+`href` attributes rather than assuming the nav-only fix was sufficient. Fixed with one generic
+recursive walker (`prefixHrefs`) over the whole fixture rather than special-casing each block's link
+fields — simpler and doesn't need updating every time a block gains a new link-shaped prop.
+
+**Cost accepted:** Corrick's page content now exists in two places (`web`'s fixture, `admin`'s
+dataset) that must be kept in sync by hand until `CNT-01` replaces both with real API calls. Marked
+`CNT-02` and `CNT-07` in-progress with this caveat in `EXECUTION_PLAN.md` rather than done.
+
+---
+
+## D-016 — 2026-09-25 — `cms-blocks` extracted as a real local package (`XRP-01`), not published
+
+**Decision:** the 6 block components, `types.ts`, `registry.ts`, `BlockRenderer.tsx`, `ui.tsx`, and
+the theme system (`theme.ts`, `SiteThemeRoot.tsx`) moved out of `web/src/blocks/` and
+`web/src/theme/` into a new package, `cms-blocks/`, at the `CMS/` root — a sibling to `api`/`web`/
+`admin`, not nested inside any of them. `web` and `admin` both consume it via `"cms-blocks": "file:
+../cms-blocks"` in `package.json` (npm creates a real symlink), not a private registry.
+
+**Why now, not later:** building the real editor in `admin` required rendering actual block
+components there, and invariant 3 forbids copying them into a second repo — this was a genuine
+blocker, not a nice-to-have. D-008's implementation note already warned that retrofitting the
+extraction under a half-built canvas is where estimates go wrong; doing it now, before `BLK-03`
+proper, avoids that.
+
+**Deviates from D-008's framing:** D-008 says "published `cms-blocks` package," implying an eventual
+registry (npm, or a private one, per its own "cost accepted" list mentioning "credentials for a
+private package"). This is a local `file:` dependency instead — no registry, no publish step, no
+version resolution. Good enough for one machine / one repo; revisit if `cms-blocks` ever needs to be
+consumed outside this repo (e.g. a separate deploy pipeline) or versioned independently.
+
+**cms-blocks ships a compiled `dist/`, not raw source, despite Tailwind's own `@source` pointing at
+`src/`.** These serve two different purposes and don't conflict: `@source` only needs literal class-
+name strings on disk for Tailwind's scanner, which `src/` (TSX) provides more readably than compiled
+JS would. But `package.json`'s `main`/`exports`/`types` point at `dist/` — raw `.ts` as the actual
+resolution target failed in Next's production build (see the `web` gotcha below); a real `tsc` build
+step avoided fighting that. `cms-blocks` needs `npm run build` after any change until this is
+automated (out of scope for now — one more manual step, not a blocker at this scale).
+
+**Cost accepted:** `admin` also picked up Tailwind 4 (`D-010`, decided 2026-08-31, not executed until
+now) — the shared block components use Tailwind utility classes and render unstyled without it. Two
+real, non-obvious bugs were hit and fixed getting this working (see `CLAUDE.md` gotchas): Turbopack
+won't resolve a symlinked package whose real path is outside `turbopack.root`; the `@source` path
+depends on the importing file's depth and cannot be copied verbatim between repos with different
+folder structures.
+
+---
+
+## D-015 — 2026-09-25 — `content.blocks` stores the flat contract; Puck's native shape is translated at the boundary, not stored
+
+**Decision:** `content.blocks` continues to store the flat `{ type, ...props }` shape already defined
+by `cms-blocks/types.ts` (invariant 7), unchanged from before Puck was adopted. `admin` is
+responsible for translating Puck's native `ComponentData` shape (`{ type, props: { id, ...fields } }`)
+into that flat shape before it is ever sent to the API. The API never sees or stores Puck's wrapper.
+
+**Why:** confirmed by the `/dev/puck-spike` spike (see `WORKLOG.md`, this date) that Puck's native
+save shape is a nested `props` wrapper carrying its own `id`, which does not match the flat contract
+`web`'s already-shipped `BlockRenderer` and all six `BLK-01` block components already expect.
+
+**Alternative rejected: store Puck's native shape as-is.** Would require changing all six existing
+block components (not just Hero) to read `block.props.x` instead of `block.x`, or push the same
+translation to read-time inside `BlockRenderer` instead — paying the cost on every public page view
+instead of once at save. Would also permanently store a Puck-internal `id` that means nothing to
+`web`, weaken invariant 7 (two competing shapes instead of one contract), and couple the stored data
+format to Puck's own internal versioning — a library `admin` depends on but `web` never imports,
+which the three-repo split (D-001) was meant to keep decoupled.
+
+**Cost accepted:** one small translation function at the `admin` → API boundary, which has to be kept
+in sync if Puck's internal shape changes in a future version. Judged worth it to keep `content.blocks`
+owned entirely by `cms-blocks/types.ts`, not by an upstream library's release cadence.
+
+---
+
 ## D-014 — 2026-09-24 — `admin` is self-serve for client companies; super-admin panel deferred
 
 **Decision:** `admin` is used directly by **client companies themselves** — a client's own staff log

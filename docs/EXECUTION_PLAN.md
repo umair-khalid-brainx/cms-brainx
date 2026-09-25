@@ -59,12 +59,12 @@ The invariants everything else is built on. Nothing here is demoable — say so 
 
 | ID | Ticket | Band | Days | Wk | Depends on | Status |
 | -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `FND-01` | Database schema and initial migration | A | 0.25 | 1 | — | ⬜ todo |
+| `FND-01` | Database schema and initial migration | A | 0.25 | 1 | — | ✅ done (MVP slice — 4 models, not the full eventual schema; see `WORKLOG.md` 2026-09-25) |
 | `FND-02` | Scoped repository layer | D | 0.30 | 1 | FND-01 | ⬜ todo |
 | `FND-03` | Tenant invariant tests | D | 0.15 | 1 | FND-02 | ⬜ todo |
 | `FND-04` | Host to site resolution with cache | B | 0.20 | 1 | FND-01 | ⬜ todo |
-| `FND-05` | Auth: JWT, login, guards, role decorators | B | 0.35 | 1 | FND-01 | ⬜ todo |
-| `FND-06` | Seed: first tenant and admin user | A | 0.10 | 1 | FND-01, FND-05 | ⬜ todo |
+| `FND-05` | Auth: JWT, login, guards, role decorators | B | 0.35 | 1 | FND-01 | 🟨 in progress — `POST /auth/login`, `GET /auth/me`, `JwtAuthGuard` done and wired to the real `admin` login page (bcrypt hash, JWT, localStorage session, route guard, active session re-validation on entry, forced re-login on an expired/invalid token); no `@Roles`/role-based guard yet, `SiteMembership.role` is stored but not enforced anywhere; see `WORKLOG.md` 2026-09-25 |
+| `FND-06` | Seed: first tenant and admin user | A | 0.10 | 1 | FND-01, FND-05 | ✅ done — `npm run db:seed` (manual, not wired into `prisma migrate reset`'s seed hook) creates Corrick Oyster Co. and one owner account |
 
 ### XRP — Cross-repo platform  ·  0.85d  ·  all three
 
@@ -72,7 +72,7 @@ Work created by splitting the monorepo into three independent repositories. Not 
 
 | ID | Ticket | Band | Days | Wk | Depends on | Status |
 | -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `XRP-01` | Shared block package | B | 0.55 | 1 | DEC-1 | ⬜ todo |
+| `XRP-01` | Shared block package | B | 0.55 | 1 | DEC-1 | ✅ done (local `file:` dep, not published — see `DECISIONS.md` D-016) |
 | `XRP-02` | CI pipeline per repository | A | 0.30 | 1 | — | ⬜ todo |
 | `XRP-03` | Typed API client generated from OpenAPI | B | 0.30 | — | CNT-01 | 🅱 backlog |
 
@@ -83,12 +83,12 @@ Edit, publish, live. Once this closes there is always something demonstrable —
 | ID | Ticket | Band | Days | Wk | Depends on | Status |
 | -- | ------ | ---- | ---- | -- | ---------- | ------ |
 | `CNT-01` | Content CRUD API, tenant-scoped | A | 0.20 | 1 | FND-02 | ⬜ todo |
-| `CNT-02` | Admin content list and edit screens | A | 0.15 | 1 | CNT-01 | ⬜ todo |
+| `CNT-02` | Admin content list and edit screens | A | 0.15 | 1 | CNT-01 | 🟨 in progress — `/pages` list and per-page `/editor/:slug` built, reading from a hardcoded `corrickPages.ts` dataset instead of `CNT-01` (doesn't exist yet); editor edits now autosave to `localStorage` (not real persistence) rather than being lost on navigation, and Dashboard's Quick Draft creates real (locally-stored) pages; see `WORKLOG.md` 2026-09-25 |
 | `CNT-03` | Publish states and transitions | D | 0.20 | 1 | CNT-01 | ⬜ todo |
 | `CNT-04` | Slug handling and per-site uniqueness | D | 0.15 | 1 | CNT-01 | ⬜ todo |
 | `CNT-05` | Page hierarchy: parent, depth limit, cycle guard | D | 0.20 | 1 | CNT-01 | ⬜ todo |
 | `CNT-06` | Denormalised path and recursive recomputation | D | 0.35 | 1 | CNT-05 | ⬜ todo |
-| `CNT-07` | Next catch-all route, host resolution, render | D | 0.45 | 2 | FND-04, CNT-06, BLK-01 | ⬜ todo |
+| `CNT-07` | Next catch-all route, host resolution, render | D | 0.45 | 2 | FND-04, CNT-06, BLK-01 | 🟨 in progress — `/preview/[site]/[[...path]]` resolves a page by path and renders it per-tenant; host resolution still stubbed by the slug-based preview prefix, not done |
 | `CNT-08` | ISR revalidation on publish, host-inclusive cache key | D | 0.45 | 2 | CNT-07, GOV-08a | ⬜ todo |
 | `CNT-09` | Signed-token preview URLs | B | 0.20 | 2 | CNT-07 | ⬜ todo |
 | `CNT-10` | Duplicate page | A | 0.15 | 2 | CNT-01 | ⬜ todo |
@@ -107,11 +107,11 @@ Puck's config) validates the integration.
 | ID | Ticket | Band | Days | Wk | Depends on | Status |
 | -- | ------ | ---- | ---- | -- | ---------- | ------ |
 | `BLK-01` | Block registry, renderer, six blocks, theme tokens | A | 0.60 | — | — | ✅ done |
-| `BLK-02` | Remaining render blocks: gallery, embed, FAQ | A | 0.40 | 2 | BLK-01 | ⬜ todo |
-| `BLK-03` | Editor canvas (Puck): add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 | ⬜ todo |
-| `BLK-04` | Per-block settings panel (Puck fields config) | C | 0.60 | 3 | BLK-03 | ⬜ todo |
+| `BLK-02` | Remaining render blocks: gallery, embed, FAQ | A | 0.40 | 2 | BLK-01 | 🟨 in progress — gallery + FAQ done, plus 5 blocks beyond original scope (logoCloud, stats, spacer, pricingTable, teamGrid); embed intentionally not built, see `WORKLOG.md` 2026-09-25 |
+| `BLK-03` | Editor canvas (Puck): add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 | 🟨 in progress — canvas built with all 14 real blocks, not wired to a real content record (`CNT-02` still todo); see `WORKLOG.md` 2026-09-25 |
+| `BLK-04` | Per-block settings panel (Puck fields config) | C | 0.60 | 3 | BLK-03 | 🟨 in progress — fields defined for all 14 blocks, not interactively tested (drag/click unverifiable headlessly) |
 | `BLK-05` | TipTap integration and sanitisation on write | B | 0.40 | 3 | BLK-04 | ⬜ todo |
-| `BLK-06` | Form block, submissions table, admin list | B | 0.50 | 3 | BLK-04, FND-02 | ⬜ todo |
+| `BLK-06` | Form block, submissions table, admin list | B | 0.50 | 3 | BLK-04, FND-02 | 🟨 in progress — `ContactForm` block built (non-functional, no submit endpoint); submissions table and admin list still todo |
 | `BLK-07` | Inline editing: Editable primitive + TipTap in canvas | C | 0.30 | 3 | XRP-01, BLK-04 | ⬜ todo |
 
 ### TYP — Content types and templates  ·  1.70d  ·  api + admin + web

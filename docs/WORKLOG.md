@@ -5,6 +5,392 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-25 — Five gap fixes: editor autosave, JWT-expiry handling, Quick Draft, broken e2e test, content-drift check
+
+Working through the gap list from the last review — five real fixes, not new features.
+
+**1. Editor changes are saved now.** New `admin/src/lib/pagesStore.ts`: Puck's `onChange` autosaves
+the current page data to `localStorage` (`cms-admin.draft.<slug>`, 500ms debounced); a page's draft
+(if any) overlays its seed data from `corrickPages.ts` on load. Puck's own documented Publish button
+turned out not to render at all in the installed version (real finding, traced into their source —
+see D-019) — replaced with our own `<button>` in the topbar, backed by a ref tracking the latest
+`onChange` data.
+
+**2. Expired/invalid JWTs now force a re-login.** `RequireAuth.tsx` actively calls `GET /auth/me` on
+every entry into a protected route instead of just trusting whatever's in `localStorage`; `lib/api.ts`'s
+`apiGet` now clears the session and hard-redirects to `/login` on any 401 (scoped to `apiGet` only —
+`apiPost` is also used for the *unauthenticated* login attempt itself, where a 401 means "wrong
+password," not "dead session," and must not trigger the same redirect).
+
+**3. Dashboard's Quick Draft actually creates a page.** Wired to `pagesStore.createDraftPage`: title
+gets slugified, body becomes a single `RichText` block, the new page is appended to a second
+`localStorage` key (`cms-admin.extra-pages`) alongside the 4 seeded ones. Shows up in the Pages list,
+in "At a Glance" counts, and opens correctly in the editor.
+
+**4. `api/test/app.e2e-spec.ts` fixed for real.** The `import { App } from 'supertest/types'` never
+resolved — verified neither `supertest@7.3.0` nor `@types/supertest@7.2.1` expose that subpath or
+re-export `App` from anywhere public. Dropped the import; `INestApplication`'s `TServer` generic
+already defaults to `any`. `npm run test:e2e` passes now (previously never ran clean).
+
+**5. `web`/`admin` corrick-content drift now has a guardrail.** New `scripts/check-content-parity.mjs`
+at the repo root — compares page paths and per-page block-type sequences between `web/src/fixtures/
+corrick.ts` and `admin/src/data/corrickPages.ts` without ever cross-importing between the two repos
+(each file has only type-only imports, so a plain `node --experimental-strip-types` dynamic `import()`
+loads it standalone; the check never uses either project's own bundler/tsconfig). Checks structure
+(same pages, same block sequence), never prose — the written copy is deliberately independent. Run
+now: **4/4 pages match.** Not wired into CI (no CI exists yet — `XRP-02`).
+
+**Verified — real interaction throughout, driven over the DevTools Protocol on a running Chrome tab:**
+- Autosave: clicked the actual rendered Hero block inside Puck's real same-origin canvas iframe,
+  edited its `headline` field for real, confirmed the debounced write landed in `localStorage`, clicked
+  the real Publish button, then opened a **fresh tab** at the same URL and confirmed the edited
+  headline is what rendered — the full round trip, not just "a function ran."
+- JWT expiry: corrupted the stored `accessToken` in `localStorage`, reloaded, confirmed `RequireAuth`'s
+  `/auth/me` check caught it and redirected to `/login` with the session cleared.
+- Quick Draft: filled the real form, submitted, confirmed "At a Glance" went from 4→5 pages and 0→1
+  drafts, confirmed the new page appears in the Pages list as Draft, confirmed it opens correctly in
+  the editor.
+- `npm run test:e2e` — actually run, passes.
+- `check-content-parity.mjs` — actually run, passes.
+- `api` and `admin` both typecheck, lint (one expected, documented oxlint warning on the deliberate
+  `useMemo` dependency choice in `EditorPage.tsx`), and build clean.
+
+**Not done / not verified**
+- None of this is real persistence — `localStorage`, one browser, one machine. `CNT-01`/`CNT-02`
+  still replace all of it.
+- The Publish button's root cause in Puck's own code wasn't fully resolved, only worked around —
+  logged in `CLAUDE.md` gotchas and D-019 for whoever hits it next.
+- `check-content-parity.mjs` is a manual script, not wired into any CI (none exists) or pre-commit hook.
+
+## 2026-09-25 — Pages list: View link alongside Edit on every row
+
+**What changed:** `PagesListPage.tsx` had only "Edit" per row. Added "View ↗" next to it, using the
+same `siteUrl(page.path)` helper the Dashboard's "Visit Site" link already used — so every row now
+opens either the `admin` editor for that page or the real `web` page for it, in a new tab.
+
+**Verified** — logged in for real over CDP (as in the previous two entries) and read every row's
+actual `<a>` tags: all 4 have `Edit → /editor/<slug>` and `View → http://127.0.0.1:3000/preview/
+corrick<path>, target="_blank"`, and `curl`-confirmed all 4 `View` URLs return 200. Screenshotted the
+list to confirm the layout reads cleanly with both links present. Typechecks, lints, and builds clean.
+
+## 2026-09-25 — Dashboard "Visit Site" link, basic Settings screen, all 4 Corrick pages published
+
+**What changed**
+- New `admin/src/data/site.ts` — `currentSite` (name/tagline/host, duplicated from `web`'s corrick
+  fixture, same D-017 reasoning) and `siteUrl(path)`, which points at `web`'s preview stand-in
+  (`VITE_WEB_URL`, defaulting to `http://127.0.0.1:3000` — not `localhost`, to sidestep the stale-
+  redirect gotcha already documented in `CLAUDE.md`).
+- Dashboard gained a **Visit Site** link next to "Open Page Builder", opening `siteUrl()` in a new tab.
+- New `/settings` route (`SettingsPage.tsx`), filling the sidebar nav item that's existed since the
+  dashboard build but 404'd until now (same situation `/pages` was in before that got built). Two
+  cards: Site Identity (name/tagline editable in local state only, no save endpoint — a "Saved..."
+  note appears on submit but nothing persists) and Your Account (read-only, pulled straight from the
+  real logged-in session — name, email, role). Logged as `BACKLOG.md` B-10, since no
+  `EXECUTION_PLAN.md` ticket covers a site-settings screen.
+- `corrickPages.ts`: `wholesale` and `harvest-log` flipped from `status: 'draft'` to `'published'` —
+  all 4 pages are published now. Dashboard's Activity feed's "Edited" labels for those two updated to
+  "Published" to match (they're independent flavor data, would otherwise have contradicted the Pages
+  list's own status badges).
+
+**Verified — real interaction again, not just render checks:** reused the headless-Chrome-over-CDP
+approach from the previous entry (fresh profile, to avoid the stale-session false-alarm from last
+time) to log in for real, then: confirmed the Dashboard's Visit Site link has the correct
+`href="http://127.0.0.1:3000/preview/corrick"` and `target="_blank"`; confirmed "At a Glance" now
+reads 4 Published / 0 Drafts; confirmed the Pages list shows all 4 rows as Published; loaded
+`/settings` and confirmed the Site Identity fields are pre-filled and the Account card shows the real
+seeded user (Umair Khalid, the real email, "Owner"); clicked the real Save Changes button and
+confirmed the confirmation note appears (first check raced the click against React's render commit
+and falsely read "not found" — recognized as a test-timing bug, not a product bug, and confirmed by
+re-running with a short delay between the click and the check).
+
+**Not done / not verified**
+- Settings doesn't persist anywhere — refreshing the page reverts any edited field. No API endpoint
+  exists for it.
+- "Visit Site" always points at Corrick's home page (`/preview/corrick`), not the specific page being
+  edited — matches what was asked ("on the dashboard"), not extended to per-page "View" links on the
+  Pages list, which would be a natural but unrequested follow-up.
+- Account details (name/email) are display-only by design — no edit-account flow was asked for or built.
+
+## 2026-09-25 — Real auth: login endpoint, JWT guard, seeded account, wired end to end
+
+**What changed**
+- `api`: new `AuthModule` (`src/auth/`) — `POST /auth/login` (Zod-validated body, `bcryptjs` compare
+  against `User.passwordHash`, signs a JWT via `@nestjs/jwt`), `GET /auth/me` (guarded), and
+  `JwtAuthGuard` (hand-rolled `CanActivate`, no passport). New `src/users/user.repository.ts` +
+  `UsersModule` — `PrismaService` access still only from a `*.repository.ts` file, per invariant 2,
+  even though `User` isn't tenant-scoped content. New `src/common/zod-validation.pipe.ts`, a small
+  generic pipe (validation is Zod project-wide, not class-validator — invariant 4).
+- `api/prisma/seed.ts` (`npm run db:seed`) creates the first real rows in every `FND-01` table: one
+  `Site` (Corrick Oyster Co., `themeJson` matching what's already duplicated into `web` and `admin`),
+  one `User`, one `SiteMembership` (role `owner`). Ran it — verified with `psql` that the rows are
+  really there, not just that the script exited 0.
+- `admin`: `src/lib/api.ts` (fetch wrapper, `ApiError`), `src/lib/auth.ts` (session get/set/clear via
+  `localStorage`), `src/lib/RequireAuth.tsx` (route guard, redirects to `/login` with no session).
+  `LoginPage.tsx` now actually calls `/auth/login`, shows a real error on 401/400, stores the session,
+  and redirects to `/dashboard`. `AdminLayout`'s topbar shows the real logged-in user's name/initials
+  and the real site name from `session.memberships[0]`, plus a working **Log Out** button (was a
+  decorative "TO Test Owner" stub before).
+
+**Verified — with real interaction, not just curl/typecheck:**
+- `api`: `curl`-tested wrong password (401), malformed body (400, Zod messages), correct login (200,
+  real JWT + user + membership), `/auth/me` with and without the token (200 / 401), and a CORS
+  preflight from `admin`'s origin (204, correct `Access-Control-Allow-*` headers).
+- `admin`: no click-automation tool is available in this environment, so rather than skip interactive
+  testing (as every previous entry has had to), drove a real headless Chrome tab over the DevTools
+  Protocol directly — Node 26's built-in `fetch`/`WebSocket` were enough, no new dependency. Filled the
+  actual `#login-identifier`/`#login-password` inputs (dispatching real `input` events so React's
+  controlled-input state updates), called `form.requestSubmit()`, and confirmed: redirect to
+  `/dashboard`, a real session written to `localStorage`, and the dashboard rendering the real seeded
+  user ("Umair Khalid", "UK"), the real site ("Corrick Oyster Co."), and correct published/draft
+  counts (2/2, matching the 4 real `corrickPages.ts` entries). Separately confirmed **Log Out** clears
+  the session and redirects to `/login`, and that `RequireAuth` redirects an unauthenticated visit to
+  `/dashboard` back to `/login` (first attempt looked like it failed — actually a stale session left
+  in the CDP test's own Chrome profile from the prior test, not a bug; confirmed by clearing
+  `localStorage` and reloading before re-checking).
+- `api` and `admin` both typecheck, lint, and build clean.
+
+**Not done / not verified**
+- No role enforcement — `SiteMembership.role` is stored and returned but nothing checks it yet.
+  `RequireAuth` only proves a session exists, same "UI affordance, not enforcement" caveat that
+  already applied to `admin` before this (`api/CLAUDE.md` invariant 3).
+- `Content`/`Site` repositories (the actual `FND-02` ticket, tenant-scoped) still don't exist —
+  `PagesListPage`/`EditorPage` still read `corrickPages.ts`, not the API. Login is real; content isn't, yet.
+- No registration, lost-password, or reset-password backend — those screens are still UI-only.
+- JWT lives in `localStorage`, not an httpOnly cookie — a deliberate, documented tradeoff (D-018),
+  not an oversight.
+
+## 2026-09-25 — Multi-page support, built and tested with Corrick as the real subject
+
+**What changed**
+- `web`: `SiteFixture.page` → `SiteFixture.pages: SitePage[]`. `SiteChrome` now takes an explicit
+  `page` prop instead of deriving it, since a site has many now. The dev preview route moved from
+  `/preview/[site]/page.tsx` to `/preview/[site]/[[...path]]/page.tsx`, resolving a page by matching
+  URL segments against `SitePage.path` (`/` for home), with `generateStaticParams` covering every
+  page of every fixture site.
+- `corrick.ts` grew from 1 page to 4: the existing Home, plus **Visit the Farm** (Gallery, TeamGrid,
+  Faq), **Wholesale** (LogoCloud, PricingTable, ContactForm — restaurant partners include "The Lower
+  Landing," Nina Alvarez's restaurant from the existing testimonial), and **Harvest Log** (Stats,
+  RichText, Testimonial, Spacer, Faq). Nav and footer links that now point at real pages
+  (`/visit-the-farm`, `/wholesale`, `/harvest-log`) were updated from anchors to real paths; `kestrel.ts`
+  wrapped its single page in the new array shape unchanged.
+- `admin`: extracted the Puck `config` and `EditorComponents` type out of `EditorPage.tsx` into
+  `admin/src/puck/config.tsx` so more than one screen can use it. New `admin/src/data/corrickPages.ts`
+  holds the same 4 pages as independent Puck `Data` objects (see D-017 for why this isn't imported
+  from `web`). New `/pages` route (`PagesListPage.tsx`) lists them with path and status, matching the
+  AdminLayout sidebar nav item that already existed but 404'd. `/editor` became `/editor/:slug`,
+  reading the matching page from `corrickPages.ts`; unknown slugs redirect to `/pages`. Swapped the
+  previous session's invented `demoTheme` (coral/teal, for the block-library test) for Corrick's real
+  theme values, duplicated from `web/src/fixtures/corrick.ts` — the editor canvas now actually looks
+  like the real Corrick site, not an unrelated brand. Dashboard's "Open Page Builder" now goes to
+  `/pages` instead of straight to a single hardcoded page; Activity items link to their real pages.
+- Added 17 placeholder SVGs to both `web/public/media/` and `admin/public/media/` for the new pages'
+  images (farm photos, crew headshots, restaurant logos) — duplicated per repo for the same reason as
+  the page content itself.
+
+**A real bug found and fixed while testing, not just described:** the preview route's cross-page
+links needed a `/preview/corrick` prefix (production-shaped fixture hrefs like `/wholesale` aren't
+directly routable under the temporary preview prefix). The first pass only rewrote `settings.nav` and
+`settings.footer` — missed that blocks carry the same kind of link (`Hero.secondaryAction`,
+`Cta.action`, ImageText's `action`, ...) in props scattered across all 14 block types. Found by
+grepping the actual rendered page's `href` attributes rather than assuming the nav fix was enough —
+`curl ... | grep href` turned up `/harvest-log` un-prefixed next to the correctly-prefixed nav links,
+and confirmed the un-prefixed form 404'd. Fixed with one generic recursive `prefixHrefs` walker over
+the whole fixture (any `href` key starting with `/`, anywhere in the object tree) instead of updating
+every block type's link fields by hand.
+
+**Verified** — `web` and `admin` both typecheck, lint, and production-build clean (`web`'s build log
+shows 5 static pages generated: 4 Corrick + 1 Kestrel). Ran both dev servers and: screenshotted
+`admin`'s `/pages` list (4 rows, correct published/draft status) and `/editor/visit-the-farm` (loads
+that page's real content, canvas themed in Corrick's actual green/tan palette, not the previous
+session's invented one); screenshotted `web`'s `/preview/corrick`, `/preview/corrick/wholesale`, and
+`/preview/corrick/harvest-log` (all render correctly, themed, with the new blocks — LogoCloud,
+PricingTable, ContactForm, Stats, Spacer, Faq, Gallery, TeamGrid — all appearing on real content for
+the first time rather than the synthetic test page); `curl`-verified every in-page link across two
+pages resolves to a prefixed URL that itself returns 200, not just that it looks right.
+
+**Not done / not verified**
+- `admin`'s `corrickPages.ts` and `web`'s `corrick.ts` are independently authored, not generated from
+  one source — a future edit to one won't propagate to the other. Explicitly accepted in D-017 as a
+  temporary cost, not an oversight.
+- Still no interactive testing of Puck's add/delete/reorder/duplicate, or of the Pages list's own
+  affordances beyond following its links — same headless-screenshot ceiling as every previous entry.
+- No page-creation flow — `corrickPages`/`corrick.pages` are fixed arrays; there's no "new page"
+  button anywhere. Out of scope for what was asked (test multi-page on existing content).
+- Host-based tenant resolution (the actual point of `CNT-07`) still doesn't exist; `/preview/[site]`
+  slug-in-the-URL remains the stand-in.
+
+## 2026-09-25 — Editor tested end to end with a full 14-block page; found and fixed a real theming gap
+
+**What prompted this:** asked to test the editor in detail by building a real, full, colourful landing
+page, not another single-block screenshot. Doing that surfaced a genuine bug that the earlier,
+lighter testing had missed.
+
+**Bug found:** `EditorPage.tsx` never wrapped Puck's canvas content in `SiteThemeRoot`. Every block
+reads `--site-*` custom properties for its colours, radii, spacing and type — with no `SiteThemeRoot`
+providing them, every one of those was undefined the whole time. The "fully styled" claim in the
+previous entry was true of layout and structure (grid, borders, spacing all come from Tailwind
+utility classes, which don't need `--site-*`) but not of colour or type — the canvas was rendering
+with browser-default black text, no accent colours, and the system font, and this was not caught
+because the earlier screenshot's fixture data (dark Hero background) happened to look plausible by
+coincidence, not because it was actually themed.
+
+**Fix:**
+- `admin/src/pages/EditorPage.tsx`: added `config.root.render` wrapping Puck's `children` in
+  `<SiteThemeRoot theme={demoTheme}>`, the same component `web/src/site/SiteChrome.tsx` uses. `Puck`
+  calls `root.render` inside its own canvas iframe, so this scopes the theme to the canvas only, not
+  the surrounding editor chrome.
+- `demoTheme` is a new, deliberately bold/colourful palette (`#D94F30` coral brand, `#1B8A6B` teal
+  accent, warm cream paper) — picked distinct from the muted `corrick` fixture in `web` specifically
+  so a correctly-themed canvas couldn't be mistaken for a coincidence.
+- Found a second, related gap while fixing the first: `theme.ts`'s `TYPE_SETS` reference
+  `--font-fraunces`, `--font-karla`, etc. — CSS variables `web` gets for free from `next/font`, which
+  `admin` (Vite, no Next.js) never defined. Fixed by loading the five families as plain Google Fonts
+  in `admin/index.html` and mapping them to the same variable names in `admin/src/index.css`. Without
+  this, `SiteThemeRoot` would have resolved but every block would still render in the system font.
+- Both gotchas — no theme wrapper, no font vars — are now documented in `CLAUDE.md`.
+
+**The test itself:** replaced the 3-block `initialData` with a full one-pager for a new fictional
+demo brand, "Marlow & Finch Coffee Roasters" (deliberately not `corrick`, so it can't later be
+confused for real tenant data), using all 14 blocks in a realistic order: Hero, LogoCloud, FeatureGrid,
+Stats, ImageText, Gallery, TeamGrid, Testimonial, PricingTable (middle plan highlighted), Spacer, Faq,
+RichText, ContactForm, Cta. Added 17 placeholder SVGs under `admin/public/media/` (hero, roastery,
+6 gallery shots, 4 team photos, 5 partner logos) so every image-bearing block renders a real image
+instead of a broken-image icon.
+
+**Verified** — `admin` typechecks, lints, and production-builds clean. Screenshotted the full page
+(1600×10000 window, 12s virtual time budget) and reviewed it in sections: every block renders with
+the demo theme's real colours (coral CTAs, teal accents and checkmarks, cream backgrounds, grain
+texture), Fraunces on headings vs. Karla on body text confirms both type-set fonts loaded, and the
+`PricingTable` highlighted-plan border/button and `TeamGrid`/`Gallery` image grids all render
+correctly. One cosmetic artifact noted and ruled out as a real bug: a solid black area appears below
+the page content in the screenshot — this is Puck's own canvas fill colour showing through because
+the screenshot's window height (10000px, chosen to capture the whole page at once) is far taller than
+the actual page content; at a normal viewport height this is never visible.
+
+**Not done / not verified**
+- Still no interactive testing of add/delete/reorder/duplicate, drag-and-drop, or typing into Puck's
+  field panel — headless screenshot can only prove render correctness on data supplied programmatically,
+  the same limitation noted in every previous entry.
+- `demoTheme` is hardcoded in `EditorPage.tsx`; there's no site-settings screen yet to let a real
+  tenant pick or edit their theme. Themes remain code-defined fixtures until that ticket exists.
+- The dev server's `localhost:5173` vs `127.0.0.1:5173` gotcha resurfaced (IPv6-only bind meant
+  `curl 127.0.0.1` got connection-refused while `curl localhost` worked) — not new, not re-documented
+  as a gotcha since it's a general Vite/curl quirk, not project-specific.
+
+## 2026-09-25 — Eight more blocks: LogoCloud, Stats, FAQ, Spacer, Gallery, PricingTable, TeamGrid, ContactForm
+
+**What changed**
+- Added 8 block types to `cms-blocks` (`types.ts`, one component file each, `registry.ts`,
+  `index.ts`), covering most of `BLK-02` ("remaining render blocks: gallery, embed, FAQ") plus
+  extras beyond that ticket's original scope (logo cloud, stats, spacer, pricing table, team grid)
+  and the block half of `BLK-06` (contact form — no submission endpoint, see below).
+- `LogoCloud`, `Stats`, `Gallery`, `TeamGrid` follow the existing array-of-objects pattern (same
+  shape as `Hero.facts` / `FeatureGrid.items`). `Faq` uses native `<details>/<summary>` — an
+  accordion with zero client JS. `Spacer` is a layout utility, not real content (no `--site-*`
+  colour use at all, so invariant #2 doesn't apply to it).
+- `ContactForm` is the one block needing interactivity (submit handler, `useState`) and so is the
+  first block in `cms-blocks` marked `'use client'` — necessary because `web/src/site/SiteChrome.tsx`
+  (the tree `BlockRenderer` renders inside) is a server component. Submit just shows a "not wired up
+  yet" message; no `api` endpoint exists to receive it (that's the still-open half of `BLK-06`).
+- `PricingTable` is the one block whose Puck editor fields don't map 1:1 onto its `cms-blocks` type:
+  `PricingPlan.features` is `string[]` in the content contract, but Puck's `array` field type has no
+  "array of plain strings" mode — every array is edited as an array of objects. Editor-side, each
+  feature is edited as `{ text: string }` and flattened to a plain string in `render()`, the same
+  translate-at-the-Puck-boundary pattern as `D-015`. Documented inline in `EditorPage.tsx`, not
+  written up as a separate `DECISIONS.md` entry since it's an instance of that decision, not a new one.
+- Wired all 8 into `admin/src/pages/EditorPage.tsx`'s Puck `config.components`, and added `Stats` +
+  `Faq` (in addition to the existing `Hero`) to `initialData` so the canvas opens already showing
+  three of the new blocks rendered, not just listed in the block picker.
+
+**Verified** — `cms-blocks` builds clean (`tsc -p tsconfig.build.json`); grepped for hex colours
+(`grep -rnE '#[0-9a-fA-F]{3,8}\b' src` — the one hit, `&#10003;` in `PricingTable.tsx`, is the
+checkmark HTML entity, not a colour); `admin` and `web` both typecheck and lint clean. Screenshotted
+`/editor` after restarting `admin`'s dev server (a stale process from an earlier session was holding
+port 5173 without actually accepting connections — killed and restarted): all 14 blocks appear in
+the block picker, and `Hero` + the pre-populated `Stats` + `Faq` render fully styled in the canvas.
+
+**Not done / not verified**
+- Add/edit/delete/reorder were not interactively tested for the new blocks, same caveat as the
+  original 6 (headless screenshot can't simulate Puck's drag-and-drop or field-panel typing).
+- `ContactForm` has no submission endpoint — pure UI, matches how `LoginPage`/`LostPasswordPage`
+  were built non-functioning first.
+- `VideoEmbed` was suggested but intentionally not built — it needs a decision on whether to allow
+  raw iframe embeds (tension with invariant #5, sanitise-on-write) or restrict to a parsed
+  YouTube/Vimeo URL field. Left for `BLK-02`'s "embed" line item.
+
+## 2026-09-25 — `cms-blocks` extracted; Tailwind in `admin`; real block editor built
+
+**What changed**
+- Extracted the shared block package for real (`XRP-01`, `DECISIONS.md` D-016): moved the 6 block
+  components, `types.ts`, `registry.ts`, `BlockRenderer.tsx`, `ui.tsx`, and the theme system out of
+  `web` into `cms-blocks/` at the `CMS/` root, consumed by `web` and `admin` via `file:` dependencies.
+  `cms-blocks` builds to `dist/` (`npm run build`); `web`'s `next.config.ts` now transpiles it and
+  widens `turbopack.root` to the container so the sibling package resolves at all.
+- Executed `D-010` (decided 2026-08-31, not done until now): `admin` adopts Tailwind 4
+  (`@tailwindcss/vite`), needed because the shared blocks are styled with Tailwind utilities.
+- Deleted `web/src/app/dev/puck-spike/` — superseded by the real thing below.
+- Built the actual editor in `admin`: `src/pages/EditorPage.tsx`, full-screen (not wrapped in
+  `AdminLayout`'s sidebar — a Webflow-style focused canvas mode, distinct from the dashboard shell).
+  All 6 blocks wired into Puck's `config.components` with real field definitions (text/textarea/
+  object/array/radio, matching each block's actual prop shape), a custom slim top bar above Puck's
+  own native toolbar (which already has Webflow-style viewport icons and a Publish button). Route:
+  `/editor`. Linked from the dashboard via a new "Open Page Builder" button and clickable Activity
+  items. Pre-populated with a sample Hero so it doesn't open empty — no content API exists yet.
+
+**Two real bugs found and fixed, not just described:**
+1. Turbopack's production build wouldn't resolve `cms-blocks` at all (`web`) — its real path is
+   outside `turbopack.root`, which was pinned to `web/` itself. Fixed by widening it to the `CMS/`
+   container. `next dev` had masked this; only `next build` caught it.
+2. The shared blocks rendered completely unstyled inside Puck's canvas in `admin` — not a Puck/
+   iframe issue as first suspected, but a copy-paste error: `admin`'s `@source` path for
+   `cms-blocks/src` was copied verbatim from `web`'s gotcha without adjusting for `admin/src/
+   index.css` being one folder shallower. Confirmed via the compiled CSS output (6 generic classes
+   instead of hundreds) before fixing, not guessed.
+
+**Verified** — `cms-blocks` typechecks standalone; `web` and `admin` both typecheck, lint, and build
+clean; `web`'s two prerendered preview routes still build; `admin`'s editor screenshotted with all 6
+blocks in the picker and the Hero block rendering fully styled (grid layout, borders, type scale) —
+compared against the broken screenshot taken before the `@source` fix to confirm the difference was
+real, not incidental.
+
+**Not done** — no persistence: the editor isn't reading from or writing to the API (`CNT-01`/`CNT-02`
+don't exist yet), so `BLK-03`/`BLK-04` are meaningfully advanced but not marked done — see
+`EXECUTION_PLAN.md`. `RichText`'s `html` field is a plain textarea, not TipTap (`BLK-05`). No delete/
+duplicate/reorder was interactively tested (headless screenshot can't drag or click) — only render-
+with-real-data and the block picker listing were directly observed.
+
+---
+
+## 2026-09-25 — Puck spike; MVP database schema and initial migration (`FND-01`)
+
+**What changed**
+- Built a throwaway spike at `web/src/app/dev/puck-spike/page.tsx`, wiring the real `Hero` component
+  (imported directly, not copied — invariant 3 intact) through `@puckeditor/core`'s `config.components`.
+  Confirmed Puck genuinely renders inside a same-origin iframe, and read its real `ComponentData`/`Data`
+  types from the installed package source rather than guessing. Result: `DECISIONS.md` D-015 — the
+  flat `content.blocks` contract is kept, Puck's native shape is translated at the `admin` boundary,
+  never stored.
+- Implemented the MVP schema in `api/prisma/schema.prisma`: `Site`, `User`, `SiteMembership`,
+  `Content` — the minimum to log a user in, resolve their site, and save a page's block array.
+  Deliberately excludes named roles (`GOV-06`), publish-state transitions (`CNT-03`), page hierarchy
+  and path recomputation (`CNT-05`/`CNT-06`), custom content types (`TYP-*`), media, SEO, taxonomy,
+  menus, revisions — all still real, still planned, just not required to prove the editor works.
+- Created `api/.env` (was missing) and the `cms` Postgres database (was also missing — `DECISIONS.md`
+  D-002 documented it as already created; it wasn't, on this machine at least). Ran the initial
+  migration (`20260925085520_init_mvp_schema`).
+
+**Verified** — `prisma migrate dev` applied cleanly against the real local Postgres; `psql \dt` confirms
+all four tables exist; full project typecheck passes except one pre-existing, unrelated error
+(`test/app.e2e-spec.ts`'s `supertest/types` resolution, not touched in this entry); a throwaway
+`vitest` smoke test created and linked one real row per model through the generated client, confirmed
+`content.blocks` stores the flat shape correctly, then cleaned up after itself.
+
+**Not done** — `FND-02` (scoped repository layer), `FND-03` (tenant invariant tests), and everything
+listed as deliberately excluded above. The Puck spike route is throwaway and should be deleted once
+`XRP-01`/`BLK-03` supersede it.
+
+---
+
 ## 2026-09-24 — Critical doc pass: fixed a stale gotcha, recorded the business-model decision
 
 **What changed**

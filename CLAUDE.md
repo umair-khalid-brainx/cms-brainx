@@ -69,13 +69,42 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 - **`localhost:3000` may redirect to `/en` and 404.** A stale cached 308 from an unrelated project
   on that origin. Use `http://127.0.0.1:3000` (different origin) or clear site data. Not a bug in
   this project.
-- **Next 16 needs `turbopack.root`** set in `web/next.config.ts`, or it warns about a lockfile
-  found outside the repo.
+- **`turbopack.root` must include `cms-blocks`, not just `web`.** It's set to `path.resolve("..")`
+  (the `CMS/` container), not `path.resolve(".")` — `cms-blocks` is a sibling package outside `web/`,
+  and Turbopack's production build refuses to resolve a symlinked module whose real path is outside
+  the configured root, even though `next dev` tolerates it. Silent-looking "Module not found" for a
+  package that clearly exists in `node_modules` is the symptom.
+- **Tailwind's `@source` path for `cms-blocks/src` depends on the importing file's folder depth —
+  do not copy the path between repos.** `web/src/app/globals.css` is 3 levels deep, so it's
+  `../../node_modules/cms-blocks/src`; `admin/src/index.css` is only 2 levels deep, so it's
+  `../node_modules/cms-blocks/src`. Getting this wrong doesn't error — Tailwind just silently
+  compiles almost nothing (check for `--tw-rotate-x` and a handful of generic utilities and little
+  else if this is wrong; a real build has hundreds of classes).
 - **`web/.gitignore` ignores `.env*`**, so `!.env.example` is required to keep the example tracked.
 - **Headless Chrome `--window-size` does not reliably set layout width.** To check responsive
   behaviour, render the page in a fixed-width `<iframe>` inside a probe page and screenshot that.
 - **Tailwind 4 skips `node_modules`.** Both repos must declare `@source "../../node_modules/cms-blocks/src";`
   or the shared block components ship with no CSS.
+- **Blocks need a `SiteThemeRoot` ancestor or every `--site-*` var is undefined.** `web` gets this
+  from `SiteChrome.tsx`; `admin`'s Puck canvas gets it via `config.root.render` in `EditorPage.tsx`.
+  Structural CSS (grid, spacing, borders) still renders fine without it — only colour, radius and
+  type silently fall back to browser defaults, which can look plausible by accident. Confirm with a
+  theme whose colours are obviously distinct from any fixture's, not just "does it look styled."
+- **`admin` has no `next/font`.** `theme.ts`'s type sets reference `--font-fraunces`, `--font-karla`,
+  etc. — `web` gets those for free from `next/font` in `layout.tsx`; `admin` loads the same families
+  as plain Google Fonts in `index.html` and maps them to the same variable names in `index.css`.
+- **`@puckeditor/core@0.23.0`'s own Publish button doesn't render**, even following their README's
+  `<Puck onPublish={save} />` exactly. Traced into their bundled source — no permission/state gate
+  found blocking it, it's just not in the DOM. `EditorPage.tsx` uses its own `<button>` instead; see
+  `docs/DECISIONS.md` D-019 before assuming Puck's native one will show up.
+
+## Root-level scripts
+
+- `node --experimental-strip-types scripts/check-content-parity.mjs` — checks `web/src/fixtures/
+  corrick.ts` and `admin/src/data/corrickPages.ts` haven't drifted (same pages, same block sequence
+  per page). The two are independently-authored duplicates, not shared code — see `docs/DECISIONS.md`
+  D-017 for why, D-019 for how the checker itself stays inside the "no cross-repo imports" rule. Not
+  wired into CI (`XRP-02`, not built yet) — run it by hand after editing either file.
 
 ## Docs index
 
