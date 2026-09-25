@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../node_modules/cms-blocks/src";
 
 /*
  * Shell tokens: the chrome around a tenant site (the dev comparison view).

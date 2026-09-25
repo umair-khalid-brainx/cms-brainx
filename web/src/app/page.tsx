@@ -88,7 +88,7 @@ function TenantPanel({
           </a>
         </p>
       </div>
-      <SiteChrome site={site} />
+      <SiteChrome site={site} page={site.pages.find((p) => p.path === '/') ?? site.pages[0]} />
     </section>
   );
 }

@@ -1,5 +1,4 @@
-import type { Block } from '@/blocks/types';
-import type { SiteTheme } from '@/theme/theme';
+import type { Block, SiteTheme } from 'cms-blocks';
 
 /**
  * Header and footer are per-site rather than per-page, so they live in site
@@ -29,5 +28,5 @@ export type SitePage = {
 
 export type SiteFixture = {
   settings: SiteSettings;
-  page: SitePage;
+  pages: SitePage[];
 };

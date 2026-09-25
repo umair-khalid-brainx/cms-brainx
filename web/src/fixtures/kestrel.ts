@@ -54,7 +54,7 @@ export const kestrel: SiteFixture = {
       },
     },
   },
-  page: {
+  pages: [{
     path: '/',
     title: 'Kestrel Rigging — rope-access blade inspection and repair',
     blocks: [
@@ -125,5 +125,5 @@ export const kestrel: SiteFixture = {
         note: 'Method statement and insurance certs sent with every quote.',
       },
     ],
-  },
+  }],
 };
