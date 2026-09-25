@@ -1,13 +1,30 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
+import { apiPost, ApiError } from '../lib/api'
+import { setSession, type Session } from '../lib/auth'
 import './auth.css'
 
 function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const navigate = useNavigate()
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    // not wired up yet — see FND-05
+    setError(null)
+    setSubmitting(true)
+    try {
+      const session = await apiPost<Session>('/auth/login', { email: identifier, password })
+      setSession(session)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reach the server. Try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -18,9 +35,18 @@ function LoginPage() {
           <span className="auth-logo-text">Admin</span>
         </div>
 
+        {error ? <p className="auth-error">{error}</p> : null}
+
         <form className="auth-form" onSubmit={handleSubmit}>
           <label htmlFor="login-identifier">Username or Email Address</label>
-          <input id="login-identifier" name="identifier" type="text" autoComplete="username" />
+          <input
+            id="login-identifier"
+            name="identifier"
+            type="text"
+            autoComplete="username"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+          />
 
           <label htmlFor="login-password">Password</label>
           <div className="auth-password-field">
@@ -29,6 +55,8 @@ function LoginPage() {
               name="password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
             />
             <button
               type="button"
@@ -45,8 +73,8 @@ function LoginPage() {
             Remember Me
           </label>
 
-          <button type="submit" className="auth-submit">
-            Log In
+          <button type="submit" className="auth-submit" disabled={submitting}>
+            {submitting ? 'Logging In…' : 'Log In'}
           </button>
         </form>
       </div>

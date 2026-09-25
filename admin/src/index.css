@@ -1,3 +1,6 @@
+@import "tailwindcss";
+@source "../node_modules/cms-blocks/src";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -8,6 +11,17 @@
   line-height: 1.6;
   color: var(--foreground);
   background-color: var(--background);
+
+  /*
+   * The theme's two type sets (cms-blocks/theme.ts TYPE_SETS) reference these
+   * by name. `web` gets them from next/font; here they're plain Google Fonts
+   * loaded in index.html, mapped to the same variable names with a fallback.
+   */
+  --font-fraunces: 'Fraunces', ui-serif, Georgia, serif;
+  --font-karla: 'Karla', ui-sans-serif, system-ui, sans-serif;
+  --font-archivo-narrow: 'Archivo Narrow', ui-sans-serif, system-ui, sans-serif;
+  --font-plex-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-plex-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,36 +39,4 @@
 body {
   margin: 0;
   min-height: 100vh;
-}
-
-main {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 4rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-h1 {
-  font-size: 1.875rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.eyebrow {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.875rem;
 }

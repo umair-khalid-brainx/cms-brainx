@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CMS Admin</title>
+    <!--
+      The editor canvas renders real tenant themes (cms-blocks/theme.ts), whose
+      type sets reference these families as CSS vars. `web` gets them for free
+      via next/font; admin loads them as plain Google Fonts since Vite has no
+      equivalent. See docs/DECISIONS.md and CLAUDE.md gotchas.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Karla:wght@400;500;600;700&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

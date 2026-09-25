@@ -51,6 +51,17 @@
   margin: 0 0 1.25rem;
 }
 
+.auth-error {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #8a2424;
+  background: rgba(214, 54, 56, 0.1);
+  border: 1px solid rgba(214, 54, 56, 0.3);
+  border-radius: 4px;
+  padding: 0.55rem 0.75rem;
+  margin: 0 0 1rem;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -181,6 +192,12 @@
 
   .auth-description {
     color: #b0b0b0;
+  }
+
+  .auth-error {
+    color: #ff9b9b;
+    background: rgba(214, 54, 56, 0.15);
+    border-color: rgba(214, 54, 56, 0.4);
   }
 
   .auth-form label {
