@@ -8,6 +8,104 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-022 — 2026-09-25 — `corrickPages.ts` deleted, exactly as D-017 said it would be; its parity checker goes with it
+
+**Decision:** `admin/src/data/corrickPages.ts` deleted — D-017 explicitly named this file as something
+that "gets deleted once `CNT-01`/`CNT-02` land and both sides fetch the same rows from `api` instead,"
+and D-021 finished that: all 4 pages are real database rows now. `scripts/check-content-parity.mjs`
+(D-019) is deleted with it — its entire job was catching drift between this file and `web/src/
+fixtures/corrick.ts`; with one side of that pair gone, there is nothing left for it to compare. Its
+`CLAUDE.md` "Root-level scripts" entry and `scripts/migrate-corrick-pages.mjs` (D-021's one-off
+migration tool, whose only job was reading this file) are removed too — the migration ran once and
+its source no longer exists, so it could never run again.
+
+**What this doesn't resolve:** `web/src/fixtures/corrick.ts` is still hand-authored, standalone
+fixture data — `web` doesn't read from the database at all yet (`CNT-07`/`CNT-08`, still open). There
+is no guardrail today catching `web`'s fixture drifting from what `admin`/the database actually have.
+That's a smaller, different problem than the one D-017/D-019 solved (two *duplicated* files, both
+meant to represent the same content) — `web`'s fixture isn't a duplicate of anything anymore, it's
+the only copy of "Corrick as a static demo," independent of the real CMS content, until `CNT-07`
+wires `web` to `api` for real.
+
+---
+
+## D-021 — 2026-09-25 — `DELETE /content/:slug` added; all 4 `corrickPages.ts` demo pages migrated into the real database
+
+**Decision:** `ContentRepository.delete`/`ContentService.remove`/`ContentController.remove` add
+tenant-scoped hard delete (`204` on success, `404` if the slug doesn't exist on the caller's site).
+`PagesListPage` gets a Delete action per row with a `window.confirm` prompt. This is a genuine hard
+delete, not the trash/restore workflow `CNT-11` originally scoped — that's still open; deleting a page
+today is permanent.
+
+**Superseding D-020's "one page seeded" note:** all four of `admin/src/data/corrickPages.ts`'s demo
+pages (Home, Visit the Farm, Wholesale, Harvest Log) are now real rows in `content`, migrated with a
+one-off script (`scripts/migrate-corrick-pages.mjs` pattern, run once, not part of the app) that
+called the real `/content` API — reusing the exact same Puck-data → flat-block translation logic as
+`admin/src/lib/contentApi.ts`, not hand-copied field by field, so the migration itself is a real test
+of that translation code across all 14 block types, including the `PricingTable` features-array
+special case on the Wholesale page.
+
+**`admin/src/data/corrickPages.ts` is now fully unused**, not just partially — nothing imports it
+anymore. Left in place rather than deleted, same reasoning as D-020: worth a deliberate call, not
+one made silently mid-task.
+
+**Verified, not assumed:** confirmed all 4 pages and their block counts via `psql`, and spot-checked
+the Wholesale page's `pricingTable` block to confirm `features` came through as `string[]` (the
+contract shape), not Puck's `{text: string}[]` editing shape. Then, to prove delete is real and not
+just a client-side list filter, drove it through a real Chrome tab over CDP: logged in, opened
+`/pages`, clicked the real Delete button on "Harvest Log," auto-accepted the browser's confirm
+dialog via CDP, and confirmed via `psql` the row was actually gone from Postgres — then restored it
+with the same migration script so the repo's local database still has the full 4-page demo.
+
+---
+
+## D-020 — 2026-09-25 — `CNT-01`/`FND-02`: real content API replaces `localStorage`; `siteId` from the caller's first membership; D-015's translation finally implemented
+
+**Decision:** `ContentRepository` (`FND-02`) wraps `PrismaService` for the `content` table, every method
+requiring `siteId`. `ContentController`/`ContentService` (`CNT-01`) expose `GET/POST /content` and
+`GET/PATCH /content/:slug` behind `JwtAuthGuard`. `admin`'s `pagesStore.ts` (the `localStorage` D-019
+placeholder) is deleted; `PagesListPage`, `DashboardPage`'s Quick Draft, and `EditorPage` now read and
+write this API through a new `admin/src/lib/contentApi.ts`.
+
+**`siteId` comes from the caller's first `SiteMembership`, not a request parameter** (api invariant
+5). `ContentService.resolveSiteId` looks up the authenticated user's memberships and takes the first.
+Correct today because every seeded user has exactly one; a user with several isn't disambiguated —
+that's a site switcher, `GOV-06`/`DEP-02` scope, not this ticket. Revisit this exact spot when that
+lands.
+
+**Slugging moved from `admin` to `api`.** `pagesStore.ts` used to slugify Quick Draft titles and
+suffix collisions (`-2`, `-3`, ...) client-side. `ContentService.uniqueSlug` does the same job
+server-side now — the natural home for it once a real API exists, and it means any future second
+client (a CLI, another admin surface) gets correct slugs for free.
+
+**D-015's translation is now actually written, not just planned.** `content.blocks` still stores the
+flat `cms-blocks/types.ts` contract; `admin/src/lib/contentApi.ts` converts Puck's native
+`{ type: 'Hero', props: { id, ...fields } }` to and from that flat shape at the API boundary — the
+exact function D-015 said would need to exist, which didn't until now. `PricingTable`'s one field
+mismatch (`features: {text}[]` in Puck vs `features: string[]` in the contract, per `puck/config.tsx`'s
+own comment) is handled at the same boundary.
+
+**One page seeded, not the four in `corrickPages.ts`.** The database starts with a single real "Home"
+page (`prisma/seed.ts`), hand-written directly in the flat block contract — enough to prove the CRUD
+loop end to end without building a one-off migration pipeline to translate all four of `admin/src/data/
+corrickPages.ts`'s Puck-shaped demo pages into real rows. `web/src/fixtures/corrick.ts` is unaffected
+(`web` doesn't touch the database; that's `CNT-07`/`CNT-08`).
+
+**Cost accepted — `admin/src/data/corrickPages.ts` is now dead code.** Nothing imports it anymore
+(`contentApi.ts` never reads it). Left in place rather than deleted, since it's the only surviving
+record of the original 4-page demo content if someone wants to seed the rest later; worth a deliberate
+delete-or-migrate call, not one made silently in this pass.
+
+**Verified, not assumed:** driven through a real Chrome tab over CDP — logged in for real, watched
+Dashboard's "At a Glance" read live counts from `GET /content`, submitted Quick Draft and confirmed a
+real row landed in Postgres, saw it in the Pages list, clicked the real Hero block in the editor
+canvas, edited its headline, waited past the autosave debounce, clicked Publish, then confirmed via
+`psql` that the edited headline and `published` status were actually in the database — and opened a
+**second, fresh** tab at the same editor URL and watched it render the edited headline back, proving
+the read path (stored blocks &rarr; Puck data) round-trips too, not just the write path.
+
+---
+
 ## D-019 — 2026-09-25 — Editor persistence lives in `localStorage`; a hand-rolled Publish button, not Puck's
 
 **Decision:** `EditorPage.tsx` now autosaves — Puck's `onChange` writes the current page data to

@@ -5,6 +5,128 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-25 — `corrickPages.ts` and its parity checker deleted
+
+Follow-up to the two entries below, same day. Asked whether to delete `admin/src/data/corrickPages.ts`
+now that all its content is real database rows — yes. That cascaded: `scripts/check-content-
+parity.mjs` imported it directly to compare against `web/src/fixtures/corrick.ts`, so deleting the
+file broke the script immediately (`ERR_MODULE_NOT_FOUND`, confirmed by running it). Flagged the
+tradeoff rather than picking one silently — the script's whole premise (two duplicated files that
+could drift) no longer applies now that `admin` doesn't hold a duplicate at all. Chose: delete the
+script too, plus `scripts/migrate-corrick-pages.mjs` (its source file is gone, it can never run
+again) and their `CLAUDE.md` entries. Full reasoning in `DECISIONS.md` D-022, including what's *not*
+resolved: `web/src/fixtures/corrick.ts` is still a standalone fixture with no guardrail against
+drifting from the real content, since `web` doesn't read the database yet (`CNT-07`).
+
+---
+
+## 2026-09-25 — Delete endpoint, plus all 4 demo pages migrated into the real database
+
+Follow-up to the `CNT-01` work above, same day: added the delete capability that was flagged as
+missing, and migrated the rest of the Corrick demo content into Postgres so the local database
+matches the full original demo instead of just the one seeded page.
+
+**`api`:**
+- `ContentRepository.delete`/`ContentService.remove`/`ContentController.remove` — tenant-scoped hard
+  delete, `DELETE /content/:slug`, `204` on success, `404` if the slug isn't on the caller's site.
+  This is `CNT-11` partially — hard delete only, no trash/restore/undo.
+
+**`admin`:**
+- `lib/api.ts`: added `apiDelete`. `lib/contentApi.ts`: added `deletePage`.
+- `PagesListPage`: each row gets a Delete action, `window.confirm`-gated, removing the row from local
+  state on success rather than refetching the whole list.
+
+**`scripts/migrate-corrick-pages.mjs` (new):** one-off migration, not part of the running app. Logs
+into the real API, dynamically imports `admin/src/data/corrickPages.ts`, and POSTs each non-`home`
+page's blocks through `/content` then `PATCH`es it published — reusing the *exact* Puck-data →
+flat-block translation from `contentApi.ts` (duplicated into the script on purpose, same
+type-only-imports trick as `check-content-parity.mjs`), not a hand-copy. This meant the migration
+itself doubled as a real test of that translation across all 14 block types, including
+`PricingTable`'s `features: {text}[]` → `features: string[]` special case.
+
+**Verified, not assumed:**
+- `psql` confirmed all 4 pages landed with correct block counts, and the Wholesale page's
+  `pricingTable` block came through with `features` as a plain string array, not Puck's `{text}`
+  wrapper objects
+- Drove the delete through a real Chrome tab over CDP: logged in, clicked the real Delete button on
+  "Harvest Log" in `/pages`, auto-accepted the native `confirm()` dialog via CDP's
+  `Page.handleJavaScriptDialog`, and confirmed via `psql` the row was actually gone from Postgres —
+  not just removed from the page's local React state
+- Restored Harvest Log afterward (re-ran the migration script filtered to that one page) so deleting
+  it for the test didn't leave the demo data incomplete
+- Re-ran the finalized `scripts/migrate-corrick-pages.mjs` from a clean slate (deleted all non-`home`
+  rows, restarted `api`, ran the script fresh) to confirm the committed version of the script — not
+  just my working copy — actually works end to end
+- `api` typecheck/lint/e2e and `admin` typecheck/lint all still pass
+
+**Not done / not verified:**
+- No trash or restore — a delete is permanent, no undo (`CNT-11`'s full scope)
+- `admin/src/data/corrickPages.ts` is now fully unused (all 4 pages live in the database) but still
+  not deleted — left in place per D-021, a call for you to make, not me
+- The migration script isn't idempotent; re-running it against pages that already exist fails on the
+  slug collision rather than upserting
+
+---
+
+## 2026-09-25 — Real content API: `FND-02` scoped repository, `CNT-01` CRUD endpoints, `admin` off `localStorage`
+
+Closed the foundation gap flagged in the last review: everything in `admin` (pages list, editor,
+Quick Draft) was reading/writing `localStorage`, not the database, while `api` had auth but no
+content endpoints. Full decision reasoning in `DECISIONS.md` D-020; this is the changelog.
+
+**`api`:**
+- `ContentRepository` (`src/content/content.repository.ts`) — `findMany`, `findBySlug`, `create`,
+  `update`, every method requiring `siteId` (invariant 1/2)
+- `ContentService`/`ContentController` — `GET/POST /content`, `GET/PATCH /content/:slug`, behind
+  `JwtAuthGuard`; `siteId` resolved from the caller's own `SiteMembership`, never from the request;
+  server-side slugify with `-2`/`-3` collision suffixing (moved from `admin`, see D-020)
+- Fixed a DI gap surfaced while wiring this up: `@UseGuards(JwtAuthGuard)` in a new module needs
+  `JwtAuthGuard` as that module's *own* provider, not just exported by `AuthModule` — being exported
+  isn't enough for a guard referenced by class, `JwtService` also has to be resolvable in the
+  consuming module's own injector. Fixed by having `AuthModule` re-export its `JwtModule` instance too
+  and adding `JwtAuthGuard` to `ContentModule`'s providers.
+- `prisma/seed.ts` now also seeds one real "Home" page (hero + rich text, flat block contract) so
+  `admin`'s Pages list isn't empty on a fresh clone
+
+**`admin`:**
+- Deleted `lib/pagesStore.ts` (the D-019 `localStorage` placeholder); added `lib/contentApi.ts`,
+  which implements D-015's Puck-data ⇄ flat-block-contract translation for the first time (it was
+  only ever planned before this) and talks to the real API
+- `lib/api.ts`: added `apiSend` for authenticated POST/PATCH (content writes), alongside the existing
+  `apiGet`/`apiPost`
+- `PagesListPage`, `DashboardPage`, `EditorPage` all rewritten from synchronous `localStorage` reads
+  to async API calls with real loading/error states (a real network call can fail; `localStorage`
+  couldn't)
+
+**Verified, not assumed** — full loop driven through a real headless Chrome tab over CDP, `psql`
+alongside to check ground truth:
+- Logged in for real; Dashboard's "At a Glance" showed `1 Pages / 1 Published / 0 Drafts` — the
+  actual seeded row, not a fixture
+- Submitted Quick Draft ("Winter Hours Update") — confirmed via `psql` a real row landed in
+  `content`, not `localStorage`; Dashboard counts updated to `2 Pages / 1 Published / 1 Drafts`;
+  Pages list showed both rows
+- In the editor, clicked the real rendered Hero block inside Puck's canvas iframe, edited its
+  headline field, waited past the autosave debounce — `psql` confirmed the new headline was in
+  Postgres, flat contract, no leaked Puck-internal `id`
+- Clicked the real Publish button — `psql` confirmed `status` flipped to `published`
+- Opened a **second, fresh** tab at the same editor URL — it rendered the edited headline back,
+  proving the read path (stored blocks &rarr; Puck data) round-trips, not just the write path
+- Cleaned up test data afterward (deleted the Quick Draft row, re-ran the seed) so the repo's local
+  database is back to the same one-page demo state a fresh clone would get
+
+**Not done / not verified:**
+- `siteId` resolution takes the user's first membership only — no multi-site disambiguation (needs a
+  site switcher, `GOV-06`/`DEP-02`)
+- `admin/src/data/corrickPages.ts`'s other three demo pages (wholesale, visit-the-farm, harvest-log)
+  were not migrated into the database — only "Home" was seeded; that file is now dead code, left in
+  place rather than deleted (see D-020)
+- No delete endpoint (`CNT-11`, separate ticket); Puck's add/delete/reorder/duplicate canvas
+  mechanics themselves still not interactively verified (`BLK-03`)
+- `FND-03` (tenant invariant tests) still doesn't exist — nothing yet proves cross-tenant isolation
+  by test, only by code review of `ContentRepository`'s signatures
+
+---
+
 ## 2026-09-25 — Five gap fixes: editor autosave, JWT-expiry handling, Quick Draft, broken e2e test, content-drift check
 
 Working through the gap list from the last review — five real fixes, not new features.
