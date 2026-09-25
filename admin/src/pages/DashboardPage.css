@@ -186,6 +186,12 @@
   font-weight: 600;
 }
 
+.dash-quick-draft-error {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #c0392b;
+}
+
 .dash-health {
   display: flex;
   align-items: center;

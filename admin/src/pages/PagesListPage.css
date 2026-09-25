@@ -17,6 +17,16 @@
   color: #6b7280;
 }
 
+.pages-loading {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.pages-error {
+  font-size: 0.8125rem;
+  color: #c0392b;
+}
+
 .pages-table {
   width: 100%;
   border-collapse: collapse;
@@ -101,6 +111,30 @@
 
 .pages-row-actions a + a {
   margin-left: 1.1rem;
+}
+
+.pages-row-delete {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1.1rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #b32d2e;
+  font-weight: 500;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pages-row-delete:hover {
+  text-decoration: underline;
+}
+
+.pages-row-delete:disabled {
+  color: #b0b0b0;
+  cursor: default;
+  text-decoration: none;
 }
 
 @media (prefers-color-scheme: dark) {

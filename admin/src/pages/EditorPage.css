@@ -55,6 +55,15 @@
   background: #135e96;
 }
 
+.editor-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: #646970;
+  font-size: 0.875rem;
+}
+
 .editor-puck {
   flex: 1;
   min-height: 0;

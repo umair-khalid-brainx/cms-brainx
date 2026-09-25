@@ -1,12 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { createDraftPage, listPages } from '../lib/pagesStore'
+import { createDraftPage, listPages, type PageSummary } from '../lib/contentApi'
 import { currentSite, siteUrl } from '../data/site'
+import { ApiError } from '../lib/api'
 import './DashboardPage.css'
 
 // Activity is still fake flavor data — see FND-01/CNT-01. At a Glance and
-// Quick Draft are real now: they read/write the same local pagesStore the
-// Pages list and editor use.
+// Quick Draft are real now: they read/write the real content API (CNT-01),
+// same as the Pages list and editor.
 
 const activity = [
   { slug: 'home', title: 'Home', action: 'Published', time: '2 hours ago' },
@@ -16,22 +17,49 @@ const activity = [
 ]
 
 function DashboardPage() {
-  const [pages, setPages] = useState(() => listPages())
+  const [pages, setPages] = useState<PageSummary[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [savedSlug, setSavedSlug] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    listPages()
+      .then((result) => {
+        if (cancelled) return
+        setPages(result)
+        setLoaded(true)
+      })
+      .catch(() => {
+        if (!cancelled) setLoaded(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const publishedCount = pages.filter((page) => page.status === 'published').length
   const draftCount = pages.length - publishedCount
 
-  function handleQuickDraft(event: FormEvent<HTMLFormElement>) {
+  async function handleQuickDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!title.trim() && !body.trim()) return
-    const page = createDraftPage(title, body)
-    setPages(listPages())
-    setTitle('')
-    setBody('')
-    setSavedSlug(page.slug)
+    setSubmitting(true)
+    setError(null)
+    try {
+      const page = await createDraftPage(title, body)
+      setPages((prev) => [...prev, page])
+      setTitle('')
+      setBody('')
+      setSavedSlug(page.slug)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save draft — check your connection')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -55,13 +83,13 @@ function DashboardPage() {
             <h2 className="dash-widget-title">At a Glance</h2>
             <ul className="dash-glance">
               <li>
-                <strong>{pages.length}</strong> Pages
+                <strong>{loaded ? pages.length : '—'}</strong> Pages
               </li>
               <li>
-                <strong>{publishedCount}</strong> Published
+                <strong>{loaded ? publishedCount : '—'}</strong> Published
               </li>
               <li>
-                <strong>{draftCount}</strong> Drafts
+                <strong>{loaded ? draftCount : '—'}</strong> Drafts
               </li>
               <li>
                 <strong>{currentSite.name}</strong> current site
@@ -95,15 +123,20 @@ function DashboardPage() {
                 placeholder="Title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
+                disabled={submitting}
               />
               <textarea
                 placeholder="What's on your mind?"
                 rows={4}
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
+                disabled={submitting}
               />
-              <button type="submit">Save Draft</button>
+              <button type="submit" disabled={submitting}>
+                {submitting ? 'Saving…' : 'Save Draft'}
+              </button>
             </form>
+            {error ? <p className="dash-quick-draft-error">{error}</p> : null}
             {savedSlug ? (
               <p className="dash-quick-draft-note">
                 Saved as a draft page — <Link to={`/editor/${savedSlug}`}>open it in the editor</Link>.
