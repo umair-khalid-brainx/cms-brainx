@@ -1,12 +1,15 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 
 // Requires a running database (npm run db:up at the repo root).
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  // No generic here: `supertest/types` doesn't exist in the installed
+  // supertest/@types/supertest versions (verified — neither package exposes
+  // that subpath or re-exports `App`), and `INestApplication`'s `TServer`
+  // generic already defaults to `any`.
+  let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
