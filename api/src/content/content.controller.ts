@@ -37,6 +37,14 @@ export class ContentController {
     return this.content.list(request.user.sub);
   }
 
+  // Must be registered before ':slug' — otherwise that param route would
+  // match the literal path '/content/archived' first.
+  @Get('archived')
+  @RequirePermission('content:read')
+  listArchived(@Req() request: AuthenticatedRequest) {
+    return this.content.listArchived(request.user.sub);
+  }
+
   @Get(':slug')
   @RequirePermission('content:read')
   get(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
@@ -60,6 +68,13 @@ export class ContentController {
     @Body(new ZodValidationPipe(updateContentSchema)) body: UpdateContentDto,
   ) {
     return this.content.update(request.user.sub, slug, body);
+  }
+
+  @Patch(':slug/archive')
+  @RequirePermission('content:delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async archive(@Req() request: AuthenticatedRequest, @Param('slug') slug: string): Promise<void> {
+    await this.content.archive(request.user.sub, slug);
   }
 
   @Delete(':slug')

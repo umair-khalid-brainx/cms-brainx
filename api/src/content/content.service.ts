@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { hasPermission } from '../auth/permission.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { UserRepository } from '../users/user.repository.js';
@@ -15,6 +15,11 @@ export class ContentService {
   async list(userId: string) {
     const siteId = await this.resolveSiteId(userId);
     return this.content.findMany(siteId);
+  }
+
+  async listArchived(userId: string) {
+    const siteId = await this.resolveSiteId(userId);
+    return this.content.findManyArchived(siteId);
   }
 
   async get(userId: string, slug: string) {
@@ -56,10 +61,22 @@ export class ContentService {
     return this.content.findBySlug(membership.siteId, slug);
   }
 
+  async archive(userId: string, slug: string): Promise<void> {
+    const siteId = await this.resolveSiteId(userId);
+    const existing = await this.content.findBySlug(siteId, slug);
+    if (!existing) throw new NotFoundException('Page not found');
+    if (existing.archivedAt) throw new ConflictException('Page is already archived');
+    await this.content.archive(siteId, slug);
+  }
+
+  // Only archived pages can be hard-deleted — the pages list only offers
+  // Archive (see PagesListPage.tsx), and this guard means that's structural,
+  // not just a UI affordance a client could bypass by calling the API directly.
   async remove(userId: string, slug: string): Promise<void> {
     const siteId = await this.resolveSiteId(userId);
     const existing = await this.content.findBySlug(siteId, slug);
     if (!existing) throw new NotFoundException('Page not found');
+    if (!existing.archivedAt) throw new ConflictException('Archive this page before deleting it permanently');
     await this.content.delete(siteId, slug);
   }
 

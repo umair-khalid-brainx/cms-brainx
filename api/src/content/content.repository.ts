@@ -9,7 +9,11 @@ export class ContentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findMany(siteId: string) {
-    return this.prisma.content.findMany({ where: { siteId }, orderBy: { updatedAt: 'desc' } });
+    return this.prisma.content.findMany({ where: { siteId, archivedAt: null }, orderBy: { updatedAt: 'desc' } });
+  }
+
+  findManyArchived(siteId: string) {
+    return this.prisma.content.findMany({ where: { siteId, archivedAt: { not: null } }, orderBy: { archivedAt: 'desc' } });
   }
 
   findBySlug(siteId: string, slug: string) {
@@ -29,5 +33,9 @@ export class ContentRepository {
 
   delete(siteId: string, slug: string) {
     return this.prisma.content.deleteMany({ where: { siteId, slug } });
+  }
+
+  archive(siteId: string, slug: string) {
+    return this.prisma.content.updateMany({ where: { siteId, slug }, data: { archivedAt: new Date() } });
   }
 }

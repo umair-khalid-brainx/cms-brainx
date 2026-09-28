@@ -116,15 +116,16 @@ enum ContentStatus {
 // admin is responsible for translating Puck's ComponentData into this shape
 // before it ever reaches the API (see DECISIONS.md D-013 addendum).
 model Content {
-  id        String        @id @default(cuid())
-  siteId    String        @map("site_id")
-  title     String
-  slug      String
-  path      String
-  status    ContentStatus @default(draft)
-  blocks    Json          @default("[]")
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id         String        @id @default(cuid())
+  siteId     String        @map("site_id")
+  title      String
+  slug       String
+  path       String
+  status     ContentStatus @default(draft)
+  blocks     Json          @default("[]")
+  archivedAt DateTime?     @map("archived_at")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
 
   site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
