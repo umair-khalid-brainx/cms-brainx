@@ -5,6 +5,38 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-28 — Media library page (`MED-02`)
+
+The actual `/media` screen the sidebar nav item has pointed at since it was first scaffolded —
+previously 404'd. Given two real options for how it'd know what's been uploaded (list files straight
+off disk, or back it with a real table), the user picked a real table; full reasoning and both
+options' costs in `DECISIONS.md` D-026.
+
+- **`api`**: new `Media` Prisma model (tenant-scoped, `uploadedByUserId`/`mimetype`/`size`/
+  `createdAt`), `MediaRepository` (same `*_SELECT`-const pattern as `MembershipRepository` — never
+  leaks more than the safe fields). `MediaService.store` now writes a `Media` row right after saving
+  the file to disk; new `list`/`remove` methods (`remove` deletes the DB row, then the file on disk
+  with `{ force: true }`). `MediaController` gained `GET /media` (`content:read`) and `DELETE
+  /media/:id` (`content:delete`), alongside the existing `POST /media`.
+- **`admin`**: new `/media` page (`MediaPage.tsx`) — a grid of the site's uploads, click a card for a
+  detail panel (preview, filename/type/size/uploader, Copy URL, Delete). `mediaApi.ts` gained
+  `listMedia`/`deleteMedia`; `uploadMedia` now returns the full `Media` row instead of just `{url}`
+  (the `ImageUploadField` from `MED-01` needed no change — it only ever used `.url`).
+
+**Verified, not assumed:** curl — empty list on a fresh site, upload returns full metadata with no
+`passwordHash`-style leak, delete returns 204 and the file is actually gone from disk (checked with
+`ls`, not just the API's word for it), a second delete 404s. CDP — uploaded a real file through the
+grid's own Upload button, confirmed the card renders, opened the detail panel and confirmed every
+metadata field matches the real API response, deleted through it (auto-accepting the native
+`confirm()`), confirmed the grid returns to empty. `api`/`admin` typecheck, lint, build, and `api`'s
+e2e suite all still pass. Test rows and files cleaned up afterward.
+
+**Not done:** no warning before deleting a file that's still referenced on a page (`BACKLOG.md` B-12);
+no thumbnailing; no "replace in place"; no reuse-into-a-field picker (`MED-03` — the natural next
+step now that this grid exists).
+
+---
+
 ## 2026-09-28 — Upload-from-computer for every image field in the block editor
 
 First slice of `MED-01`, scoped to exactly what was asked: everywhere the editor lets you type a URL

@@ -8,6 +8,54 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-026 — 2026-09-28 — Media library backed by a real `Media` table, not a disk listing
+
+**Decision:** `MED-02`'s library page (`GET/DELETE /media`, `admin`'s `/media` grid) reads from a new
+tenant-scoped `Media` Prisma model — one row per upload, written by `MediaService.store` right after
+the file lands on disk — rather than listing the site's upload directory off the filesystem at
+request time. Two real options here, put to the user rather than picked silently:
+
+1. **List straight off disk** (`fs.readdir` + `fs.stat` on `uploads/<siteId>/`, deriving filename/size/
+   date from the files themselves). No schema change, ships fastest, matches this project's existing
+   "local disk, no S3" minimalism (`ARCHITECTURE.md`'s Media row). Cost: no real metadata (who
+   uploaded it, when, by whom) beyond what the filesystem happens to expose, and — since the stored
+   filename is a bare `uuid.ext` with the client's original name already discarded at upload time
+   (D-025) — no way to show anything resembling the file's original name at all.
+2. **A real `Media` table**, tenant-scoped like `Content`/`Invite`, with its own repository. Real
+   metadata (`uploadedByUserId`, `createdAt`, `mimetype`, `size`), consistent with how every other
+   entity in this schema is modeled — chosen.
+
+**Why the table won:** the filesystem-listing option's real cost wasn't performance (trivial at this
+scale), it was that a bare disk listing can't answer "who uploaded this" or "when" at all — the
+`uuid.ext` filename D-025 chose specifically to keep unguessable carries zero human-readable
+information, so a disk-only library would have to either show a meaningless filename or add metadata
+some other way anyway. A table also composes with existing patterns (`MembershipRepository`'s
+`*_SELECT` const excluding sensitive fields, `ContentRepository`'s `siteId`-scoped `deleteMany`)
+rather than being a one-off.
+
+**`MediaService.store` writes the file to disk, then the DB row** — if the DB write fails, the
+request fails and the caller sees an error (the orphaned file on disk is unreferenced and harmless,
+never served from any URL the client has). `MediaService.remove` deletes the DB row first, then the
+file with `{ force: true }` — a failed file removal doesn't leave a dead API response, just an
+orphaned file, same asymmetry accepted in the other direction.
+
+**Still no "used on these pages" tracking before delete** — flagged as a real gap when this was
+proposed, not silently dropped. Doing it properly needs either a join table kept in sync on every
+`Content.blocks` write, or a runtime scan of every page's JSONB for the URL — both real added scope.
+Deleting a file that's still referenced by a page just leaves that page with a broken image; no
+warning is shown. Tracked in `BACKLOG.md` B-12 (updated, not superseded — the grid this note replaces
+"no library" with still doesn't solve reuse-safety).
+
+**Verified for real:** curl — empty list on a fresh site, upload returns the full row (metadata
+correct, no `passwordHash`/`tokenHash`-style leak), list shows it, delete returns 204 and the file is
+actually gone from disk (`ls` on the site's upload directory), a second delete of the same id 404s.
+CDP — uploaded a real file through the grid's own Upload button, confirmed the card appears, opened
+the detail panel and confirmed filename/type/size/uploader render from the real API response, copied
+the URL, deleted through the detail panel (auto-accepting the native `confirm()`), confirmed the grid
+returns to its empty state. Test rows and files cleaned up afterward.
+
+---
+
 ## D-025 — 2026-09-28 — File upload wired directly into image fields, ahead of a real media library
 
 **Decision:** `MED-01`'s first slice, built narrower than the ticket and shaped by what was actually

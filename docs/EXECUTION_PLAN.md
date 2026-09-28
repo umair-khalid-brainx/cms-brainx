@@ -133,8 +133,8 @@ Local disk, sharp thumbnails. No S3, no CDN — one box, one volume is sufficien
 | ID | Ticket | Band | Days | Wk | Depends on | Status |
 | -- | ------ | ---- | ---- | -- | ---------- | ------ |
 | `MED-01` | Upload, thumbnails, local disk | B | 0.30 | 3 | FND-02 | 🟨 in progress — `POST /media` uploads a file to site-scoped local disk, served back at `/uploads/:siteId/:file`; wired directly into every image field in the block editor (`ImageUploadField.tsx`), not just a standalone endpoint. No thumbnails (`sharp`) yet — the original upload is what gets stored and served; see `WORKLOG.md` 2026-09-28 |
-| `MED-02` | Library grid, reuse, replace, delete, metadata | B | 0.25 | 3 | MED-01 | ⬜ todo |
-| `MED-03` | Media picker in block settings | B | 0.15 | 3 | MED-02, BLK-04 | ⬜ todo — what exists today is upload-in-place (paste a URL or upload a new file), not a picker over a reusable library, since `MED-02` doesn't exist yet |
+| `MED-02` | Library grid, reuse, replace, delete, metadata | B | 0.25 | 3 | MED-01 | 🟨 in progress — `/media` page: grid of a site's uploads (backed by a real `Media` table, D-026), detail panel with metadata + Copy URL, Delete. No "replace in place" (delete + re-upload is the only path) and no reuse-into-a-field affordance yet — that's `MED-03`; see `WORKLOG.md` 2026-09-28 |
+| `MED-03` | Media picker in block settings | B | 0.15 | 3 | MED-02, BLK-04 | ⬜ todo — `ImageUploadField` still only offers paste-a-URL or upload-a-new-file; a third "Browse Library" option opening `/media`'s grid to pick an existing row is the natural next step now that `MED-02` exists |
 
 ### SEO — SEO surface  ·  0.40d  ·  web + api
 
