@@ -99,10 +99,11 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
   CDP/test script using `document.querySelector`/`querySelectorAll` against a custom field's class
   name will match both — filter to `getBoundingClientRect().width > 0` to get the one a person could
   actually click. Found verifying `ImageUploadField`'s "Browse" button (D-027).
-- **`@puckeditor/core@0.23.0`'s own Publish button doesn't render**, even following their README's
-  `<Puck onPublish={save} />` exactly. Traced into their bundled source — no permission/state gate
-  found blocking it, it's just not in the DOM. `EditorPage.tsx` uses its own `<button>` instead; see
-  `docs/DECISIONS.md` D-019 before assuming Puck's native one will show up.
+- **`@puckeditor/core@0.23.0`'s own Publish button does render** (D-019's original "it doesn't" was
+  wrong — corrected in D-028) as a `<span>`, not a `<button>`, inside its header's `_PuckHeader-tools`.
+  `EditorPage.tsx` keeps its own `.editor-publish` button as the one source of truth and suppresses
+  Puck's via `overrides={{ headerActions: () => <></> }}` — without that override, both render and a
+  user sees two working Publish buttons stacked on top of each other.
 
 ## Docs index
 

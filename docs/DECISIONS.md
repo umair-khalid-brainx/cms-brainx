@@ -8,6 +8,36 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-028 — 2026-09-28 — Puck's native Publish button does render after all; suppressed, not deleted
+
+**Supersedes D-019's finding, not its decision.** D-019 (2026-09-25) traced into Puck's bundled
+source and concluded its native Publish button never reaches the DOM in `@puckeditor/core@0.23.0`,
+and built `EditorPage.tsx`'s own `.editor-publish` button as a guaranteed-to-work replacement. That
+specific finding — "it doesn't render" — is wrong as of today, checked directly: Puck's own button
+(a `<span class="_Button..._Button--primary...">Publish</span>` inside its header's `_PuckHeader-tools`,
+not even a `<button>` element, which is why an early check today missed it too) genuinely renders and
+genuinely works — clicked it directly, confirmed it fires the same `onPublish` callback and the page's
+`updated_at` moved in Postgres. Nothing about `package.json` changed (`@puckeditor/core` is still
+exactly `0.23.0`); why the original trace concluded otherwise is unresolved and not worth chasing
+further — what matters is today's directly-observed behavior, not re-litigating a two-day-old trace.
+
+**Decision: keep the custom button, suppress Puck's — don't delete the custom one and rely on Puck's
+native button instead.** Both work identically (same `onPublish`/`publishNow()` call), so this is
+purely about which one to keep, not a functionality gap. `EditorPage.tsx`'s own button is the one kept
+— it doesn't depend on Puck's internal rendering staying stable release to release, and its behavior
+is fully owned by this codebase rather than something a future Puck version could silently change
+again. `<Puck overrides={{ headerActions: () => <></> }} />` empties Puck's header-actions slot
+(`headerActions` is one of Puck's documented `overrideKeys`); `onPublish` stays wired on `<Puck>`
+regardless, so Puck's button would still work correctly if the override were ever removed — it's
+hidden, not disconnected.
+
+**Verified for real:** CDP against the real editor confirmed exactly one element with the text
+"Publish" exists post-fix (`document.querySelectorAll('*')` filtered to leaf nodes), confirmed the
+Puck header-actions container is now empty, then clicked the one remaining button and confirmed the
+status text flips to "Published" — the fix didn't just hide the duplicate, the real one still works.
+
+---
+
 ## D-027 — 2026-09-28 — Media picker in block settings (`MED-03`)
 
 **Decision:** `ImageUploadField` (D-025) gets a third action, "Browse", next to the existing paste-a-URL

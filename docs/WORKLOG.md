@@ -5,6 +5,28 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-28 — Two Publish buttons, down to one
+
+Asked whether the editor's Publish button works locally, and why there were two. Checked directly
+rather than trusting the existing D-019 record: Puck's own native Publish button — recorded two days
+ago as never rendering in this version — genuinely does render today, stacked right below `admin`'s
+own custom one. Both were fully functional (identical `onPublish` call), so this wasn't a broken
+button, just a confusing duplicate.
+
+- `EditorPage.tsx`: `<Puck overrides={{ headerActions: () => <></> }} />` empties Puck's own
+  header-actions slot; `admin`'s `.editor-publish` button is the one kept, `onPublish` stays wired on
+  `<Puck>` regardless (so Puck's button would still work if the override were ever removed).
+- Corrected the stale claim in both the code comment and `CLAUDE.md`'s gotchas that Puck's button
+  "doesn't render" — full reasoning and what's still unresolved (why the original trace concluded
+  otherwise) in `DECISIONS.md` D-028, which supersedes D-019's finding without editing it.
+
+**Verified, not assumed:** confirmed exactly one "Publish" appears in the whole DOM before touching
+anything (proving the duplicate was real, not a misread screenshot), applied the fix, then confirmed
+again — one element, Puck's header-actions container empty, and clicked the one remaining button to
+confirm it still actually publishes (status flips to "Published", `updated_at` moves in Postgres).
+
+---
+
 ## 2026-09-28 — Media picker in block settings (`MED-03`)
 
 Follow-up to the library page below, same day: closes the loop MED-02 left open — there was still no
