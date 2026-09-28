@@ -99,14 +99,13 @@ function EditorPage() {
           {saveError ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
         </span>
         <span className="editor-site">Corrick Oyster Co.</span>
-        {/* Puck's own documented onPublish pattern (README: <Puck onPublish={save} />,
-            wired below too, matching it exactly) doesn't render a visible
-            Publish button in the installed @puckeditor/core@0.23.0 — traced
-            into their bundled source (chunk-55V3NZVF.mjs): the button *is*
-            in the default header-actions render tree with no permission or
-            state gate found, but no `.lucide-globe`/Publish element ever
-            reaches the DOM in this app. Rather than depend on a control that
-            silently isn't there, this is our own, guaranteed to work. */}
+        {/* This is the only Publish button — Puck's own native one (rendered
+            in its header via `overrides.headerActions`) is suppressed below.
+            D-019 originally found Puck's button didn't render at all in this
+            version; it does now (D-028 corrects that), which produced two
+            live Publish buttons stacked on top of each other. `onPublish`
+            stays wired on <Puck> below regardless, so Puck's suppressed
+            button would still work if the override were ever removed. */}
         <button type="button" className="editor-publish" onClick={publishNow}>
           Publish
         </button>
@@ -122,6 +121,10 @@ function EditorPage() {
           iframe={{ waitForStyles: true }}
           onChange={handleChange}
           onPublish={() => publishNow()}
+          // Suppresses Puck's own native Publish button (see D-028) so only
+          // the one in .editor-topbar exists — an empty fragment, not null,
+          // since this override's return type is ReactElement, not nullable.
+          overrides={{ headerActions: () => <></> }}
         />
       </div>
     </div>
