@@ -65,6 +65,17 @@ export async function apiSend<T>(
   return handle<T>(response);
 }
 
+/** Authenticated multipart upload — no Content-Type set manually, so fetch adds the multipart boundary itself. */
+export async function apiUpload<T>(path: string, body: FormData, accessToken: string): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body,
+  });
+  handleUnauthorized(response.status);
+  return handle<T>(response);
+}
+
 /** Authenticated DELETE — no request body, no response body (204). */
 export async function apiDelete(path: string, accessToken: string): Promise<void> {
   const response = await fetch(`${API_URL}${path}`, {

@@ -31,6 +31,7 @@ import {
   type LinkRef,
   type SiteTheme,
 } from 'cms-blocks';
+import { ImageUploadField } from '../components/ImageUploadField';
 
 // Field shapes mirror cms-blocks/src/types.ts exactly. Puck hands `render` the
 // field values flat; each block component wants them nested under `block`, so
@@ -101,10 +102,15 @@ const linkField = {
   },
 };
 
+// `src` gets the upload-capable custom field everywhere an image is edited —
+// pasting a URL still works, this just adds a side-by-side "Upload" option
+// backed by POST /media (media.service.ts on the api side).
+const imageSrcField = { type: 'custom' as const, render: ImageUploadField };
+
 const imageField = {
   type: 'object' as const,
   objectFields: {
-    src: { type: 'text' as const },
+    src: imageSrcField,
     alt: { type: 'text' as const },
     caption: { type: 'text' as const },
   },
@@ -221,7 +227,7 @@ export const config: Config<EditorComponents> = {
         heading: { type: 'text' },
         logos: {
           type: 'array',
-          arrayFields: { src: { type: 'text' }, alt: { type: 'text' } },
+          arrayFields: { src: imageSrcField, alt: { type: 'text' } },
           defaultItemProps: { src: '', alt: '' },
         },
       },
@@ -272,7 +278,7 @@ export const config: Config<EditorComponents> = {
         heading: { type: 'text' },
         images: {
           type: 'array',
-          arrayFields: { src: { type: 'text' }, alt: { type: 'text' }, caption: { type: 'text' } },
+          arrayFields: { src: imageSrcField, alt: { type: 'text' }, caption: { type: 'text' } },
           defaultItemProps: { src: '', alt: '', caption: '' },
         },
       },

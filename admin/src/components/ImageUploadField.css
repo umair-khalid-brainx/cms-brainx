@@ -1,0 +1,102 @@
+.image-upload-field {
+  width: 100%;
+}
+
+.image-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.image-upload-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #949494;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e1e1e;
+  box-sizing: border-box;
+}
+
+.image-upload-input:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: -1px;
+  border-color: #2271b1;
+}
+
+.image-upload-input:disabled {
+  background: #f0f0f1;
+  color: #6b7280;
+}
+
+.image-upload-button {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #949494;
+  border-radius: 4px;
+  background: #f6f7f7;
+  color: #1e1e1e;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.image-upload-button:hover:not(:disabled) {
+  border-color: #2271b1;
+  color: #2271b1;
+}
+
+.image-upload-button:disabled {
+  background: #f0f0f1;
+  color: #9ca3af;
+  cursor: default;
+}
+
+.image-upload-hidden-input {
+  display: none;
+}
+
+.image-upload-error {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  color: #cc1818;
+}
+
+@media (prefers-color-scheme: dark) {
+  .image-upload-input {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .image-upload-input:disabled {
+    background: #232323;
+    color: #9ca3af;
+  }
+
+  .image-upload-button {
+    background: #232323;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .image-upload-button:hover:not(:disabled) {
+    border-color: #72aee6;
+    color: #72aee6;
+  }
+
+  .image-upload-button:disabled {
+    background: #1a1a1a;
+    color: #6b7280;
+  }
+
+  .image-upload-error {
+    color: #ff6b6b;
+  }
+}
