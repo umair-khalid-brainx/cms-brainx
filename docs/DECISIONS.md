@@ -8,6 +8,39 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-029 — 2026-09-28 — Page soft-delete: archive is a state, not a route guard trusted client-side
+
+**Decision:** `Content` gets a nullable `archivedAt` column instead of a separate trash table.
+`PagesListPage.tsx` has two tabs — **Pages** (`archivedAt: null`, the only place an editor works day
+to day) and **Archived** (`archivedAt` set). The Pages tab only offers **Archive**; the Archived tab
+only offers **Delete Permanently**. `ContentService.remove` (the hard `DELETE /content/:slug`) now
+throws `ConflictException` if the page isn't already archived — so "archive first" is enforced by
+`api`, not just by which button `admin` happens to render. Per `admin/CLAUDE.md` invariant 3
+("permission checks here are UI affordance, not enforcement — the API enforces"), the same standard
+applies to this two-step delete flow: a direct `DELETE` call against a live page is refused with 409,
+not just hidden from the UI.
+
+**Why a column, not a trash table:** identical reasoning to D-023's `Role` enum vs. a `roles` table —
+nothing here needs to be queried independently of its parent row, there's no metadata beyond "when,"
+and a second table would need its own tenant scoping duplicated for no payoff. `ContentRepository`
+gained `findManyArchived` alongside the existing `findMany` (which now filters `archivedAt: null`);
+no new repository.
+
+**Permission reused, not split:** both `PATCH /content/:slug/archive` and `DELETE /content/:slug` are
+gated on the existing `content:delete` permission — an Editor/Administrator/Owner can do either,
+Author/Contributor can do neither. Archiving isn't given its own weaker permission tier, since it
+already removes a page from the live site (same blast radius class as deleting it, just reversible at
+the DB level for now).
+
+**Explicitly not built — restore.** `CNT-11`'s original scope ("Trash, restore, permanent delete")
+includes restoring an archived page back to active. The user's ask for this pass was archive +
+hard-delete only, no restore UI/endpoint; an archived page can currently only be hard-deleted, never
+brought back, short of an operator running `UPDATE content SET archived_at = NULL` by hand. Logged as
+a gap in `BACKLOG.md`, not hidden — add a `POST /content/:slug/restore` (clear `archivedAt`) plus an
+Archived-tab button when asked for.
+
+---
+
 ## D-028 — 2026-09-28 — Puck's native Publish button does render after all; suppressed, not deleted
 
 **Supersedes D-019's finding, not its decision.** D-019 (2026-09-25) traced into Puck's bundled

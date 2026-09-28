@@ -5,6 +5,28 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-28 — Page archive (soft delete), two-tab Pages screen
+
+Added an Archive step ahead of permanent delete for pages (`CNT-11`, D-029).
+
+- `api/prisma/schema.prisma`: `Content.archivedAt DateTime?`, migration
+  `20260928133117_add_content_archive`.
+- `ContentRepository.findMany` now filters `archivedAt: null`; new `findManyArchived` and `archive`.
+- `ContentService`: new `listArchived`/`archive`; `remove` (hard delete) now throws
+  `ConflictException` (409) unless the page is already archived — enforced server-side, not just a
+  hidden button.
+- `ContentController`: `GET /content/archived` (registered before `:slug` so it isn't shadowed),
+  `PATCH /content/:slug/archive`, both gated on the existing `content:delete` permission.
+- `admin`: `contentApi.ts` gained `listArchivedPages`/`archivePage`; `PagesListPage.tsx` now has two
+  tabs — **Pages** (Archive action + `window.confirm`, matching the existing delete-confirm pattern)
+  and **Archived** (Delete Permanently action + confirm). Active list no longer offers delete at all.
+- Verified end-to-end via CDP: created a test page, archived it (disappears from Pages, appears in
+  Archived), hard-deleted it from Archived (gone), and confirmed a direct `DELETE` against a
+  still-active page is refused with 409. `psql` confirmed no test rows left behind.
+- Not built: restoring an archived page back to active — `BACKLOG.md` B-13.
+
+---
+
 ## 2026-09-28 — Two Publish buttons, down to one
 
 Asked whether the editor's Publish button works locally, and why there were two. Checked directly
