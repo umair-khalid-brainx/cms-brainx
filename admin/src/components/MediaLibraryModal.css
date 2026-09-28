@@ -1,0 +1,125 @@
+/* This modal renders in the app's normal document (ImageUploadField sits in
+   Puck's field panel, which is also outside Puck's iframe canvas), so unlike
+   ImageUploadField.css it follows the OS dark-mode preference the same way
+   MediaPage.css's own detail overlay does. */
+.media-library-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 1.5rem;
+}
+
+.media-library-modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem 1.5rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.media-library-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.media-library-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.media-library-close {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 4px;
+  background: #f0f0f1;
+  color: #3c434a;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.media-library-close:hover {
+  background: #e0e0e0;
+}
+
+.media-library-loading,
+.media-library-empty {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.media-library-error {
+  font-size: 0.8125rem;
+  color: #c0392b;
+}
+
+.media-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.6rem;
+}
+
+.media-library-card {
+  padding: 0;
+  border: 1px solid #c3c4c7;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.media-library-card:hover {
+  border-color: #2271b1;
+}
+
+.media-library-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #f0f0f1;
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  .media-library-modal {
+    background: #1f2023;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  .media-library-title {
+    color: #ededed;
+  }
+
+  .media-library-close {
+    background: #2c3338;
+    color: #ededed;
+  }
+
+  .media-library-close:hover {
+    background: #3c434a;
+  }
+
+  .media-library-card {
+    background: #18191b;
+    border-color: #3c434a;
+  }
+
+  .media-library-thumb {
+    background: #232323;
+  }
+}

@@ -1,10 +1,6 @@
 .image-upload-field {
-  width: 100%;
-}
-
-.image-upload-row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.4rem;
   width: 100%;
 }
@@ -17,8 +13,7 @@
    dark-mode variant on purpose — one would fight Puck's fixed light chrome
    instead of blending into it. */
 .image-upload-input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   font: inherit;
   font-size: 14px;
   padding: 12px 15px;
@@ -40,8 +35,17 @@
   color: #6b7280;
 }
 
+/* Two equal-weight actions — Upload and Browse — on their own row below the
+   URL field, rather than crammed alongside it. Puck's field panel is narrow
+   enough that three controls on one row stopped being readable once Browse
+   (MED-03) was added to Upload. */
+.image-upload-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
 .image-upload-button {
-  flex-shrink: 0;
+  flex: 1;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -70,7 +74,7 @@
 }
 
 .image-upload-error {
-  margin: 0.3rem 0 0;
+  margin: 0;
   font-size: 0.75rem;
   color: #cc1818;
 }
