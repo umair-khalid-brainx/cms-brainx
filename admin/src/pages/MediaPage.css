@@ -1,0 +1,279 @@
+.media-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+}
+
+.media-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.media-count {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.media-upload-button {
+  margin-left: auto;
+  align-self: center;
+  background: #2271b1;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.media-upload-button:hover:not(:disabled) {
+  background: #135e96;
+}
+
+.media-upload-button:disabled {
+  background: #949494;
+  cursor: default;
+}
+
+.media-hidden-input {
+  display: none;
+}
+
+.media-loading,
+.media-empty {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.media-error {
+  font-size: 0.8125rem;
+  color: #c0392b;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.9rem;
+}
+
+.media-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0;
+  border: 1px solid #c3c4c7;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  font: inherit;
+}
+
+.media-card:hover {
+  border-color: #2271b1;
+}
+
+.media-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #f0f0f1;
+  display: block;
+}
+
+.media-card-name {
+  padding: 0 0.6rem 0.6rem;
+  font-size: 0.75rem;
+  color: #3c434a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+
+.media-detail {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.media-detail-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: #f0f0f1;
+  color: #3c434a;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.media-detail-close:hover {
+  background: #e0e0e0;
+}
+
+.media-detail-preview {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: #f0f0f1;
+  border-radius: 4px;
+}
+
+.media-detail-meta {
+  margin: 1rem 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.media-detail-meta dt {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.media-detail-meta dd {
+  margin: 0;
+  color: #1e1e1e;
+  overflow-wrap: anywhere;
+}
+
+.media-detail-url-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.media-detail-url {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  background: #f6f7f7;
+  color: #50575e;
+}
+
+.media-detail-copy {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  background: #f0f0f1;
+  color: #1e1e1e;
+  cursor: pointer;
+}
+
+.media-detail-copy:hover {
+  border-color: #2271b1;
+  color: #2271b1;
+}
+
+.media-detail-delete {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #b32d2e;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.media-detail-delete:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.media-detail-delete:disabled {
+  color: #b0b0b0;
+  cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+  .media-title {
+    color: #ededed;
+  }
+
+  .media-card {
+    background: #18191b;
+    border-color: #3c434a;
+  }
+
+  .media-card-name {
+    color: #b0b0b0;
+  }
+
+  .media-thumb {
+    background: #232323;
+  }
+
+  .media-detail {
+    background: #1f2023;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  .media-detail-close {
+    background: #2c3338;
+    color: #ededed;
+  }
+
+  .media-detail-close:hover {
+    background: #3c434a;
+  }
+
+  .media-detail-preview {
+    background: #101113;
+  }
+
+  .media-detail-meta dd {
+    color: #ededed;
+  }
+
+  .media-detail-url {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .media-detail-copy {
+    background: #232323;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .media-detail-copy:hover {
+    border-color: #72aee6;
+    color: #72aee6;
+  }
+}

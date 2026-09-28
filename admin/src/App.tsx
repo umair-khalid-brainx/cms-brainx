@@ -8,6 +8,7 @@ import AcceptInvitePage from './pages/AcceptInvitePage.tsx'
 import DashboardPage from './pages/DashboardPage.tsx'
 import PagesListPage from './pages/PagesListPage.tsx'
 import CreatePagePage from './pages/CreatePagePage.tsx'
+import MediaPage from './pages/MediaPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import TeamPage from './pages/TeamPage.tsx'
 import EditorPage from './pages/EditorPage.tsx'
@@ -26,6 +27,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/pages" element={<PagesListPage />} />
           <Route path="/pages/new" element={<CreatePagePage />} />
+          <Route path="/media" element={<MediaPage />} />
           <Route path="/team" element={<TeamPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
