@@ -40,42 +40,6 @@
   color: #6b7280;
 }
 
-.image-upload-input:read-only {
-  background: #f6f7f7;
-  color: #50575e;
-  cursor: default;
-  text-overflow: ellipsis;
-}
-
-.image-upload-input:read-only:focus-visible {
-  outline: none;
-  border-color: #dcdcdc;
-}
-
-.image-upload-clear {
-  flex-shrink: 0;
-  font: inherit;
-  font-size: 13px;
-  padding: 0.6rem 0.7rem;
-  border: 1px solid #dcdcdc;
-  border-radius: 4px;
-  background: #fff;
-  color: #6b7280;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.image-upload-clear:hover:not(:disabled) {
-  border-color: #cc1818;
-  color: #cc1818;
-}
-
-.image-upload-clear:disabled {
-  background: #f0f0f1;
-  color: #9ca3af;
-  cursor: default;
-}
-
 .image-upload-button {
   flex-shrink: 0;
   font: inherit;
