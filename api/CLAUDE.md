@@ -33,6 +33,12 @@ reach it over REST.
   `docker-compose.yml` is an alternative and maps host port **5433**.
 - **`CORS_ORIGINS`** must list web (`:3000`) and admin (`:5173`), or neither can call this API.
 - `npm audit` findings here are dev-only transitive deps — see `../docs/BACKLOG.md` B-08.
+- **`tsconfig.json`'s `types` array is explicit** (`["vitest/globals", "node"]`), so an `@types/*`
+  package's global augmentation isn't picked up just by installing it — `Express.Multer.File` needed
+  `"multer"` added to that array too, or every `@UploadedFile()` handler fails to typecheck.
+- **File uploads need `NestExpressApplication`**, not the default `INestApplication` from
+  `NestFactory.create(AppModule)` — `app.useStaticAssets(...)` (serving `/uploads`) only exists on
+  the Express-flavoured type. `main.ts` uses `NestFactory.create<NestExpressApplication>(AppModule)`.
 
 ## Commands
 
