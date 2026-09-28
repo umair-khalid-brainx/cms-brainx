@@ -8,6 +8,59 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-025 — 2026-09-28 — File upload wired directly into image fields, ahead of a real media library
+
+**Decision:** `MED-01`'s first slice, built narrower than the ticket and shaped by what was actually
+asked ("wherever we give the option to insert a link for an image, side by side give the option to
+upload from computer") rather than the full media-library ticket. New `api/src/media/` — `POST
+/media` (`JwtAuthGuard` + `PermissionsGuard`, `content:write`, same permission a content write
+already requires), accepting one multipart file, validated against a fixed mimetype allowlist
+(`image/png|jpeg|webp|gif|svg+xml`, `video/mp4|webm` — video included for forward-compat even though
+no video block exists yet, see below), written to `uploads/<siteId>/<uuid>.<ext>` and served back by
+`app.useStaticAssets` under `/uploads`. In `admin`, every `src` field on an image (`Hero.image`,
+`ImageText.image`, `LogoCloud.logos[]`, `Gallery.images[]`, `TeamGrid.members[].photo` — all five
+places `cms-blocks` has an image URL prop, per a full-repo inventory before writing any code) swapped
+from a plain `{ type: 'text' }` Puck field to `{ type: 'custom', render: ImageUploadField }`: a text
+input (paste a URL, unchanged) plus an "Upload" button side by side, calling the new endpoint and
+filling the same field on success.
+
+**No favicon field or video block exist yet — not built here, scope stayed to what already existed.**
+The request named "icon or image or favicon or video" as examples of the pattern ("wherever we give
+this option"), not a checklist demanding all four. A repo-wide inventory (grep across `cms-blocks`,
+`admin/src/puck/config.tsx`, `SettingsPage.tsx`, `Site` schema, both fixtures) confirmed neither a
+favicon field nor a video block exists anywhere in this codebase — `SettingsPage.tsx` has no image
+field of any kind, and `theme_json`/`SiteTheme` has no logo/favicon slot. Nothing was fabricated to
+fill that gap; if a favicon field or video block get built later, this same `ImageUploadField`
+pattern (and the video mimetypes already allowed server-side) covers them without new API work.
+
+**Tenant isolation is the random filename, not an authenticated download route.** `/uploads` is
+plain static file serving with no per-request auth check — matches `ARCHITECTURE.md`'s existing
+"files on local disk scoped by site; a guessed URL must not cross tenants" line: the site-scoped
+directory keeps files organized, but what actually stops cross-tenant access is that the filename is
+a `randomUUID()` (128 bits), never derived from anything guessable, and never the client's original
+filename (which also closes the path-traversal/extension-spoofing surface a user-supplied name would
+open). Accepted for this POC; a real deployment behind the single-box/nginx topology this project
+already assumes would likely still serve these as plain static files.
+
+**No thumbnails, no library, no reuse/delete UI — deliberately narrower than `MED-01`'s full
+description.** `sharp` thumbnailing, a browsable grid of previously-uploaded files (`MED-02`), and a
+"pick from library" affordance instead of "upload a new one" (`MED-03`) are all still open — see
+`EXECUTION_PLAN.md`'s `MED` section and `BACKLOG.md` B-12. Every upload today is a new file; there's
+no way yet to reuse one already on disk except by copy-pasting its returned URL into another field's
+text input, which still works since the text input was kept, not replaced.
+
+**Verified for real:** curl — unauthenticated upload (401), wrong mimetype (400, `Unsupported file
+type: text/plain`), a real PNG (201, file confirmed on disk at the returned path, byte-identical on
+download, correct `Content-Type`). CDP — selected the Hero block in a real running editor, attached a
+real file to the hidden `<input type=file>` via `DOM.setFileInputFiles`, confirmed the returned URL
+landed in the text field and the canvas re-rendered with the real uploaded image (not a broken-image
+icon), confirmed the change autosaved. Screenshotted the field itself showing the text input and
+Upload button side by side. Test upload and its accidental autosave into the real "Home" page were
+both cleaned up afterward (file deleted from disk, `content.blocks` reverted via `psql`) so the demo
+database wasn't left with test pollution.
+
+---
+
 ## D-024 — 2026-09-25 — A site's Owner is singular and permanent
 
 **Decision:** Extends D-023. A site has exactly one Owner, assigned once at creation (the seed

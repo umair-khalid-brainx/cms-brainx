@@ -5,6 +5,41 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-28 — Upload-from-computer for every image field in the block editor
+
+First slice of `MED-01`, scoped to exactly what was asked: everywhere the editor lets you type a URL
+for an image, add a side-by-side option to upload a file from disk instead.
+
+- **`api`**: new `api/src/media/` — `POST /media` (`JwtAuthGuard` + `PermissionsGuard`,
+  `content:write`), one file via `FileInterceptor`, validated against a fixed mimetype allowlist,
+  written to `uploads/<siteId>/<uuid>.<ext>` (random filename — the actual tenant boundary, since
+  `/uploads` itself is plain static serving with no per-request auth), served back via
+  `app.useStaticAssets`. New `API_PUBLIC_URL`/`UPLOADS_DIR` env vars.
+- **`admin`**: `lib/mediaApi.ts` + `apiUpload` (multipart, in `lib/api.ts`); new
+  `components/ImageUploadField.tsx`, a Puck `type: 'custom'` field — text input (paste a URL,
+  unchanged) plus an "Upload" button, side by side. Wired into all five image props that exist
+  anywhere in `cms-blocks` (`Hero.image`, `ImageText.image`, `LogoCloud.logos[]`,
+  `Gallery.images[]`, `TeamGrid.members[].photo`) via `puck/config.tsx`'s shared `imageSrcField`.
+
+**Scope note:** no favicon field or video block exist anywhere in this codebase (checked before
+writing code) — the request named them as examples of the pattern, not a checklist. Nothing was
+built to fill a gap that isn't real yet; if either gets built later, this same field/endpoint covers
+it. Full reasoning in `DECISIONS.md` D-025.
+
+**Verified, not assumed:** curl — 401 unauthenticated, 400 on a disallowed mimetype, 201 on a real
+PNG with the file confirmed byte-identical on disk and via a follow-up download. CDP — attached a
+real file to the field's hidden input in a live running editor via `DOM.setFileInputFiles`, confirmed
+the returned URL landed in the text field and the canvas re-rendered with the real image (not
+broken), confirmed it autosaved. Screenshotted the field showing the text input and Upload button
+side by side. The test upload and its autosave into the real "Home" page were cleaned up afterward
+(file deleted, `content.blocks` reverted via `psql`) — the demo database is back to its normal state.
+`api`/`admin` typecheck, lint, build, and `api`'s e2e suite all still pass.
+
+**Not done:** no thumbnails, no media library (grid/reuse/replace/delete), no per-tenant storage
+quota — tracked as `BACKLOG.md` B-12 / `EXECUTION_PLAN.md` `MED-02`/`MED-03`.
+
+---
+
 ## 2026-09-25 — A site's Owner is permanent and singular
 
 Follow-up restriction on the roles/invites feature below, requested after it shipped: an Owner's

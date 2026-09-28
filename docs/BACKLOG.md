@@ -17,6 +17,7 @@ Status: **open** / **done** (with date) / **accepted** (deliberately not acting)
 | B-06 | **Device-width preview toggle in the editor** (desktop / tablet / mobile) becomes nearly free once the canvas is in an iframe, since `@media` measures the iframe. | 2026-08-31 | Good pitch moment; fold into `BLK-03` if cheap, otherwise a new ticket |
 | B-07 | **Delete the dev-only routes** `/` comparison view and `/preview/[site]` once the real host-resolved catch-all route lands. | 2026-08-31 | Tie to `CNT-07` |
 | B-11 | **No "transfer ownership" flow.** A site's Owner is now permanent — `TeamService` refuses to change an Owner's role or promote anyone else to Owner (`DECISIONS.md` D-024) — so there's currently no way to hand a site to a different real owner short of direct DB access. | 2026-09-25 | Real gap for a production system, not needed yet for this POC |
+| B-12 | **Uploaded media has no library.** `POST /media` (D-025) stores files and serves them back, but there's no grid of previously-uploaded files, no reuse/replace/delete UI, and no thumbnailing — every upload is a brand-new file, reuse only works by hand-copying a returned URL into another field. | 2026-09-28 | Tracks `MED-02`/`MED-03` |
 
 ## Accepted — deliberately not acting
 
