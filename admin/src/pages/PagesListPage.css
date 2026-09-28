@@ -33,6 +33,34 @@
   background: #135e96;
 }
 
+.pages-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid #c3c4c7;
+  margin: 0 0 1.25rem;
+}
+
+.pages-tab {
+  border: none;
+  background: none;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.pages-tab:hover {
+  color: #1e1e1e;
+}
+
+.pages-tab-active {
+  color: #2271b1;
+  border-bottom-color: #2271b1;
+}
+
 .pages-loading {
   font-size: 0.8125rem;
   color: #6b7280;
@@ -156,6 +184,23 @@
 @media (prefers-color-scheme: dark) {
   .pages-title {
     color: #ededed;
+  }
+
+  .pages-tabs {
+    border-bottom-color: #3c434a;
+  }
+
+  .pages-tab {
+    color: #b0b0b0;
+  }
+
+  .pages-tab:hover {
+    color: #ededed;
+  }
+
+  .pages-tab-active {
+    color: #6ab6f2;
+    border-bottom-color: #6ab6f2;
   }
 
   .pages-table {

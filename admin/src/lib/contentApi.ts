@@ -20,6 +20,7 @@ export type PageSummary = {
   title: string;
   path: string;
   status: PageStatus;
+  archivedAt: string | null;
 };
 
 export type Page = PageSummary & {
@@ -34,6 +35,7 @@ type ContentRecord = {
   path: string;
   status: PageStatus;
   blocks: FlatBlock[];
+  archivedAt: string | null;
 };
 
 function decapitalize(value: string): string {
@@ -92,7 +94,7 @@ function puckDataToBlocks(data: Data<EditorComponents>): FlatBlock[] {
 }
 
 function toSummary(record: ContentRecord): PageSummary {
-  return { slug: record.slug, title: record.title, path: record.path, status: record.status };
+  return { slug: record.slug, title: record.title, path: record.path, status: record.status, archivedAt: record.archivedAt };
 }
 
 function requireSession() {
@@ -104,6 +106,12 @@ function requireSession() {
 export async function listPages(): Promise<PageSummary[]> {
   const session = requireSession();
   const records = await apiGet<ContentRecord[]>('/content', session.accessToken);
+  return records.map(toSummary);
+}
+
+export async function listArchivedPages(): Promise<PageSummary[]> {
+  const session = requireSession();
+  const records = await apiGet<ContentRecord[]>('/content/archived', session.accessToken);
   return records.map(toSummary);
 }
 
@@ -145,6 +153,11 @@ export async function createPage(title: string, body = ''): Promise<PageSummary>
     session.accessToken,
   );
   return toSummary(record);
+}
+
+export async function archivePage(slug: string): Promise<void> {
+  const session = requireSession();
+  await apiSend<void>('PATCH', `/content/${slug}/archive`, {}, session.accessToken);
 }
 
 export async function deletePage(slug: string): Promise<void> {
