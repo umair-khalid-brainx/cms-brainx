@@ -8,6 +8,40 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-027 — 2026-09-28 — Media picker in block settings (`MED-03`)
+
+**Decision:** `ImageUploadField` (D-025) gets a third action, "Browse", next to the existing paste-a-URL
+text field and "Upload" button — opens `components/MediaLibraryModal.tsx`, a grid over the site's
+`Media` rows (D-026) filtered to `image/*`; clicking a thumbnail fills the field and closes the modal.
+No new API surface — it reads the same `GET /media` `MediaPage.tsx` already uses. Since three controls
+no longer fit legibly on one row in Puck's ~250px-wide field panel, the field's layout changed to two
+rows (URL input full-width, then Upload/Browse as equal-weight buttons below it) — the previously
+side-by-side text-field-and-Upload layout the user asked for in D-025 is preserved in spirit (still
+one row, still adjacent), just no longer literally sharing a row with a third control.
+
+**A real, non-obvious Puck gotcha surfaced while verifying this, worth recording so it doesn't cost
+someone else a debugging session:** Puck mounts each field's `render` function **twice** — once as a
+normal, visible instance inside the sidebar (`_SidebarSection-content`), and once more as a
+zero-size, invisible instance inside what its own class names call `_FieldsPlugin` (0×0 rect, still
+`display: flex`, still in the DOM). Both instances are wired to the same underlying field value/
+`onChange`, so interacting with either one updates the real Puck data identically — a real user, who
+can only click the visible one, is never affected. It only matters for **automated testing**:
+`document.querySelector`/`querySelectorAll` against a field's class name will match both instances,
+and picking the wrong one first can make a script's assertions flicker for reasons that have nothing
+to do with the feature under test. Filtering to `getBoundingClientRect().width > 0` isolates the real
+one. Documented in `CLAUDE.md`'s gotchas, not worked around in product code — there's nothing to fix.
+
+**Verified for real:** CDP against the real running editor — opened Browse against an empty library
+(correct empty-state message), closed it with Escape, seeded one file via the existing Upload button,
+reopened Browse and confirmed the grid showed it, clicked it and confirmed the field filled with the
+exact matching URL, confirmed the modal closed, confirmed the canvas re-rendered with the selected
+image. Screenshotted the open modal (grid of real thumbnails) directly, not just asserted via DOM
+state. Test media rows/files and the accidental autosave into the real "Home" page were cleaned up
+afterward — twice, since the first cleanup pass missed one leftover row from an earlier test, caught
+by checking `psql` before signing off rather than trusting memory of what had been cleaned.
+
+---
+
 ## D-026 — 2026-09-28 — Media library backed by a real `Media` table, not a disk listing
 
 **Decision:** `MED-02`'s library page (`GET/DELETE /media`, `admin`'s `/media` grid) reads from a new

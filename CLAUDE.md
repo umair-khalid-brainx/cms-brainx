@@ -93,6 +93,12 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 - **`admin` has no `next/font`.** `theme.ts`'s type sets reference `--font-fraunces`, `--font-karla`,
   etc. — `web` gets those for free from `next/font` in `layout.tsx`; `admin` loads the same families
   as plain Google Fonts in `index.html` and maps them to the same variable names in `index.css`.
+- **Puck mounts each field's `render` function twice** — a real, visible instance in the sidebar, and
+  a second, zero-size, invisible instance elsewhere in the DOM (inside its own `_FieldsPlugin`
+  wrapper). Both are wired to the same underlying value, so this is invisible to a real user, but a
+  CDP/test script using `document.querySelector`/`querySelectorAll` against a custom field's class
+  name will match both — filter to `getBoundingClientRect().width > 0` to get the one a person could
+  actually click. Found verifying `ImageUploadField`'s "Browse" button (D-027).
 - **`@puckeditor/core@0.23.0`'s own Publish button doesn't render**, even following their README's
   `<Puck onPublish={save} />` exactly. Traced into their bundled source — no permission/state gate
   found blocking it, it's just not in the DOM. `EditorPage.tsx` uses its own `<button>` instead; see

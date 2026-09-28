@@ -5,6 +5,39 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-09-28 — Media picker in block settings (`MED-03`)
+
+Follow-up to the library page below, same day: closes the loop MED-02 left open — there was still no
+way to *reuse* an uploaded file without hand-copying its URL.
+
+- `ImageUploadField.tsx` gained a third action, "Browse", opening a new `components/
+  MediaLibraryModal.tsx` — a grid over the site's media (filtered to images), click a thumbnail to
+  fill the field and close the modal. No new API endpoint — reuses `listMedia()`/`GET /media`.
+- Field layout changed from one row to two (URL input full-width, Upload + Browse below it as equal
+  buttons) — three controls stopped fitting legibly on one row in Puck's narrow field panel.
+
+**A real Puck gotcha found while verifying, not a product bug:** Puck mounts each field's `render`
+twice — once visible in the sidebar, once as a zero-size ghost instance elsewhere in the DOM, both
+wired to the same value. Harmless for a real user (only one is clickable), but tripped up an early
+verification pass that used a plain `querySelectorAll` and happened to interact with the ghost first.
+Filtering to a non-zero bounding rect fixed the test; documented in root `CLAUDE.md`'s gotchas so it
+doesn't cost anyone else the same detour. Full writeup in `DECISIONS.md` D-027.
+
+**Verified, not assumed:** CDP against the real editor — Browse against an empty library (correct
+empty message), seeded a file via the existing Upload button, reopened Browse and confirmed the
+thumbnail appeared, clicked it and confirmed the field filled with the exact matching URL and the
+canvas re-rendered with the image, confirmed the modal closed. Screenshotted the modal itself with
+real thumbnails, not just DOM assertions. `admin` typecheck/lint/build all pass. Test media rows,
+files, and the accidental autosave into the real "Home" page were cleaned up afterward — caught one
+leftover row from an earlier test on the first cleanup pass by checking `psql` rather than trusting
+memory, and cleaned that up too before signing off.
+
+**Not done:** no upload-from-within-the-modal shortcut (it's a picker over what already exists, not a
+second upload surface); no "replace in place"; no warning before deleting a file still referenced on
+a page — all still `BACKLOG.md` B-12.
+
+---
+
 ## 2026-09-28 — Media library page (`MED-02`)
 
 The actual `/media` screen the sidebar nav item has pointed at since it was first scaffolded —
