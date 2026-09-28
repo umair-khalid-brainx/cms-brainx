@@ -1,9 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { UserRepository } from '../users/user.repository.js';
+import { MediaRepository } from './media.repository.js';
 
 // Whitelist, not a denylist derived from the client-supplied filename — the
 // stored extension always comes from this map, never from the upload's
@@ -24,10 +25,16 @@ const ALLOWED_TYPES: Record<string, string> = {
 export class MediaService {
   constructor(
     private readonly users: UserRepository,
+    private readonly media: MediaRepository,
     private readonly config: ConfigService,
   ) {}
 
-  async store(userId: string, file: Express.Multer.File): Promise<{ url: string }> {
+  async list(userId: string) {
+    const siteId = await this.resolveSiteId(userId);
+    return this.media.findManyBySite(siteId);
+  }
+
+  async store(userId: string, file: Express.Multer.File) {
     const extension = ALLOWED_TYPES[file.mimetype];
     if (!extension) throw new BadRequestException(`Unsupported file type: ${file.mimetype}`);
 
@@ -36,8 +43,7 @@ export class MediaService {
     // already carries that same limitation for content routes.
     const siteId = await this.resolveSiteId(userId);
 
-    const uploadsRoot = this.config.get<string>('UPLOADS_DIR') ?? 'uploads';
-    const siteDir = join(process.cwd(), uploadsRoot, siteId);
+    const siteDir = this.siteDir(siteId);
     await mkdir(siteDir, { recursive: true });
 
     // A random, unguessable filename is the tenant boundary here (ARCHITECTURE.md's
@@ -48,7 +54,33 @@ export class MediaService {
     await writeFile(join(siteDir, filename), file.buffer);
 
     const publicUrl = this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4001';
-    return { url: `${publicUrl}/uploads/${siteId}/${filename}` };
+    const url = `${publicUrl}/uploads/${siteId}/${filename}`;
+
+    return this.media.create({
+      siteId,
+      url,
+      filename,
+      mimetype: file.mimetype,
+      size: file.size,
+      uploadedByUserId: userId,
+    });
+  }
+
+  async remove(userId: string, id: string): Promise<void> {
+    const siteId = await this.resolveSiteId(userId);
+    const record = await this.media.findById(siteId, id);
+    if (!record) throw new NotFoundException('Media not found');
+
+    await this.media.delete(siteId, id);
+    // Best-effort: the DB row is the source of truth for what the library
+    // shows, so a leftover orphaned file if this fails isn't user-visible —
+    // but it shouldn't fail the request either.
+    await rm(join(this.siteDir(siteId), record.filename), { force: true });
+  }
+
+  private siteDir(siteId: string): string {
+    const uploadsRoot = this.config.get<string>('UPLOADS_DIR') ?? 'uploads';
+    return join(process.cwd(), uploadsRoot, siteId);
   }
 
   private async resolveSiteId(userId: string): Promise<string> {

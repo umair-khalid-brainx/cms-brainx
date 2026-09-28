@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { UsersModule } from '../users/users.module.js';
 import { MediaController } from './media.controller.js';
+import { MediaRepository } from './media.repository.js';
 import { MediaService } from './media.service.js';
 
 // Same module-wiring gotcha as ContentModule/TeamModule (see auth.module.ts):
@@ -12,6 +13,6 @@ import { MediaService } from './media.service.js';
 @Module({
   imports: [UsersModule, AuthModule],
   controllers: [MediaController],
-  providers: [MediaService, JwtAuthGuard, PermissionsGuard],
+  providers: [MediaRepository, MediaService, JwtAuthGuard, PermissionsGuard],
 })
 export class MediaModule {}
