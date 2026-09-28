@@ -9,16 +9,23 @@
   width: 100%;
 }
 
+/* Puck's own field panel is a fixed light theme — it does not follow the
+   OS/browser dark-mode preference the rest of this app's own screens do
+   (Select.css, TeamPage.css). Matched to Puck's native text field's own
+   computed style (padding/border/font-size) so this sits next to "alt" and
+   "caption" as an obvious text field, not a styled-differently oddity. No
+   dark-mode variant on purpose — one would fight Puck's fixed light chrome
+   instead of blending into it. */
 .image-upload-input {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 0.8125rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #949494;
+  font-size: 14px;
+  padding: 12px 15px;
+  border: 1px solid #dcdcdc;
   border-radius: 4px;
   background: #fff;
-  color: #1e1e1e;
+  color: #000;
   box-sizing: border-box;
 }
 
@@ -36,12 +43,12 @@
 .image-upload-button {
   flex-shrink: 0;
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 13px;
   font-weight: 600;
-  padding: 0.4rem 0.7rem;
-  border: 1px solid #949494;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #dcdcdc;
   border-radius: 4px;
-  background: #f6f7f7;
+  background: #f0f0f1;
   color: #1e1e1e;
   cursor: pointer;
   white-space: nowrap;
@@ -66,37 +73,4 @@
   margin: 0.3rem 0 0;
   font-size: 0.75rem;
   color: #cc1818;
-}
-
-@media (prefers-color-scheme: dark) {
-  .image-upload-input {
-    background: #1a1a1a;
-    border-color: #444;
-    color: #ededed;
-  }
-
-  .image-upload-input:disabled {
-    background: #232323;
-    color: #9ca3af;
-  }
-
-  .image-upload-button {
-    background: #232323;
-    border-color: #444;
-    color: #ededed;
-  }
-
-  .image-upload-button:hover:not(:disabled) {
-    border-color: #72aee6;
-    color: #72aee6;
-  }
-
-  .image-upload-button:disabled {
-    background: #1a1a1a;
-    color: #6b7280;
-  }
-
-  .image-upload-error {
-    color: #ff6b6b;
-  }
 }
