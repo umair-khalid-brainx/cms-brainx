@@ -126,7 +126,13 @@ const imageField = {
 
 export const config: Config<EditorComponents> = {
   root: {
-    render: ({ children }) => <SiteThemeRoot theme={corrickTheme}>{children}</SiteThemeRoot>,
+    // `min-h-screen` as in web's SiteChrome: the site's paper fills the canvas
+    // below the last block, instead of admin's own (dark-mode) page background.
+    render: ({ children }) => (
+      <SiteThemeRoot theme={corrickTheme} className="min-h-screen">
+        {children}
+      </SiteThemeRoot>
+    ),
   },
   components: {
     Hero: {

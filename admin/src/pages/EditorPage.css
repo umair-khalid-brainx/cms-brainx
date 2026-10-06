@@ -67,6 +67,11 @@
 .editor-puck {
   flex: 1;
   min-height: 0;
+  /* Puck's UI is light-only, but some of it (the Outline rows) uses
+     `color: inherit` — which, in OS dark mode, picks up index.css's
+     near-white --foreground and vanishes on Puck's white panels. Give it
+     the same text colour Puck's own block list uses. */
+  color: var(--puck-color-text, #000);
 }
 
 .editor-puck > div {
