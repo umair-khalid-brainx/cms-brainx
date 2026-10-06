@@ -1,6 +1,7 @@
 # Multi-Tenant CMS — project guide
 
-**Read this first, then `docs/WORKLOG.md` for current state and `docs/BACKLOG.md` for open items.**
+**Read this first, then `docs/WORKLOG.md` for current state, `tickets/STATUS.md` for ticket status and
+`docs/BACKLOG.md` for open items.**
 Keep this file short. Depth belongs in `docs/`.
 
 ## What this is
@@ -121,7 +122,8 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 | ---- | ------------ |
 | [docs/WORKLOG.md](docs/WORKLOG.md) | Every session start; resuming mid-feature |
 | [docs/BACKLOG.md](docs/BACKLOG.md) | Planning next work; checking if an ask is tracked |
-| [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) | Ticket status, estimates, week gates, out-of-scope list |
+| [tickets/STATUS.md](tickets/STATUS.md) | Ticket status; each ticket's goal and Definition of Done in `tickets/<ID>.md` |
+| [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) | Estimates, week gates, open decisions, out-of-scope list |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | About to change something that looks deliberate |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Before a change crossing component boundaries |
 | Per-repo `CLAUDE.md` | Working inside `api/`, `web/` or `admin/` |
@@ -147,7 +149,8 @@ https://claude.ai/code/artifact/a86e0066-2565-4026-b18d-faf2802f0890
   Append only; a reversal is a new entry that says which one it supersedes.
 - Finished a task or meaningful chunk → dated entry at the top of `docs/WORKLOG.md`.
 - Ad-hoc ask, feedback, or off-flow request → log in `docs/BACKLOG.md`; mark done, dated, when shipped.
-- Ticket status changed → update `docs/EXECUTION_PLAN.md`.
+- Ticket status changed → update `tickets/STATUS.md` and that ticket's `tickets/<ID>.md` (D-033).
+  `docs/EXECUTION_PLAN.md` no longer holds status.
 - Invariant or gotcha changed → update this file (and `docs/ARCHITECTURE.md` if structural).
 - Absolute dates only (`2026-08-31`), never "today".
 - If a doc contradicts the code, **the code wins** — fix the doc in the same pass.

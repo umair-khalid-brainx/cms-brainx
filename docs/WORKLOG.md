@@ -5,6 +5,24 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-06 — Tickets split into `tickets/`, one file each
+
+Created `tickets/` in the workflow kit's layout (D-033): `STATUS.md` plus one `<ID>.md` per ticket,
+54 in total (13 DONE, 7 IN-PROGRESS, 33 TODO, 1 BACKLOG), ordered by week so each ticket follows
+what it depends on.
+
+- Kept the existing IDs (`CNT-07.md`), not `T-001`.
+- `STATUS.md` is now the only place status lives. `EXECUTION_PLAN.md`'s ticket tables lost their
+  Status column; the per-row status notes moved into each ticket's "History" section.
+- Done tickets list what was built and verified; open tickets have a drafted Definition of Done,
+  every item marked **Draft**.
+
+**Not done:** no `docs/use-cases.md` or `docs/plan.md`, so the DoD isn't from use cases and
+`/build`'s pre-checks will stop. The published plan's original acceptance criteria couldn't be read
+(not shared with this account), so drafts may differ from what was agreed there.
+
+---
+
 ## 2026-10-06 — Status dropdown on the Pages list; restore for archived pages (`CNT-11` done)
 
 Per-row Archive button replaced by a status dropdown that lists every status except the current one.

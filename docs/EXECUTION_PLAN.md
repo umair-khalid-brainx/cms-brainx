@@ -53,47 +53,51 @@ Cut order if a week overruns: **GOV-02** (revision comparison), then **GOV-03** 
 
 ## Tickets
 
+**Status lives in [`tickets/STATUS.md`](../tickets/STATUS.md), and each ticket's goal, Definition of Done
+and history in `tickets/<ID>.md`** (D-033). The tables below keep only estimates, weeks and
+dependencies.
+
 ### FND — Foundation  ·  1.35d  ·  api
 
 The invariants everything else is built on. Nothing here is demoable — say so in the daily report rather than appearing to stall.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `FND-01` | Database schema and initial migration | A | 0.25 | 1 | — | ✅ done (MVP slice — 4 models, not the full eventual schema; see `WORKLOG.md` 2026-09-25) |
-| `FND-02` | Scoped repository layer | D | 0.30 | 1 | FND-01 | ✅ done — `ContentRepository` (`api/src/content/content.repository.ts`); every method takes `siteId`, nothing outside it touches `PrismaService` for content; see `WORKLOG.md` 2026-09-25 |
-| `FND-03` | Tenant invariant tests | D | 0.15 | 1 | FND-02 | ⬜ todo |
-| `FND-04` | Host to site resolution with cache | B | 0.20 | 1 | FND-01 | 🟨 in progress — resolution built with `CNT-07` (host → subdomain in `web/src/proxy.ts`, subdomain → site via `SiteRepository.findBySubdomain`); the in-memory cache is not, so every request does one site lookup |
-| `FND-05` | Auth: JWT, login, guards, role decorators | B | 0.35 | 1 | FND-01 | ✅ done — `POST /auth/login`, `GET /auth/me`, `JwtAuthGuard` wired to the real `admin` login page (bcrypt hash, JWT, localStorage session, route guard, forced re-login on an expired/invalid token). Role decorators landed with `GOV-06`: `PermissionsGuard` + `@RequirePermission(...)`, checked in the API against a hardcoded per-role permission map, not just hidden UI — see `DECISIONS.md` D-023. This row previously said role enforcement didn't exist yet; stale as of `GOV-06` landing the same day, corrected 2026-09-28 |
-| `FND-06` | Seed: first tenant and admin user | A | 0.10 | 1 | FND-01, FND-05 | ✅ done — `npm run db:seed` (manual, not wired into `prisma migrate reset`'s seed hook) creates Corrick Oyster Co. and one owner account |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `FND-01` | Database schema and initial migration | A | 0.25 | 1 | — |
+| `FND-02` | Scoped repository layer | D | 0.30 | 1 | FND-01 |
+| `FND-03` | Tenant invariant tests | D | 0.15 | 1 | FND-02 |
+| `FND-04` | Host to site resolution with cache | B | 0.20 | 1 | FND-01 |
+| `FND-05` | Auth: JWT, login, guards, role decorators | B | 0.35 | 1 | FND-01 |
+| `FND-06` | Seed: first tenant and admin user | A | 0.10 | 1 | FND-01, FND-05 |
 
 ### XRP — Cross-repo platform  ·  0.85d  ·  all three
 
 Work created by splitting the monorepo into three independent repositories. Not in the original estimate; it is the cost of that decision.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `XRP-01` | Shared block package | B | 0.55 | 1 | DEC-1 | ✅ done (local `file:` dep, not published — see `DECISIONS.md` D-016) |
-| `XRP-02` | CI pipeline per repository | A | 0.30 | 1 | — | ⬜ todo |
-| `XRP-03` | Typed API client generated from OpenAPI | B | 0.30 | — | CNT-01 | 🅱 backlog |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `XRP-01` | Shared block package | B | 0.55 | 1 | DEC-1 |
+| `XRP-02` | CI pipeline per repository | A | 0.30 | 1 | — |
+| `XRP-03` | Typed API client generated from OpenAPI | B | 0.30 | — | CNT-01 |
 
 ### CNT — Content loop  ·  2.95d  ·  api + web + admin
 
 Edit, publish, live. Once this closes there is always something demonstrable — it is the safety net for every week after.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `CNT-01` | Content CRUD API, tenant-scoped | A | 0.20 | 1 | FND-02 | ✅ done — `GET/POST /content`, `GET/PATCH /content/:slug`, `JwtAuthGuard`-protected; `siteId` resolved server-side from the caller's site membership, never trusted from the request; server-side slugify with collision suffixing; see `WORKLOG.md` 2026-09-25 |
-| `CNT-02` | Admin content list and edit screens | A | 0.15 | 1 | CNT-01 | ✅ done — `/pages`, `/dashboard` Quick Draft, and `/editor/:slug` all read/write the real `CNT-01` API now, not `corrickPages.ts`/`localStorage`; Puck's native data shape is translated to/from the flat `cms-blocks` block contract at the boundary (D-015, implemented — see D-020); all 4 demo pages migrated into the real database and `corrickPages.ts` deleted (D-021/D-022) |
-| `CNT-03` | Publish states and transitions | D | 0.20 | 1 | CNT-01 | ✅ done — built as part of `CNT-01`/`CNT-02` rather than as a separate pass, so this row was never updated until now. `ContentStatus` (`draft`/`published`) on `Content`; `PATCH /content/:slug` transitions it via `dto.status`; transitioning *to* `published` requires the `content:publish` permission (`ContentService.update`, checked in-service since the route-level guard can't see into the body), reverting to `draft` doesn't need it. Only two states — no "scheduled" or review-pending state, that's `GOV-07` |
-| `CNT-04` | Slug handling and per-site uniqueness | D | 0.15 | 1 | CNT-01 | ⬜ todo |
-| `CNT-05` | Page hierarchy: parent, depth limit, cycle guard | D | 0.20 | 1 | CNT-01 | ⬜ todo |
-| `CNT-06` | Denormalised path and recursive recomputation | D | 0.35 | 1 | CNT-05 | ⬜ todo |
-| `CNT-07` | Next catch-all route, host resolution, render | D | 0.45 | 2 | FND-04, CNT-06, BLK-01 | ✅ done 2026-10-06 — tenant from subdomain (`corrick.lvh.me:3000`) via `web/src/proxy.ts` rewrite to `/sites/[subdomain]/[[...path]]`; pages read from the DB through unauthenticated `GET /public/sites/:subdomain[/page]`, which only returns published, non-archived pages; separate 404s for unknown site vs. missing page. Also includes editable subdomains (Settings → Site Address, Owner/Administrator). Fixtures and `/preview` deleted. No caching yet (`CNT-08`); header/footer show the site name only until `GOV-04`. See D-030, D-031, `WORKLOG.md` 2026-10-06 |
-| `CNT-08` | ISR revalidation on publish, host-inclusive cache key | D | 0.45 | 2 | CNT-07, GOV-08a | ⬜ todo |
-| `CNT-09` | Signed-token preview URLs | B | 0.20 | 2 | CNT-07 | ⬜ todo |
-| `CNT-10` | Duplicate page | A | 0.15 | 2 | CNT-01 | ⬜ todo |
-| `CNT-11` | Trash, restore, permanent delete | A | 0.25 | 2 | CNT-01 | ✅ done — `archived` is a third `ContentStatus` (D-032, supersedes D-029's `archivedAt`-as-flag). Every Pages-list row has a status dropdown listing the statuses the page isn't in (archive asks to confirm); the Archived tab's dropdown restores to Draft/Published, and Delete Permanently stays a separate button there. `DELETE /content/:slug` still refuses (409) unless archived. See `WORKLOG.md` 2026-10-06 |
-| `CNT-12` | Pre-publish validation | B | 0.20 | 2 | CNT-03 | ⬜ todo |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `CNT-01` | Content CRUD API, tenant-scoped | A | 0.20 | 1 | FND-02 |
+| `CNT-02` | Admin content list and edit screens | A | 0.15 | 1 | CNT-01 |
+| `CNT-03` | Publish states and transitions | D | 0.20 | 1 | CNT-01 |
+| `CNT-04` | Slug handling and per-site uniqueness | D | 0.15 | 1 | CNT-01 |
+| `CNT-05` | Page hierarchy: parent, depth limit, cycle guard | D | 0.20 | 1 | CNT-01 |
+| `CNT-06` | Denormalised path and recursive recomputation | D | 0.35 | 1 | CNT-05 |
+| `CNT-07` | Next catch-all route, host resolution, render | D | 0.45 | 2 | FND-04, CNT-06, BLK-01 |
+| `CNT-08` | ISR revalidation on publish, host-inclusive cache key | D | 0.45 | 2 | CNT-07, GOV-08a |
+| `CNT-09` | Signed-token preview URLs | B | 0.20 | 2 | CNT-07 |
+| `CNT-10` | Duplicate page | A | 0.15 | 2 | CNT-01 |
+| `CNT-11` | Trash, restore, permanent delete | A | 0.25 | 2 | CNT-01 |
+| `CNT-12` | Pre-publish validation | B | 0.20 | 2 | CNT-03 |
 
 ### BLK — Blocks and editor  ·  3.80d  ·  web + admin
 
@@ -104,83 +108,83 @@ portal — see `DECISIONS.md` D-013. Days below are carried over unchanged from 
 estimate; treat them as provisional until the recommended Puck spike (wire the Hero block through
 Puck's config) validates the integration.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `BLK-01` | Block registry, renderer, six blocks, theme tokens | A | 0.60 | — | — | ✅ done |
-| `BLK-02` | Remaining render blocks: gallery, embed, FAQ | A | 0.40 | 2 | BLK-01 | 🟨 in progress — gallery + FAQ done, plus 5 blocks beyond original scope (logoCloud, stats, spacer, pricingTable, teamGrid); embed intentionally not built, see `WORKLOG.md` 2026-09-25 |
-| `BLK-03` | Editor canvas (Puck): add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 | 🟨 in progress — canvas built with all 14 real blocks, now wired to a real content record via `CNT-02`; add/delete/reorder/duplicate themselves still not interactively tested (drag/click unverifiable headlessly) |
-| `BLK-04` | Per-block settings panel (Puck fields config) | C | 0.60 | 3 | BLK-03 | 🟨 in progress — fields defined for all 14 blocks, not interactively tested (drag/click unverifiable headlessly) |
-| `BLK-05` | TipTap integration and sanitisation on write | B | 0.40 | 3 | BLK-04 | ⬜ todo |
-| `BLK-06` | Form block, submissions table, admin list | B | 0.50 | 3 | BLK-04, FND-02 | 🟨 in progress — `ContactForm` block built (non-functional, no submit endpoint); submissions table and admin list still todo |
-| `BLK-07` | Inline editing: Editable primitive + TipTap in canvas | C | 0.30 | 3 | XRP-01, BLK-04 | ⬜ todo |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `BLK-01` | Block registry, renderer, six blocks, theme tokens | A | 0.60 | — | — |
+| `BLK-02` | Remaining render blocks: gallery, embed, FAQ | A | 0.40 | 2 | BLK-01 |
+| `BLK-03` | Editor canvas (Puck): add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 |
+| `BLK-04` | Per-block settings panel (Puck fields config) | C | 0.60 | 3 | BLK-03 |
+| `BLK-05` | TipTap integration and sanitisation on write | B | 0.40 | 3 | BLK-04 |
+| `BLK-06` | Form block, submissions table, admin list | B | 0.50 | 3 | BLK-04, FND-02 |
+| `BLK-07` | Inline editing: Editable primitive + TipTap in canvas | C | 0.30 | 3 | XRP-01, BLK-04 |
 
 ### TYP — Content types and templates  ·  1.70d  ·  api + admin + web
 
 The differentiating claim: an admin creates a content type live on screen and it routes with no deploy. Highest-compression work in the project.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `TYP-01` | Type builder UI | A | 0.40 | 3 | CNT-02 | ⬜ todo |
-| `TYP-02` | Six field kinds, dynamic forms, JSONB, Zod | A | 0.60 | 3 | TYP-01 | ⬜ todo |
-| `TYP-03` | Type-driven routing | B | 0.20 | 3 | TYP-01, CNT-07 | ⬜ todo |
-| `TYP-04` | Template selection on create | B | 0.20 | 3 | TYP-05 | ⬜ todo |
-| `TYP-05` | Four seeded starter block arrangements | A | 0.30 | 2 | BLK-02 | ⬜ todo |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `TYP-01` | Type builder UI | A | 0.40 | 3 | CNT-02 |
+| `TYP-02` | Six field kinds, dynamic forms, JSONB, Zod | A | 0.60 | 3 | TYP-01 |
+| `TYP-03` | Type-driven routing | B | 0.20 | 3 | TYP-01, CNT-07 |
+| `TYP-04` | Template selection on create | B | 0.20 | 3 | TYP-05 |
+| `TYP-05` | Four seeded starter block arrangements | A | 0.30 | 2 | BLK-02 |
 
 ### MED — Media  ·  0.70d  ·  api + admin
 
 Local disk, sharp thumbnails. No S3, no CDN — one box, one volume is sufficient at demo scale.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `MED-01` | Upload, thumbnails, local disk | B | 0.30 | 3 | FND-02 | 🟨 in progress — `POST /media` uploads a file to site-scoped local disk, served back at `/uploads/:siteId/:file`; wired directly into every image field in the block editor (`ImageUploadField.tsx`), not just a standalone endpoint. No thumbnails (`sharp`) yet — the original upload is what gets stored and served; see `WORKLOG.md` 2026-09-28 |
-| `MED-02` | Library grid, reuse, replace, delete, metadata | B | 0.25 | 3 | MED-01 | 🟨 in progress — `/media` page: grid of a site's uploads (backed by a real `Media` table, D-026), detail panel with metadata + Copy URL, Delete. Reuse now covered by `MED-03`'s picker; still no "replace in place" (delete + re-upload is the only path to swap a file) |
-| `MED-03` | Media picker in block settings | B | 0.15 | 3 | MED-02, BLK-04 | ✅ done — `ImageUploadField` gained a "Browse" button opening `MediaLibraryModal.tsx`, a grid over the site's images-only media; picking one fills the field. No new API surface, reads the same `GET /media` list; see `DECISIONS.md` D-027, `WORKLOG.md` 2026-09-28 |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `MED-01` | Upload, thumbnails, local disk | B | 0.30 | 3 | FND-02 |
+| `MED-02` | Library grid, reuse, replace, delete, metadata | B | 0.25 | 3 | MED-01 |
+| `MED-03` | Media picker in block settings | B | 0.15 | 3 | MED-02, BLK-04 |
 
 ### SEO — SEO surface  ·  0.40d  ·  web + api
 
 The reason the public site is server-rendered at all. Page source will be inspected during the pitch.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `SEO-01` | SEO fields, meta rendering, Open Graph | A | 0.20 | 4 | CNT-07 | ⬜ todo |
-| `SEO-02` | Per-tenant sitemap.xml and robots.txt | A | 0.20 | 4 | CNT-07 | ⬜ todo |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `SEO-01` | SEO fields, meta rendering, Open Graph | A | 0.20 | 4 | CNT-07 |
+| `SEO-02` | Per-tenant sitemap.xml and robots.txt | A | 0.20 | 4 | CNT-07 |
 
 ### TAX — Taxonomy  ·  0.40d  ·  api + web + admin
 
 An organisation feature, not an SEO feature. Archives ship noindex by default, as WordPress does, because thin tag pages are a liability.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `TAX-01` | Categories and tags, opt-in per type | A | 0.20 | 4 | TYP-01 | ⬜ todo |
-| `TAX-02` | Archive and category listing pages | A | 0.20 | 4 | TAX-01, CNT-07 | ⬜ todo |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `TAX-01` | Categories and tags, opt-in per type | A | 0.20 | 4 | TYP-01 |
+| `TAX-02` | Archive and category listing pages | A | 0.20 | 4 | TAX-01, CNT-07 |
 
 ### GOV — Governance, workflow, navigation  ·  4.10d  ·  all three
 
 What makes it read as a real product rather than a page editor: roles, review, history, menus — and the second tenant that proves the platform claim.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `GOV-08a` | Minimal second tenant and host mapping | B | 0.15 | 2 | FND-04, FND-06 | ⬜ todo |
-| `GOV-01` | Revisions: snapshot, list, restore | A | 0.30 | 4 | CNT-01 | ⬜ todo |
-| `GOV-02` | Revision comparison, block level | C | 0.50 | 4 | GOV-01, BLK-04 | ⬜ todo |
-| `GOV-03` | Nested menu builder | C | 0.90 | 4 | CNT-01 | ⬜ todo |
-| `GOV-04` | Header and footer content and branding | A | 0.20 | 4 | BLK-01 | ⬜ todo |
-| `GOV-05` | Redirect engine and auto-redirect on slug change | B | 0.40 | 4 | CNT-04 | ⬜ todo |
-| `GOV-06` | Roles as data, five seeded, site members | B | 0.55 | 4 | FND-05 | ✅ done — 5 fixed roles (`Role` enum), permission sets hardcoded and enforced via `PermissionsGuard` in the API, not just hidden UI; also built a team-invite flow beyond this ticket's literal scope (one-time links, no email infra exists) since "site members" needed a real way to get people in, not just the seed script (D-014's flagged gap) — see `DECISIONS.md` D-023. No per-author content ownership (Author/Contributor are permission tiers only, not content-scoped) |
-| `GOV-07` | Submit for review and reviewer queue | B | 0.40 | 5 | CNT-03, GOV-06 | ⬜ todo |
-| `GOV-08b` | Second tenant branding, content, cross-tenant bug hunt | D | 0.70 | 5 | GOV-08a, GOV-04 | ⬜ todo |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `GOV-08a` | Minimal second tenant and host mapping | B | 0.15 | 2 | FND-04, FND-06 |
+| `GOV-01` | Revisions: snapshot, list, restore | A | 0.30 | 4 | CNT-01 |
+| `GOV-02` | Revision comparison, block level | C | 0.50 | 4 | GOV-01, BLK-04 |
+| `GOV-03` | Nested menu builder | C | 0.90 | 4 | CNT-01 |
+| `GOV-04` | Header and footer content and branding | A | 0.20 | 4 | BLK-01 |
+| `GOV-05` | Redirect engine and auto-redirect on slug change | B | 0.40 | 4 | CNT-04 |
+| `GOV-06` | Roles as data, five seeded, site members | B | 0.55 | 4 | FND-05 |
+| `GOV-07` | Submit for review and reviewer queue | B | 0.40 | 5 | CNT-03, GOV-06 |
+| `GOV-08b` | Second tenant branding, content, cross-tenant bug hunt | D | 0.70 | 5 | GOV-08a, GOV-04 |
 
 ### DEP — Deploy and demo prep  ·  3.85d  ·  infrastructure
 
 The least-compressible work in the project at 23% of remaining effort. The agent cannot see your server, wait for DNS, or judge whether demo copy is convincing.
 
-| ID | Ticket | Band | Days | Wk | Depends on | Status |
-| -- | ------ | ---- | ---- | -- | ---------- | ------ |
-| `DEP-01a` | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | E | 0.40 | 1 | DEC-2 | ⬜ todo |
-| `DEP-01b` | Deploy script, three-app topology, rollback | E | 0.80 | 5 | DEP-01a | ⬜ todo |
-| `DEP-02` | Domains screen, UI only | A | 0.15 | 5 | GOV-06 | ⬜ todo |
-| `DEP-03` | Realistic seed content for both tenants | E | 0.80 | 5 | GOV-08b, DEC-3 | ⬜ todo |
-| `DEP-04` | Bug fixing and demo rehearsal | D | 1.70 | 5 | DEP-03 | ⬜ todo |
+| ID | Ticket | Band | Days | Wk | Depends on |
+| -- | ------ | ---- | ---- | -- | ---------- |
+| `DEP-01a` | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | E | 0.40 | 1 | DEC-2 |
+| `DEP-01b` | Deploy script, three-app topology, rollback | E | 0.80 | 5 | DEP-01a |
+| `DEP-02` | Domains screen, UI only | A | 0.15 | 5 | GOV-06 |
+| `DEP-03` | Realistic seed content for both tenants | E | 0.80 | 5 | GOV-08b, DEC-3 |
+| `DEP-04` | Bug fixing and demo rehearsal | D | 1.70 | 5 | DEP-03 |
 
 ## Out of scope
 

@@ -8,6 +8,35 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-033 — 2026-10-06 — Tickets live in `tickets/`, one file each; `STATUS.md` owns status
+
+**Decision:** every ticket from `EXECUTION_PLAN.md` now has its own file, `tickets/<ID>.md`, in the
+workflow kit's format (goal, Definition of Done checklist, technical notes, history), and
+`tickets/STATUS.md` is the **only** place ticket status is recorded. `EXECUTION_PLAN.md`'s ticket
+tables lost their Status column and keep estimates, weeks and dependencies only.
+
+**Options the user chose between:**
+
+- **IDs:** kept the existing IDs (`CNT-07.md`) rather than renumbering to the kit's `T-001`. Every
+  decision, worklog entry and commit already cites these IDs; renumbering would orphan all of them.
+- **Status:** one source (`STATUS.md`) rather than keeping `EXECUTION_PLAN.md` in sync with it. Two
+  copies of status drift; this file has already corrected stale rows twice (2026-09-28).
+- **Definition of Done:** drafted from the repo (plan rows, decisions, invariants, code) rather than
+  waiting. The kit expects DoD copied word for word from `docs/use-cases.md`, which doesn't exist,
+  and the published plan with the original acceptance criteria isn't shared with the account
+  working on this repo. Every drafted item is marked **Draft** and must be confirmed before
+  `/build` runs that ticket.
+
+**Deviations from the kit, on purpose:**
+
+- `BACKLOG` is an extra status (`XRP-03`) so `/build`, which runs every `TODO`, skips it.
+- Done tickets were built before the kit existed, without its tests. Their files say so instead of
+  ticking "All tests pass. Reviewer approved. Verifier passed."
+- `docs/plan.md` and `docs/use-cases.md` still don't exist, so `/build`'s own pre-checks will stop
+  until they do (or until those checks are adapted to `EXECUTION_PLAN.md`).
+
+---
+
 ## D-032 — 2026-10-06 — `archived` is a page status, not a separate flag; status changes via one dropdown
 
 **Supersedes D-029's storage choice** (archive as a nullable `archivedAt` alongside `status`). D-029's
