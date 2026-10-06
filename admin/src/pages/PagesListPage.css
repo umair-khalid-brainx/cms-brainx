@@ -71,14 +71,25 @@
   color: #c0392b;
 }
 
+/* No `overflow: hidden` for the rounded corners — it would clip the row
+   status dropdown's popup on the last rows. The corner cells are rounded
+   instead, which needs `separate` borders (radius is ignored when collapsed). */
 .pages-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: #fff;
   border: 1px solid #c3c4c7;
   border-radius: 4px;
-  overflow: hidden;
   font-size: 0.8125rem;
+}
+
+.pages-table th:first-child {
+  border-top-left-radius: 4px;
+}
+
+.pages-table th:last-child {
+  border-top-right-radius: 4px;
 }
 
 .pages-table th {
@@ -155,6 +166,18 @@
 
 .pages-row-actions a + a {
   margin-left: 1.1rem;
+}
+
+.pages-row-status-menu {
+  display: inline-block;
+  width: 9rem;
+  margin-left: 1.1rem;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.pages-row-status-menu .select-trigger {
+  padding: 0.25rem 0.5rem;
 }
 
 .pages-row-delete {

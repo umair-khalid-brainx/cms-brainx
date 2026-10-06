@@ -10,6 +10,8 @@ type SelectProps<T extends string> = {
   options: SelectOption<T>[]
   disabled?: boolean
   className?: string
+  /** Shown when `value` matches none of `options` — e.g. an action menu that leaves out the current choice. */
+  placeholder?: string
 }
 
 /**
@@ -19,7 +21,7 @@ type SelectProps<T extends string> = {
  * glued to the box's right edge with no matching padding to the rest of the
  * UI). This owns its own popup and arrow instead.
  */
-function Select<T extends string>({ id, value, onChange, options, disabled, className }: SelectProps<T>) {
+function Select<T extends string>({ id, value, onChange, options, disabled, className, placeholder }: SelectProps<T>) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const selected = options.find((option) => option.value === value)
@@ -58,7 +60,7 @@ function Select<T extends string>({ id, value, onChange, options, disabled, clas
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="select-value">{selected?.label ?? ''}</span>
+        <span className="select-value">{selected?.label ?? placeholder ?? ''}</span>
         <svg className="select-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M5.5 7.5 10 12l4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

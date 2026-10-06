@@ -92,7 +92,7 @@ Edit, publish, live. Once this closes there is always something demonstrable —
 | `CNT-08` | ISR revalidation on publish, host-inclusive cache key | D | 0.45 | 2 | CNT-07, GOV-08a | ⬜ todo |
 | `CNT-09` | Signed-token preview URLs | B | 0.20 | 2 | CNT-07 | ⬜ todo |
 | `CNT-10` | Duplicate page | A | 0.15 | 2 | CNT-01 | ⬜ todo |
-| `CNT-11` | Trash, restore, permanent delete | A | 0.25 | 2 | CNT-01 | 🟨 in progress — `Content.archivedAt` added; Pages tab offers Archive only, new Archived tab offers Delete Permanently only, each with a confirm prompt; `DELETE /content/:slug` now refuses (409) unless the page is already archived (D-029). Still missing: restore (archived → active) — see `BACKLOG.md`. See `WORKLOG.md` 2026-09-28 |
+| `CNT-11` | Trash, restore, permanent delete | A | 0.25 | 2 | CNT-01 | ✅ done — `archived` is a third `ContentStatus` (D-032, supersedes D-029's `archivedAt`-as-flag). Every Pages-list row has a status dropdown listing the statuses the page isn't in (archive asks to confirm); the Archived tab's dropdown restores to Draft/Published, and Delete Permanently stays a separate button there. `DELETE /content/:slug` still refuses (409) unless archived. See `WORKLOG.md` 2026-10-06 |
 | `CNT-12` | Pre-publish validation | B | 0.20 | 2 | CNT-03 | ⬜ todo |
 
 ### BLK — Blocks and editor  ·  3.80d  ·  web + admin

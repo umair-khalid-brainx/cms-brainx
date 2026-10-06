@@ -23,9 +23,10 @@ import {
   type UpdateContentDto,
 } from './dto/content.dto.js';
 
-// content:publish isn't checked here — PATCH handles both draft-saves and
-// publish-transitions through one route (dto.status), so that one check
-// lives in ContentService.update instead, where the body is already parsed.
+// content:publish and content:delete aren't checked on PATCH here — it
+// handles draft-saves and every status transition (publish, archive, restore)
+// through one route (dto.status), so those checks live in
+// ContentService.update instead, where the body is already parsed.
 @Controller('content')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ContentController {
@@ -68,13 +69,6 @@ export class ContentController {
     @Body(new ZodValidationPipe(updateContentSchema)) body: UpdateContentDto,
   ) {
     return this.content.update(request.user.sub, slug, body);
-  }
-
-  @Patch(':slug/archive')
-  @RequirePermission('content:delete')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async archive(@Req() request: AuthenticatedRequest, @Param('slug') slug: string): Promise<void> {
-    await this.content.archive(request.user.sub, slug);
   }
 
   @Delete(':slug')

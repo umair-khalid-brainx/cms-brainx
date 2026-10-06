@@ -27,3 +27,14 @@ export const ASSIGNABLE_ROLE_OPTIONS = ASSIGNABLE_ROLES.map((value) => ({ value,
 export function canManageTeam(role: Role | undefined): boolean {
   return role === 'owner' || role === 'administrator';
 }
+
+// Mirrors which roles hold content:publish / content:delete in
+// api/src/auth/permission.ts — used only to leave a status the user can't
+// move to out of the pages list's dropdown. The API still refuses it.
+export function canPublishContent(role: Role | undefined): boolean {
+  return role === 'owner' || role === 'administrator' || role === 'editor' || role === 'author';
+}
+
+export function canArchiveContent(role: Role | undefined): boolean {
+  return role === 'owner' || role === 'administrator' || role === 'editor';
+}

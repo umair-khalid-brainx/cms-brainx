@@ -5,6 +5,35 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-06 — Status dropdown on the Pages list; restore for archived pages (`CNT-11` done)
+
+Per-row Archive button replaced by a status dropdown that lists every status except the current one.
+`archived` became a real `ContentStatus` value (D-032, supersedes D-029's flag).
+
+- `api/prisma/schema.prisma`: `ContentStatus` + `archived`. Two migrations —
+  `20261006140000_add_archived_content_status` (enum value) and
+  `20261006140100_backfill_archived_content_status` (`archived_at IS NOT NULL` → `status = archived`).
+- `ContentRepository`: list filters on `status` instead of `archivedAt`; `archive()` removed.
+- `ContentService.update`: entering/leaving `archived` needs `content:delete`, sets/clears
+  `archivedAt`. `ContentService.archive` and `PATCH /content/:slug/archive` removed. `remove` now
+  guards on `status !== 'archived'`. DTO accepts `archived`.
+- `admin`: `setPageStatus(slug, status)` replaces `archivePage`; `Select` gained a `placeholder` prop
+  (shown when the value isn't among the options); `roles.ts` gained `canPublishContent` /
+  `canArchiveContent`. `PagesListPage` rows use the dropdown on both tabs; archiving still asks to
+  confirm; Delete Permanently stays a separate button on the Archived tab. `.pages-table` dropped
+  `overflow: hidden` (it clipped the last row's popup) — corner cells are rounded instead.
+- Verified against a copy of the DB (`cms_cnt11`, so the shared `cms` DB wasn't touched): backfill
+  converted the existing archived page; curl confirmed archive sets `archivedAt`, restore clears it,
+  `DELETE` on an active page → 409, unknown status → 400, and as an Author archive/restore → 403
+  while publish → 200. In the browser: dropdown hides the current status on every row, last-row
+  popup isn't clipped, publish updates the badge in place, archive confirms and moves the row to
+  Archived, restore to Draft moves it back. Checked in dark and light mode.
+- Not done: the shared `cms` DB still needs the two migrations applied (`prisma migrate deploy`, not
+  `migrate dev` — another worktree has an unmerged migration applied there, and `migrate dev` would
+  read that as drift and offer a reset).
+
+---
+
 ## 2026-09-28 — Page archive (soft delete), two-tab Pages screen
 
 Added an Archive step ahead of permanent delete for pages (`CNT-11`, D-029).

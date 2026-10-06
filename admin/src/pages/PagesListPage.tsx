@@ -1,11 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { archivePage, deletePage, listArchivedPages, listPages, type PageSummary } from '../lib/contentApi';
+import Select, { type SelectOption } from '../components/Select';
+import { getSession } from '../lib/auth';
+import { deletePage, listArchivedPages, listPages, setPageStatus, type PageStatus, type PageSummary } from '../lib/contentApi';
+import { canArchiveContent, canPublishContent } from '../lib/roles';
 import { siteUrl } from '../data/site';
 import './PagesListPage.css';
 
 type Tab = 'active' | 'archived';
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
+
+const STATUS_LABELS: Record<PageStatus, string> = { draft: 'Draft', published: 'Published', archived: 'Archived' };
+
+// The row's dropdown lists every status except the one the page is already
+// in, minus any the user's role can't move to (UI affordance only — the API
+// enforces). Leaving or entering Archived needs the same right as archiving.
+function statusOptions(current: PageStatus): SelectOption<PageStatus>[] {
+  const role = getSession()?.memberships[0]?.role;
+  const canArchive = canArchiveContent(role);
+  return (Object.keys(STATUS_LABELS) as PageStatus[])
+    .filter((status) => status !== current)
+    .filter((status) => status !== 'published' || canPublishContent(role))
+    .filter(() => current !== 'archived' || canArchive)
+    .filter((status) => status !== 'archived' || canArchive)
+    .map((value) => ({ value, label: STATUS_LABELS[value] }));
+}
 
 function PagesListPage() {
   const [tab, setTab] = useState<Tab>('active');
@@ -34,18 +53,37 @@ function PagesListPage() {
     };
   }, [tab]);
 
-  async function handleArchive(page: PageSummary) {
-    if (!window.confirm(`Archive "${page.title}"? It will be hidden from the site and moved to the Archived tab.`)) return;
+  async function handleStatusChange(page: PageSummary, status: PageStatus) {
+    if (status === 'archived' && !window.confirm(`Archive "${page.title}"? It will be hidden from the site and moved to the Archived tab.`)) return;
     setBusySlug(page.slug);
     setActionError(null);
     try {
-      await archivePage(page.slug);
-      setPages((prev) => prev.filter((p) => p.slug !== page.slug));
+      const updated = await setPageStatus(page.slug, status);
+      // A page crossing the archived line leaves this tab's list; any other
+      // move (draft <-> published) just updates its row in place.
+      if (page.status === 'archived') setArchived((prev) => prev.filter((p) => p.slug !== page.slug));
+      else if (status === 'archived') setPages((prev) => prev.filter((p) => p.slug !== page.slug));
+      else setPages((prev) => prev.map((p) => (p.slug === page.slug ? updated : p)));
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Could not archive this page');
+      setActionError(error instanceof Error ? error.message : 'Could not change this page’s status');
     } finally {
       setBusySlug(null);
     }
+  }
+
+  function statusMenu(page: PageSummary) {
+    const options = statusOptions(page.status);
+    if (options.length === 0) return null;
+    return (
+      <Select
+        className="pages-row-status-menu"
+        value={page.status}
+        placeholder={busySlug === page.slug ? 'Saving…' : 'Change status'}
+        options={options}
+        disabled={busySlug === page.slug}
+        onChange={(status) => handleStatusChange(page, status)}
+      />
+    );
   }
 
   async function handleDelete(page: PageSummary) {
@@ -119,14 +157,7 @@ function PagesListPage() {
                     View
                     <span aria-hidden="true">&#8599;</span>
                   </a>
-                  <button
-                    type="button"
-                    className="pages-row-delete"
-                    disabled={busySlug === page.slug}
-                    onClick={() => handleArchive(page)}
-                  >
-                    {busySlug === page.slug ? 'Archiving…' : 'Archive'}
-                  </button>
+                  {statusMenu(page)}
                 </td>
               </tr>
             ))}
@@ -151,6 +182,7 @@ function PagesListPage() {
                 <td className="pages-row-path">{page.path}</td>
                 <td className="pages-row-path">{page.archivedAt ? new Date(page.archivedAt).toLocaleDateString() : ''}</td>
                 <td className="pages-row-actions">
+                  {statusMenu(page)}
                   <button
                     type="button"
                     className="pages-row-delete"

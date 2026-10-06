@@ -104,9 +104,12 @@ model Invite {
   @@map("invites")
 }
 
+// `archived` is a status, not a separate flag (D-032) — so "is this page
+// live?" is one check, `status = published`, with no second column to forget.
 enum ContentStatus {
   draft
   published
+  archived
 
   @@map("content_status")
 }
@@ -123,6 +126,8 @@ model Content {
   path       String
   status     ContentStatus @default(draft)
   blocks     Json          @default("[]")
+  // When it was archived, for display only — set on entering `archived`,
+  // cleared on leaving it. `status` is the source of truth, not this.
   archivedAt DateTime?     @map("archived_at")
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")

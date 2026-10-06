@@ -13,7 +13,7 @@ import { getSession } from './auth';
 // exactly what D-015 already decided and documented; this is the first place
 // that decision is actually implemented, not just planned.
 
-export type PageStatus = 'draft' | 'published';
+export type PageStatus = 'draft' | 'published' | 'archived';
 
 export type PageSummary = {
   slug: string;
@@ -155,9 +155,12 @@ export async function createPage(title: string, body = ''): Promise<PageSummary>
   return toSummary(record);
 }
 
-export async function archivePage(slug: string): Promise<void> {
+// One call for every status move the pages list offers — publish, unpublish,
+// archive and restore. The API decides what each move needs (D-032).
+export async function setPageStatus(slug: string, status: PageStatus): Promise<PageSummary> {
   const session = requireSession();
-  await apiSend<void>('PATCH', `/content/${slug}/archive`, {}, session.accessToken);
+  const record = await apiSend<ContentRecord>('PATCH', `/content/${slug}`, { status }, session.accessToken);
+  return toSummary(record);
 }
 
 export async function deletePage(slug: string): Promise<void> {

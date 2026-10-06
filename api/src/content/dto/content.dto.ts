@@ -18,7 +18,7 @@ export type CreateContentDto = z.infer<typeof createContentSchema>;
 export const updateContentSchema = z
   .object({
     title: z.string().min(1).optional(),
-    status: z.enum(['draft', 'published']).optional(),
+    status: z.enum(['draft', 'published', 'archived']).optional(),
     blocks: z.array(blockSchema).optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'Provide at least one field to update' });

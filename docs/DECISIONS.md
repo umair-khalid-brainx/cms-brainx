@@ -8,6 +8,50 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-032 — 2026-10-06 — `archived` is a page status, not a separate flag; status changes via one dropdown
+
+**Supersedes D-029's storage choice** (archive as a nullable `archivedAt` alongside `status`). D-029's
+server-side rule — hard delete only from archived — stands unchanged.
+
+**The ask.** Replace the per-row Archive button with a status dropdown on the Pages list, listing
+every status except the one the page is already in, so archive, restore, publish and unpublish are
+all the same gesture. This also closes `CNT-11`'s missing third ("restore").
+
+**The problem it exposed.** Under D-029, an archived page still carried `status = draft | published`
+underneath; "archived" lived in a second column. The dropdown treats Draft/Published/Archived as one
+choice of one thing, which the data didn't.
+
+**Options considered.**
+- **A — keep two fields, dropdown is UI-only.** Zero migration. But every future public read (the
+  real host-resolved route, `CNT-07`) must check *both* `status = published` *and*
+  `archivedAt IS NULL`; one query that forgets the second serves an archived page live on a client's
+  site. Safety by remembering.
+- **B — `archived` as a third `ContentStatus` value (chosen).** "Is this page live?" is one check,
+  `status = published`. An archived page can't also be "published", so there's no contradictory
+  state to forget about. Same reasoning as invariant 1: structural, not remembered.
+
+**How.** `ContentStatus` gained `archived`, in its own migration — Postgres won't use a new enum
+value inside the transaction that added it — followed by a backfill migration setting
+`status = 'archived'` wherever `archived_at` was set. `archivedAt` is kept purely as the "archived
+on" date for display: set on entering `archived`, cleared on leaving it; nothing reads it as truth.
+`PATCH /content/:slug/archive` is removed — every move goes through `PATCH /content/:slug`
+`{ status }`.
+
+**Permissions.** Entering *or leaving* `archived` needs `content:delete` (D-029's tier for archiving,
+now also for restoring). Moving to `published` still needs `content:publish`, so restoring straight
+to published needs both. Checked in `ContentService.update`; admin's dropdown just leaves out options
+a role can't use (UI affordance, `admin` invariant 3).
+
+**Restore target is chosen, not remembered.** No "status before archiving" is stored — the dropdown
+makes the user pick Draft or Published when restoring, which answers the question explicitly instead
+of guessing.
+
+**Delete Permanently is deliberately not in the dropdown.** Every dropdown move is reversible; hard
+delete isn't. Keeping it as its own red button on the Archived tab means a mis-click in the menu can
+never destroy a page.
+
+---
+
 ## D-029 — 2026-09-28 — Page soft-delete: archive is a state, not a route guard trusted client-side
 
 **Decision:** `Content` gets a nullable `archivedAt` column instead of a separate trash table.

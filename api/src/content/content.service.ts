@@ -54,29 +54,33 @@ export class ContentService {
       throw new ForbiddenException('Missing permission: content:publish');
     }
 
+    // Archiving takes a page off the live site and restoring puts one back
+    // into play, so both directions sit at the same tier as hard delete
+    // (D-029/D-032). A restore to `published` needs content:publish as well.
+    const entering = dto.status === 'archived' && existing.status !== 'archived';
+    const leaving = dto.status !== undefined && dto.status !== 'archived' && existing.status === 'archived';
+    if ((entering || leaving) && !hasPermission(membership.role, 'content:delete')) {
+      throw new ForbiddenException('Missing permission: content:delete');
+    }
+
     await this.content.update(membership.siteId, slug, {
       ...dto,
       blocks: dto.blocks as Prisma.InputJsonValue | undefined,
+      ...(entering && { archivedAt: new Date() }),
+      ...(leaving && { archivedAt: null }),
     });
     return this.content.findBySlug(membership.siteId, slug);
   }
 
-  async archive(userId: string, slug: string): Promise<void> {
-    const siteId = await this.resolveSiteId(userId);
-    const existing = await this.content.findBySlug(siteId, slug);
-    if (!existing) throw new NotFoundException('Page not found');
-    if (existing.archivedAt) throw new ConflictException('Page is already archived');
-    await this.content.archive(siteId, slug);
-  }
-
-  // Only archived pages can be hard-deleted — the pages list only offers
-  // Archive (see PagesListPage.tsx), and this guard means that's structural,
-  // not just a UI affordance a client could bypass by calling the API directly.
+  // Only archived pages can be hard-deleted — the pages list offers Delete
+  // Permanently on the Archived tab alone (see PagesListPage.tsx), and this
+  // guard means that's structural, not just a UI affordance a client could
+  // bypass by calling the API directly.
   async remove(userId: string, slug: string): Promise<void> {
     const siteId = await this.resolveSiteId(userId);
     const existing = await this.content.findBySlug(siteId, slug);
     if (!existing) throw new NotFoundException('Page not found');
-    if (!existing.archivedAt) throw new ConflictException('Archive this page before deleting it permanently');
+    if (existing.status !== 'archived') throw new ConflictException('Archive this page before deleting it permanently');
     await this.content.delete(siteId, slug);
   }
 
