@@ -53,8 +53,14 @@ path, no provisioning code.
 repository touches Prisma. Tenancy is enforced by the shape of the API rather than by remembering
 a `WHERE` clause, which matters more when an agent is writing the queries.
 
-**Resolution** — request `Host` header → an in-memory host-to-site map, invalidated when a site
-record changes. One catch-all route serves all tenants; there are no per-tenant route files or builds.
+**Resolution** — request `Host` header → `web/src/proxy.ts` strips the configured root domain
+(`PUBLIC_ROOT_DOMAIN`: `lvh.me` locally) and rewrites `corrick.lvh.me/wholesale` to the internal
+route `/sites/corrick/wholesale`, so the tenant is part of the route and of Next's cache key. That
+route asks `api`'s unauthenticated `GET /public/sites/:subdomain[/page?path=]`, which looks the site
+up by its unique `sites.subdomain` and returns only live pages (published and not archived).
+`sites.host` is kept for custom domains later. One catch-all route serves all tenants; there are no
+per-tenant route files or builds. Not built yet: an in-memory cache of the subdomain-to-site lookup
+(`FND-04`) and ISR (`CNT-08`) — every request currently renders fresh. See `DECISIONS.md` D-030, D-031.
 
 **Branding** — each site carries a `theme_json` blob: palette, type set, shape, density, texture.
 Rendering flattens it to `--site-*` CSS custom properties on a wrapper element. Blocks read those
@@ -142,21 +148,21 @@ Each repo owns its own env file; there is no shared config.
 | Repo | File | Keys |
 | ---- | ---- | ---- |
 | `api` | `.env` | `DATABASE_URL`, `API_PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS` |
-| `web` | `.env.local` | `NEXT_PUBLIC_API_URL`, `DEFAULT_TENANT_HOST` |
-| `admin` | `.env.local` | `VITE_API_URL` |
+| `web` | `.env.local` | `NEXT_PUBLIC_API_URL`, `PUBLIC_ROOT_DOMAIN` |
+| `admin` | `.env` | `VITE_API_URL`, `VITE_SITE_URL_TEMPLATE` |
 
 `CORS_ORIGINS` must list web's and admin's origins — they are separate origins, so CORS is what
 lets them call the API at all.
 
 ## Built vs not built
 
-**Built:** three repos scaffolded and running; API health endpoint reporting database connectivity;
-typed block registry, renderer, 6 block components, theme-token system, two demo tenant fixtures,
-dev preview routes.
+**Built (as of 2026-10-06):** schema and migrations, scoped repository layer, auth with five
+roles, content CRUD with draft/publish and archive, the Puck block editor, media library, team and
+invites, and the public site rendering live pages from the database by subdomain.
 
-**Not built yet:** the entire database schema, tenant middleware and repository layer, auth, content
-CRUD, publishing, the editor, custom content types, media, SEO surface, taxonomy, governance,
-deployment. See `EXECUTION_PLAN.md` for the sequence.
+**Not built yet:** tenant invariant tests, page hierarchy and path recomputation, ISR and
+revalidation on publish, custom content types, SEO surface, taxonomy, revisions, menus, redirects,
+review workflow, deployment. `EXECUTION_PLAN.md` has the per-ticket status.
 
 Anything in this document describing the API or the database is **design, not code**, until the
 corresponding ticket is marked done in `EXECUTION_PLAN.md`.
