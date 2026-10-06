@@ -107,9 +107,9 @@ Puck's config) validates the integration.
 | ID | Ticket | Band | Days | Wk | Depends on | Status |
 | -- | ------ | ---- | ---- | -- | ---------- | ------ |
 | `BLK-01` | Block registry, renderer, six blocks, theme tokens | A | 0.60 | — | — | ✅ done |
-| `BLK-02` | Remaining render blocks: gallery, embed, FAQ | A | 0.40 | 2 | BLK-01 | 🟨 in progress — gallery + FAQ done, plus 5 blocks beyond original scope (logoCloud, stats, spacer, pricingTable, teamGrid); embed intentionally not built, see `WORKLOG.md` 2026-09-25 |
-| `BLK-03` | Editor canvas (Puck): add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 | 🟨 in progress — canvas built with all 14 real blocks, now wired to a real content record via `CNT-02`; add/delete/reorder/duplicate themselves still not interactively tested (drag/click unverifiable headlessly) |
-| `BLK-04` | Per-block settings panel (Puck fields config) | C | 0.60 | 3 | BLK-03 | 🟨 in progress — fields defined for all 14 blocks, not interactively tested (drag/click unverifiable headlessly) |
+| `BLK-02` | Remaining render blocks: gallery, embed, FAQ | A | 0.40 | 2 | BLK-01 | ✅ done — gallery + FAQ (2026-09-25), plus 5 blocks beyond original scope (logoCloud, stats, spacer, pricingTable, teamGrid); embed as `videoEmbed`, YouTube/Vimeo by URL only (2026-10-06, `DECISIONS.md` D-033) |
+| `BLK-03` | Editor canvas (Puck): add, delete, reorder, duplicate | C | 1.00 | 2 | XRP-01, CNT-02 | 🟨 in progress — canvas built with all 15 real blocks, now wired to a real content record via `CNT-02`; add/delete/reorder/duplicate themselves still not interactively tested (drag/click unverifiable headlessly) |
+| `BLK-04` | Per-block settings panel (Puck fields config) | C | 0.60 | 3 | BLK-03 | 🟨 in progress — fields defined for all 15 blocks, not interactively tested (drag/click unverifiable headlessly) |
 | `BLK-05` | TipTap integration and sanitisation on write | B | 0.40 | 3 | BLK-04 | ⬜ todo |
 | `BLK-06` | Form block, submissions table, admin list | B | 0.50 | 3 | BLK-04, FND-02 | 🟨 in progress — `ContactForm` block built (non-functional, no submit endpoint); submissions table and admin list still todo |
 | `BLK-07` | Inline editing: Editable primitive + TipTap in canvas | C | 0.30 | 3 | XRP-01, BLK-04 | ⬜ todo |

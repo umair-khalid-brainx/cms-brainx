@@ -14,6 +14,7 @@ import { Spacer } from './Spacer';
 import { Stats } from './Stats';
 import { TeamGrid } from './TeamGrid';
 import { Testimonial } from './Testimonial';
+import { VideoEmbed } from './VideoEmbed';
 
 export type BlockComponent<T extends BlockType> = ComponentType<{ block: BlockOfType<T> }>;
 
@@ -44,6 +45,7 @@ export const blockRegistry: Registry = {
   pricingTable: { name: 'Pricing table', component: PricingTable },
   teamGrid: { name: 'Team grid', component: TeamGrid },
   contactForm: { name: 'Contact form', component: ContactForm },
+  videoEmbed: { name: 'Video', component: VideoEmbed },
 };
 
 export const blockTypes = Object.keys(blockRegistry) as BlockType[];

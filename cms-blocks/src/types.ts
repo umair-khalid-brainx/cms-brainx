@@ -150,6 +150,21 @@ export type ContactFormBlock = {
   fields: ContactFormField[];
 };
 
+export type VideoEmbedBlock = {
+  type: 'videoEmbed';
+  heading?: string;
+  /** The link as the editor pasted it. Shown back in the editor; never rendered. */
+  url: string;
+  /**
+   * Parsed from `url` by the editor (`parseVideoUrl`). Absent while the link
+   * is empty or isn't a supported video; the block renders nothing then.
+   * The iframe is built from these two, never from `url` — see D-033.
+   */
+  provider?: 'youtube' | 'vimeo';
+  videoId?: string;
+  caption?: string;
+};
+
 export type Block =
   | HeroBlock
   | RichTextBlock
@@ -164,7 +179,8 @@ export type Block =
   | GalleryBlock
   | PricingTableBlock
   | TeamGridBlock
-  | ContactFormBlock;
+  | ContactFormBlock
+  | VideoEmbedBlock;
 
 export type BlockType = Block['type'];
 

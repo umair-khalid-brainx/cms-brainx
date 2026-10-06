@@ -8,6 +8,45 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-033 — 2026-10-06 — Video embed: YouTube/Vimeo by pasted link, rendered from a parsed ID (`BLK-02`)
+
+**The ask.** `BLK-02`'s last line item, "embed". Left unbuilt on 2026-09-25 because a general embed
+collides with invariant 5 (sanitise on write): sanitising arbitrary `<iframe>` HTML well is hard.
+
+**Options considered.**
+- **Raw iframe/embed code.** Most flexible (maps, Calendly, forms). Needs an iframe-aware sanitiser
+  on write, which `api` doesn't have even for `richText` yet (`BLK-05`). Rejected for now.
+- **Store only the pasted URL; parse it at render.** WordPress's shape (its Embed block stores
+  `url` + `providerNameSlug` and fetches the iframe via oEmbed from an allowlist of ~30 providers).
+  Every render has to parse messy URLs correctly.
+- **Store only `{ provider, videoId }`.** Safe and clean, but the editor can't show back what the
+  user actually pasted, and adding oEmbed providers later would mean a data-format change (invariant 7).
+- **Store all three: `url` + `provider` + `videoId` (chosen).**
+
+**How.** `VideoEmbedBlock` = `{ heading?, url, provider?, videoId?, caption? }`. The editor's only
+input is a "YouTube or Vimeo link" text field; `parseVideoUrl` (`cms-blocks/src/video.ts`) derives
+`provider` + `videoId` from it on every save (`admin/src/lib/contentApi.ts`, same edit-shape ≠
+stored-shape translation as D-015). An unparseable link saves with neither.
+
+**Why the block re-checks at render.** `api` only validates that a block has a `type`
+(`content.dto.ts`), so stored JSON can hold anything. `videoEmbedSrc` builds the iframe `src` from
+a fixed template per provider, only after the ID matches that provider's format (YouTube: 11 chars
+of `[A-Za-z0-9_-]`; Vimeo: digits). `url` is never rendered. A tampered row renders nothing, not a
+frame pointing elsewhere. This is not "sanitise on read" — nothing stored is cleaned and emitted;
+the stored value is only used to pick from two known URLs.
+
+**Choices inside it.**
+- YouTube plays from `youtube-nocookie.com` (no tracking cookies until the visitor presses play).
+- No valid video → the block renders nothing on the public site; the editor shows its own
+  placeholder (in `admin/src/puck/config.tsx`, not in the block) so the block stays selectable.
+- `referrerPolicy="strict-origin-when-cross-origin"` — YouTube refuses embeds that send no referrer.
+
+**Not covered.** Start time (`?t=30` is kept in `url` but not played from), unlisted Vimeo videos
+(need the `?h=` hash), and any provider beyond the two. Each is additive: new optional fields or a
+new `provider` value, no change to already-stored blocks.
+
+---
+
 ## D-032 — 2026-10-06 — `archived` is a page status, not a separate flag; status changes via one dropdown
 
 **Supersedes D-029's storage choice** (archive as a nullable `archivedAt` alongside `status`). D-029's

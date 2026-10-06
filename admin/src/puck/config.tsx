@@ -14,7 +14,9 @@ import {
   PricingTable,
   TeamGrid,
   ContactForm,
+  VideoEmbed,
   SiteThemeRoot,
+  parseVideoUrl,
   type HeroBlock,
   type RichTextBlock,
   type ImageTextBlock,
@@ -28,6 +30,7 @@ import {
   type GalleryBlock,
   type TeamGridBlock,
   type ContactFormBlock,
+  type VideoEmbedBlock,
   type LinkRef,
   type SiteTheme,
 } from 'cms-blocks';
@@ -55,6 +58,10 @@ type PricingTableFields = {
   }[];
 };
 
+// VideoEmbed edits only the pasted link; `provider` + `videoId` are derived
+// from it on save (contentApi.ts) and in render() below, never typed by hand.
+type VideoEmbedFields = Omit<VideoEmbedBlock, 'type' | 'provider' | 'videoId'>;
+
 export type EditorComponents = {
   Hero: Omit<HeroBlock, 'type'>;
   RichText: Omit<RichTextBlock, 'type'>;
@@ -70,6 +77,7 @@ export type EditorComponents = {
   PricingTable: PricingTableFields;
   TeamGrid: Omit<TeamGridBlock, 'type'>;
   ContactForm: Omit<ContactFormBlock, 'type'>;
+  VideoEmbed: VideoEmbedFields;
 };
 
 // Corrick Oyster Co.'s real theme — same values as `web/src/fixtures/corrick.ts`.
@@ -390,6 +398,29 @@ export const config: Config<EditorComponents> = {
       render: ({ heading, intro, submitLabel, fields }) => (
         <ContactForm block={{ type: 'contactForm', heading, intro, submitLabel, fields }} />
       ),
+    },
+    VideoEmbed: {
+      label: 'Video',
+      fields: {
+        heading: { type: 'text' },
+        url: { type: 'text', label: 'YouTube or Vimeo link' },
+        caption: { type: 'text' },
+      },
+      defaultProps: { url: '' },
+      render: ({ heading, url, caption }) => {
+        const video = parseVideoUrl(url);
+        // Editor-only placeholder: the block itself renders nothing without a
+        // valid video (right for the public site, but an invisible block
+        // can't be selected on the canvas).
+        if (!video) {
+          return (
+            <div className="mx-6 my-8 rounded-[var(--site-radius-md)] border border-dashed border-[var(--site-line)] p-10 text-center font-[family-name:var(--site-font-utility)] text-sm text-[var(--site-muted)] sm:mx-10">
+              {url.trim() ? 'That link isn’t a YouTube or Vimeo video.' : 'Paste a YouTube or Vimeo link in the sidebar.'}
+            </div>
+          );
+        }
+        return <VideoEmbed block={{ type: 'videoEmbed', heading, url, caption, ...video }} />;
+      },
     },
   },
 };
