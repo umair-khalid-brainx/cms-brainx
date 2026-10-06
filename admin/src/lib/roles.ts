@@ -27,3 +27,8 @@ export const ASSIGNABLE_ROLE_OPTIONS = ASSIGNABLE_ROLES.map((value) => ({ value,
 export function canManageTeam(role: Role | undefined): boolean {
   return role === 'owner' || role === 'administrator';
 }
+
+/** Changing the site's subdomain — Owner and Administrator, matching the API's site:manage (D-031). */
+export function canManageSite(role: Role | undefined): boolean {
+  return role === 'owner' || role === 'administrator';
+}

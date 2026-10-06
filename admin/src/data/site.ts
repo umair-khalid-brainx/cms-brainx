@@ -1,18 +1,27 @@
-// Stand-in for the current tenant until site-switching and a real settings
-// API exist — same duplication-not-import reasoning as corrickPages.ts (see
-// docs/DECISIONS.md D-017): matches web/src/fixtures/corrick.ts's settings,
-// authored independently since admin can't import from web.
+import { getSession } from '../lib/auth';
+
+// Name and tagline are still a stand-in — there's no site-settings API for
+// them yet (GOV-04). The subdomain is real: it comes from the session (D-030).
 export const currentSite = {
-  slug: 'corrick',
   name: 'Corrick Oyster Co.',
   tagline: 'Damariscotta River, Maine',
-  host: 'corrick.yourcms.com',
 };
 
-const WEB_URL: string = import.meta.env.VITE_WEB_URL ?? 'http://127.0.0.1:3000';
+// Where `web` serves a tenant. `{subdomain}` is replaced per site:
+// locally `http://corrick.lvh.me:3000`, in production `https://corrick.<root>`.
+const SITE_URL_TEMPLATE: string = import.meta.env.VITE_SITE_URL_TEMPLATE ?? 'http://{subdomain}.lvh.me:3000';
 
-/** The live (well — `web`'s preview stand-in for live) URL for a page path. */
-export function siteUrl(path: string = '/'): string {
-  const suffix = path === '/' ? '' : path;
-  return `${WEB_URL}/preview/${currentSite.slug}${suffix}`;
+const [ADDRESS_PREFIX, ADDRESS_SUFFIX] = SITE_URL_TEMPLATE.split('{subdomain}');
+
+/** The parts around the subdomain, for an input like `http://[corrick].lvh.me:3000`. */
+export const siteAddressParts = { prefix: ADDRESS_PREFIX, suffix: ADDRESS_SUFFIX ?? '' };
+
+export function currentSubdomain(): string | undefined {
+  return getSession()?.memberships[0]?.siteSubdomain;
+}
+
+/** The public URL for a page path on the current site. */
+export function siteUrl(path: string = '/', subdomain: string | undefined = currentSubdomain()): string {
+  const origin = SITE_URL_TEMPLATE.replace('{subdomain}', subdomain ?? '');
+  return path === '/' ? origin : `${origin}${path}`;
 }
