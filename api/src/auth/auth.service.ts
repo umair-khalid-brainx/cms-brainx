@@ -5,7 +5,7 @@ import type { Role } from '../generated/prisma/client.js';
 import { UserRepository } from '../users/user.repository.js';
 
 export type AuthenticatedUser = { id: string; email: string; name: string };
-export type Membership = { siteId: string; siteName: string; role: Role };
+export type Membership = { siteId: string; siteName: string; siteSubdomain: string; role: Role };
 export type SessionResponse = { user: AuthenticatedUser; memberships: Membership[] };
 export type LoginResponse = SessionResponse & { accessToken: string };
 
@@ -49,6 +49,7 @@ export class AuthService {
       memberships: user.memberships.map((membership) => ({
         siteId: membership.siteId,
         siteName: membership.site.name,
+        siteSubdomain: membership.site.subdomain,
         role: membership.role,
       })),
     };

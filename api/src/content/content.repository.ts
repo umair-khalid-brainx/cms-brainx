@@ -20,6 +20,16 @@ export class ContentRepository {
     return this.prisma.content.findFirst({ where: { siteId, slug } });
   }
 
+  /**
+   * The only read the public site uses. "Live" means published *and* not
+   * archived — a draft or archived page is indistinguishable from a missing
+   * one to an anonymous visitor (D-030). Kept here rather than in the public
+   * controller so no caller can forget either condition.
+   */
+  findLiveByPath(siteId: string, path: string) {
+    return this.prisma.content.findFirst({ where: { siteId, path, status: 'published', archivedAt: null } });
+  }
+
   create(siteId: string, data: Omit<Prisma.ContentUncheckedCreateInput, 'siteId'>) {
     return this.prisma.content.create({ data: { ...data, siteId } });
   }

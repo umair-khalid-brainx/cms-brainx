@@ -7,6 +7,8 @@ import { ContentModule } from './content/content.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MediaModule } from './media/media.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { PublicModule } from './public/public.module.js';
+import { SitesModule } from './sites/sites.module.js';
 import { TeamModule } from './team/team.module.js';
 import { UsersModule } from './users/users.module.js';
 
@@ -20,6 +22,8 @@ import { UsersModule } from './users/users.module.js';
     ContentModule,
     TeamModule,
     MediaModule,
+    SitesModule,
+    PublicModule,
   ],
   controllers: [AppController],
   providers: [AppService],

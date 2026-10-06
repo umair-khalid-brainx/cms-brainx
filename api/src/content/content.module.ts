@@ -15,5 +15,7 @@ import { ContentService } from './content.service.js';
   imports: [UsersModule, AuthModule],
   controllers: [ContentController],
   providers: [ContentRepository, ContentService, JwtAuthGuard, PermissionsGuard],
+  // For PublicModule's live-page read.
+  exports: [ContentRepository],
 })
 export class ContentModule {}
