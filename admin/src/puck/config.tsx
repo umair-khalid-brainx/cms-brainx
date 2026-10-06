@@ -94,27 +94,33 @@ export const corrickTheme: SiteTheme = {
   },
 };
 
-const linkField = {
+// Every field carries a human `label` — client staff use this panel directly
+// (D-014), and without one Puck shows the raw prop key (`primaryAction`).
+const linkField = (label: string) => ({
   type: 'object' as const,
+  label,
   objectFields: {
-    label: { type: 'text' as const },
-    href: { type: 'text' as const },
+    label: { type: 'text' as const, label: 'Button text' },
+    href: { type: 'text' as const, label: 'Link (URL or /path)' },
   },
-};
+});
 
 // `src` gets the upload-capable custom field everywhere an image is edited —
 // pasting a URL still works, this just adds a side-by-side "Upload" option
 // backed by POST /media (media.service.ts on the api side).
-const imageSrcField = { type: 'custom' as const, render: ImageUploadField };
+const imageSrcField = { type: 'custom' as const, label: 'Image', render: ImageUploadField };
+const altField = { type: 'text' as const, label: 'Alt text (describe the image)' };
+const captionField = { type: 'text' as const, label: 'Caption' };
 
-const imageField = {
+const imageField = (label: string) => ({
   type: 'object' as const,
-  objectFields: {
-    src: imageSrcField,
-    alt: { type: 'text' as const },
-    caption: { type: 'text' as const },
-  },
-};
+  label,
+  objectFields: { src: imageSrcField, alt: altField, caption: captionField },
+});
+
+// Collapsed array items show this instead of Puck's default "Item 1, Item 2".
+const summary = (text: string | undefined, fallback: string, index?: number) =>
+  text?.trim() || `${fallback} ${(index ?? 0) + 1}`;
 
 export const config: Config<EditorComponents> = {
   root: {
@@ -122,17 +128,23 @@ export const config: Config<EditorComponents> = {
   },
   components: {
     Hero: {
+      label: 'Hero',
       fields: {
-        eyebrow: { type: 'text' },
-        headline: { type: 'text' },
-        body: { type: 'textarea' },
-        primaryAction: linkField,
-        secondaryAction: linkField,
-        image: imageField,
+        eyebrow: { type: 'text', label: 'Eyebrow (small text above the headline)' },
+        headline: { type: 'text', label: 'Headline' },
+        body: { type: 'textarea', label: 'Body' },
+        primaryAction: linkField('Primary button'),
+        secondaryAction: linkField('Secondary button'),
+        image: imageField('Image'),
         facts: {
           type: 'array',
-          arrayFields: { label: { type: 'text' }, value: { type: 'text' } },
+          label: 'Key facts',
+          arrayFields: {
+            label: { type: 'text', label: 'Label' },
+            value: { type: 'text', label: 'Value' },
+          },
           defaultItemProps: { label: '', value: '' },
+          getItemSummary: (item, i) => summary(item.label, 'Fact', i),
         },
       },
       defaultProps: { headline: 'New headline', facts: [] },
@@ -141,27 +153,30 @@ export const config: Config<EditorComponents> = {
       ),
     },
     RichText: {
+      label: 'Rich text',
       fields: {
-        heading: { type: 'text' },
+        heading: { type: 'text', label: 'Heading' },
         // Plain textarea for now — TipTap + sanitize-on-write is BLK-05.
-        html: { type: 'textarea' },
+        html: { type: 'textarea', label: 'Content (HTML)' },
       },
       defaultProps: { html: '<p>New paragraph.</p>' },
       render: ({ heading, html }) => <RichText block={{ type: 'richText', heading, html }} />,
     },
     ImageText: {
+      label: 'Image and text',
       fields: {
-        heading: { type: 'text' },
-        body: { type: 'textarea' },
-        image: imageField,
+        heading: { type: 'text', label: 'Heading' },
+        body: { type: 'textarea', label: 'Body' },
+        image: imageField('Image'),
         imagePosition: {
           type: 'radio',
+          label: 'Image position',
           options: [
             { label: 'Left', value: 'left' },
             { label: 'Right', value: 'right' },
           ],
         },
-        action: linkField,
+        action: linkField('Button'),
       },
       defaultProps: {
         heading: 'Heading',
@@ -174,11 +189,13 @@ export const config: Config<EditorComponents> = {
       ),
     },
     FeatureGrid: {
+      label: 'Feature grid',
       fields: {
-        heading: { type: 'text' },
-        intro: { type: 'textarea' },
+        heading: { type: 'text', label: 'Heading' },
+        intro: { type: 'textarea', label: 'Intro' },
         ordered: {
           type: 'radio',
+          label: 'Numbering',
           options: [
             { label: 'Unordered', value: false },
             { label: 'Numbered', value: true },
@@ -186,12 +203,14 @@ export const config: Config<EditorComponents> = {
         },
         items: {
           type: 'array',
+          label: 'Features',
           arrayFields: {
-            label: { type: 'text' },
-            title: { type: 'text' },
-            body: { type: 'textarea' },
+            label: { type: 'text', label: 'Label (small text above the title)' },
+            title: { type: 'text', label: 'Title' },
+            body: { type: 'textarea', label: 'Body' },
           },
           defaultItemProps: { label: '', title: '', body: '' },
+          getItemSummary: (item, i) => summary(item.title, 'Feature', i),
         },
       },
       defaultProps: { items: [] },
@@ -200,10 +219,11 @@ export const config: Config<EditorComponents> = {
       ),
     },
     Testimonial: {
+      label: 'Testimonial',
       fields: {
-        quote: { type: 'textarea' },
-        attribution: { type: 'text' },
-        role: { type: 'text' },
+        quote: { type: 'textarea', label: 'Quote' },
+        attribution: { type: 'text', label: 'Name' },
+        role: { type: 'text', label: 'Role or company' },
       },
       defaultProps: { quote: '', attribution: '' },
       render: ({ quote, attribution, role }) => (
@@ -211,11 +231,12 @@ export const config: Config<EditorComponents> = {
       ),
     },
     Cta: {
+      label: 'Call to action',
       fields: {
-        heading: { type: 'text' },
-        body: { type: 'textarea' },
-        action: linkField,
-        note: { type: 'text' },
+        heading: { type: 'text', label: 'Heading' },
+        body: { type: 'textarea', label: 'Body' },
+        action: linkField('Button'),
+        note: { type: 'text', label: 'Note (small text under the button)' },
       },
       defaultProps: { heading: 'Heading', action: { label: '', href: '' } },
       render: ({ heading, body, action, note }) => (
@@ -223,46 +244,63 @@ export const config: Config<EditorComponents> = {
       ),
     },
     LogoCloud: {
+      label: 'Logo cloud',
       fields: {
-        heading: { type: 'text' },
+        heading: { type: 'text', label: 'Heading' },
         logos: {
           type: 'array',
-          arrayFields: { src: imageSrcField, alt: { type: 'text' } },
+          label: 'Logos',
+          arrayFields: { src: imageSrcField, alt: { type: 'text', label: 'Company name (alt text)' } },
           defaultItemProps: { src: '', alt: '' },
+          getItemSummary: (item, i) => summary(item.alt, 'Logo', i),
         },
       },
       defaultProps: { logos: [] },
       render: ({ heading, logos }) => <LogoCloud block={{ type: 'logoCloud', heading, logos }} />,
     },
     Stats: {
+      label: 'Stats',
       fields: {
-        heading: { type: 'text' },
+        heading: { type: 'text', label: 'Heading' },
         items: {
           type: 'array',
-          arrayFields: { label: { type: 'text' }, value: { type: 'text' } },
+          label: 'Stats',
+          arrayFields: {
+            label: { type: 'text', label: 'Label' },
+            value: { type: 'text', label: 'Value' },
+          },
           defaultItemProps: { label: '', value: '' },
+          getItemSummary: (item, i) => summary(item.label, 'Stat', i),
         },
       },
       defaultProps: { items: [] },
       render: ({ heading, items }) => <Stats block={{ type: 'stats', heading, items }} />,
     },
     Faq: {
+      label: 'FAQ',
       fields: {
-        heading: { type: 'text' },
-        intro: { type: 'textarea' },
+        heading: { type: 'text', label: 'Heading' },
+        intro: { type: 'textarea', label: 'Intro' },
         items: {
           type: 'array',
-          arrayFields: { question: { type: 'text' }, answer: { type: 'textarea' } },
+          label: 'Questions',
+          arrayFields: {
+            question: { type: 'text', label: 'Question' },
+            answer: { type: 'textarea', label: 'Answer' },
+          },
           defaultItemProps: { question: '', answer: '' },
+          getItemSummary: (item, i) => summary(item.question, 'Question', i),
         },
       },
       defaultProps: { items: [] },
       render: ({ heading, intro, items }) => <Faq block={{ type: 'faq', heading, intro, items }} />,
     },
     Spacer: {
+      label: 'Spacer',
       fields: {
         size: {
           type: 'radio',
+          label: 'Size',
           options: [
             { label: 'Small', value: 'sm' },
             { label: 'Medium', value: 'md' },
@@ -274,35 +312,43 @@ export const config: Config<EditorComponents> = {
       render: ({ size }) => <Spacer block={{ type: 'spacer', size }} />,
     },
     Gallery: {
+      label: 'Gallery',
       fields: {
-        heading: { type: 'text' },
+        heading: { type: 'text', label: 'Heading' },
         images: {
           type: 'array',
-          arrayFields: { src: imageSrcField, alt: { type: 'text' }, caption: { type: 'text' } },
+          label: 'Images',
+          arrayFields: { src: imageSrcField, alt: altField, caption: captionField },
           defaultItemProps: { src: '', alt: '', caption: '' },
+          getItemSummary: (item, i) => summary(item.caption || item.alt, 'Image', i),
         },
       },
       defaultProps: { images: [] },
       render: ({ heading, images }) => <Gallery block={{ type: 'gallery', heading, images }} />,
     },
     PricingTable: {
+      label: 'Pricing table',
       fields: {
-        heading: { type: 'text' },
-        intro: { type: 'textarea' },
+        heading: { type: 'text', label: 'Heading' },
+        intro: { type: 'textarea', label: 'Intro' },
         plans: {
           type: 'array',
+          label: 'Plans',
           arrayFields: {
-            name: { type: 'text' },
-            price: { type: 'text' },
-            period: { type: 'text' },
+            name: { type: 'text', label: 'Plan name' },
+            price: { type: 'text', label: 'Price' },
+            period: { type: 'text', label: 'Billing period (e.g. per month)' },
             features: {
               type: 'array',
-              arrayFields: { text: { type: 'text' } },
+              label: 'Features',
+              arrayFields: { text: { type: 'text', label: 'Feature' } },
               defaultItemProps: { text: '' },
+              getItemSummary: (item, i) => summary(item.text, 'Feature', i),
             },
-            action: linkField,
+            action: linkField('Button'),
             highlighted: {
               type: 'radio',
+              label: 'Highlight this plan',
               options: [
                 { label: 'No', value: false },
                 { label: 'Yes', value: true },
@@ -316,6 +362,7 @@ export const config: Config<EditorComponents> = {
             action: { label: '', href: '' },
             highlighted: false,
           },
+          getItemSummary: (item, i) => summary(item.name, 'Plan', i),
         },
       },
       defaultProps: { plans: [] },
@@ -331,18 +378,21 @@ export const config: Config<EditorComponents> = {
       ),
     },
     TeamGrid: {
+      label: 'Team grid',
       fields: {
-        heading: { type: 'text' },
-        intro: { type: 'textarea' },
+        heading: { type: 'text', label: 'Heading' },
+        intro: { type: 'textarea', label: 'Intro' },
         members: {
           type: 'array',
+          label: 'Team members',
           arrayFields: {
-            name: { type: 'text' },
-            role: { type: 'text' },
-            bio: { type: 'textarea' },
-            photo: imageField,
+            name: { type: 'text', label: 'Name' },
+            role: { type: 'text', label: 'Role' },
+            bio: { type: 'textarea', label: 'Bio' },
+            photo: imageField('Photo'),
           },
           defaultItemProps: { name: '', role: '', photo: { src: '', alt: '', caption: '' } },
+          getItemSummary: (item, i) => summary(item.name, 'Member', i),
         },
       },
       defaultProps: { members: [] },
@@ -351,17 +401,20 @@ export const config: Config<EditorComponents> = {
       ),
     },
     ContactForm: {
+      label: 'Contact form',
       fields: {
-        heading: { type: 'text' },
-        intro: { type: 'textarea' },
-        submitLabel: { type: 'text' },
+        heading: { type: 'text', label: 'Heading' },
+        intro: { type: 'textarea', label: 'Intro' },
+        submitLabel: { type: 'text', label: 'Submit button text' },
         fields: {
           type: 'array',
+          label: 'Form fields',
           arrayFields: {
-            name: { type: 'text' },
-            label: { type: 'text' },
+            name: { type: 'text', label: 'Field key (no spaces, e.g. phone)' },
+            label: { type: 'text', label: 'Label shown to visitors' },
             fieldType: {
               type: 'radio',
+              label: 'Input type',
               options: [
                 { label: 'Text', value: 'text' },
                 { label: 'Email', value: 'email' },
@@ -370,6 +423,7 @@ export const config: Config<EditorComponents> = {
             },
             required: {
               type: 'radio',
+              label: 'Required',
               options: [
                 { label: 'No', value: false },
                 { label: 'Yes', value: true },
@@ -377,6 +431,7 @@ export const config: Config<EditorComponents> = {
             },
           },
           defaultItemProps: { name: '', label: '', fieldType: 'text', required: false },
+          getItemSummary: (item, i) => summary(item.label || item.name, 'Field', i),
         },
       },
       defaultProps: {
