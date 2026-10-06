@@ -28,9 +28,61 @@ Per-row Archive button replaced by a status dropdown that lists every status exc
   while publish → 200. In the browser: dropdown hides the current status on every row, last-row
   popup isn't clipped, publish updates the badge in place, archive confirms and moves the row to
   Archived, restore to Draft moves it back. Checked in dark and light mode.
-- Not done: the shared `cms` DB still needs the two migrations applied (`prisma migrate deploy`, not
-  `migrate dev` — another worktree has an unmerged migration applied there, and `migrate dev` would
-  read that as drift and offer a reset).
+- Merged with `CNT-07`: its `ContentRepository.findLiveByPath` dropped the `archivedAt: null`
+  condition — `status: 'published'` alone now excludes archived pages.
+
+---
+
+## 2026-10-06 — Public site from the database, by subdomain (`CNT-07`)
+
+The public site now renders real pages from Postgres. Each tenant is reached on its own subdomain,
+locally `http://corrick.lvh.me:3000`. Decisions in `DECISIONS.md` D-030 (approach) and D-031
+(editable subdomains, folded into this ticket).
+
+- **`api`:** `sites.subdomain` (unique) via migration `20261006120000_add_site_subdomain`, which
+  backfills existing rows from the first label of `host`. New `SitesModule`: `GET /sites/:siteId` and
+  `PATCH /sites/:siteId/subdomain` (new `site:manage` permission, Owner/Administrator). New
+  unauthenticated `PublicModule`: `GET /public/sites/:subdomain` and `.../page?path=`.
+  `ContentRepository.findLiveByPath` is the only public read: published and not archived. Session
+  memberships now carry `siteSubdomain`. Seed sets `subdomain: 'corrick'`.
+- **`web`:** `src/proxy.ts` (Next 16's name for middleware) rewrites the host's subdomain into
+  `/sites/[subdomain]/[[...path]]`. `layout.tsx` loads the site, `page.tsx` the page. Two 404 pages:
+  `app/not-found.tsx` for an unknown site, `app/sites/[subdomain]/not-found.tsx` (site-themed) for
+  a missing, draft or archived page. `SiteChrome` now wraps `children` instead of taking a fixture.
+  Deleted `src/fixtures/`, `/preview/[site]` and the `/` comparison view (B-07). `next.config.ts`
+  allows `*.lvh.me` as a dev origin.
+- **`admin`:** Settings has a real **Site Address** card (rename with confirm, API errors shown
+  inline, read-only below Administrator). Every "View"/"Visit" link builds from
+  `VITE_SITE_URL_TEMPLATE` plus the session's subdomain. `RequireAuth` now refreshes the stored
+  session from `/auth/me`, so a session saved before this change picks up `siteSubdomain`.
+
+**Verified, not assumed:**
+- **API (curl):** home → 200. A draft page, an archived-but-published page and a nonexistent path
+  return identical 404s. Unknown subdomain → 404. Rename: bad format and reserved names → 400,
+  taken → 409, no token → 401, Editor → 403, Administrator and Owner → 200. After a rename the old
+  name → 404 and the new one → 200.
+- **`web` (curl with `Host` headers):** the right status for each of `corrick.`, `CORRICK.`,
+  `nope.`, bare `lvh.me`, `127.0.0.1`, `a.b.lvh.me`, and direct `/sites/corrick`.
+- **Visual (headless Chrome screenshots):** themed home page, themed page-404, and the platform
+  site-404. Caught and fixed a dark band under the footer on short pages: `SiteChrome` needed
+  `min-h-screen`.
+- **`admin` (in the browser pane):** a reserved name shows the inline error; a real rename to
+  `corrick-oysters` updated the confirm text, the success note, the stored session and the Pages
+  "View" links, and the public site followed.
+- **Checks:** `api`, `web` and `admin` typecheck and lint clean (3 pre-existing `admin` lint
+  warnings in untouched files).
+- **Cleanup:** subdomain renamed back to `corrick` and both test pages deleted; `psql` confirms the
+  DB is back to one site with one Home page.
+
+**Not done:**
+- No caching (`CNT-08`), and no in-memory site-lookup cache (`FND-04` stays in progress).
+- Header and footer show only the site name: nav, tagline and footer links aren't stored yet
+  (`GOV-04`).
+- Only one tenant exists, so web invariant 4 ("test with two hosts") is checked only against
+  unknown hosts, not two real tenants (`GOV-08a`).
+- No automated tests were added for the subdomain rules or the live-page filter; this repo's
+  invariant tests are `FND-03`.
+- 404 pages have a generic tab title (B-15).
 
 ---
 

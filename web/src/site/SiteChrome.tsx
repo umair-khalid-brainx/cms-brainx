@@ -1,23 +1,20 @@
-import { BlockRenderer, SiteThemeRoot } from 'cms-blocks';
+import type { ReactNode } from 'react';
+import { SiteThemeRoot } from 'cms-blocks';
 import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
-import type { SiteFixture, SitePage } from './types';
+import type { SiteSettings } from './types';
 
 /**
- * A whole tenant site: theme scope, header and footer from site settings, and
- * one page's blocks in between. Rendered twice on one page by the comparison
- * view, which is only possible because nothing here reads a global colour.
- * `page` is explicit rather than derived from `site` because a site now has
- * many pages — the caller (a route) is what knows which one to render.
+ * A tenant site's frame: theme scope, header and footer from site settings,
+ * and whatever the route renders in between — a page's blocks, or the site's
+ * own "page not found" message. Nothing here reads a global colour.
  */
-export function SiteChrome({ site, page }: { site: SiteFixture; page: SitePage }) {
+export function SiteChrome({ settings, children }: { settings: SiteSettings; children: ReactNode }) {
   return (
-    <SiteThemeRoot theme={site.settings.theme} className="flex min-h-full flex-col">
-      <SiteHeader settings={site.settings} />
-      <main className="flex-1">
-        <BlockRenderer blocks={page.blocks} />
-      </main>
-      <SiteFooter settings={site.settings} />
+    <SiteThemeRoot theme={settings.theme} className="flex min-h-screen flex-col">
+      <SiteHeader settings={settings} />
+      <main className="flex-1">{children}</main>
+      <SiteFooter settings={settings} />
     </SiteThemeRoot>
   );
 }

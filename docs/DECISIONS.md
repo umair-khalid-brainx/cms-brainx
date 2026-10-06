@@ -30,6 +30,10 @@ choice of one thing, which the data didn't.
   `status = published`. An archived page can't also be "published", so there's no contradictory
   state to forget about. Same reasoning as invariant 1: structural, not remembered.
 
+`CNT-07` (D-030) landed the same day with exactly option A's two-condition read
+(`findLiveByPath`: `status: 'published', archivedAt: null`). Merged here, it's now
+`status: 'published'` alone.
+
 **How.** `ContentStatus` gained `archived`, in its own migration — Postgres won't use a new enum
 value inside the transaction that added it — followed by a backfill migration setting
 `status = 'archived'` wherever `archived_at` was set. `archivedAt` is kept purely as the "archived
@@ -49,6 +53,85 @@ of guessing.
 **Delete Permanently is deliberately not in the dropdown.** Every dropdown move is reversible; hard
 delete isn't. Keeping it as its own red button on the Archived tab means a mis-click in the menu can
 never destroy a page.
+
+---
+
+## D-031 — 2026-10-06 — Site staff can rename their subdomain; the old one dies (`CNT-07`)
+
+**Decision:** an Owner or Administrator can change their site's subdomain from **Settings → Site
+Address** in `admin`. Folded into `CNT-07` at the user's request rather than left as `BACKLOG.md`
+B-14, since the subdomain column is introduced by the same ticket.
+
+- **Who:** Owner and Administrator, through a new `site:manage` permission
+  (`api/src/auth/permission.ts`), checked by `PermissionsGuard` on
+  `PATCH /sites/:siteId/subdomain`. Editors and below get 403; `admin` shows them the field read-only.
+- **Rules,** in `api/src/sites/dto/site.dto.ts`: trimmed and lowercased; one DNS label of 3–63
+  lowercase letters, digits or hyphens, starting and ending with a letter or digit; not on the
+  reserved list (`admin`, `api`, `www`, `app`, `mail`, `cdn`, `static`, `assets`, `status`, `help`,
+  `support`, `docs`). `admin` and `api` matter most: they are the platform's own production hosts.
+- **Taken:** 409 "That address is already taken". Checked first for a clear message, and backed
+  by the unique index, so two sites claiming the same name at once can't both win.
+- **The old address dies.** No redirect, no reservation. The old subdomain immediately renders the
+  platform's "There's no site at this address" page (404) and is free for any site to claim. The user
+  chose this over redirecting; a redirect would touch `GOV-05`.
+- **Confirmation:** `admin` asks before saving and names both addresses. Same `window.confirm`
+  pattern as archive and delete (D-029).
+
+**Where the build differs from D-030's description:**
+
+1. The internal route is `/sites/[subdomain]/...`, not `/_sites/...`. In the App Router a folder
+   starting with `_` is a private folder and never becomes a route. The proxy also sends every
+   non-tenant host to a 404, so `/sites/corrick` can't be reached directly on `127.0.0.1:3000`.
+2. Nothing is cached yet: `web` fetches with `no-store`, so a publish or rename shows on the next
+   request. The rewrite is still what `CNT-08` needs; it adds ISR and revalidation on top.
+
+**Two 404s, deliberately different.** An unknown subdomain gets a plain platform page
+(`web/src/app/not-found.tsx`), since there's no site whose branding could apply. A missing, draft or
+archived page on a real site gets `web/src/app/sites/[subdomain]/not-found.tsx` inside that site's
+own header, footer and theme.
+
+---
+
+## D-030 — 2026-10-06 — Public site: tenant by subdomain, published pages only (`CNT-07`)
+
+**Context:** `web`'s only page route was `/preview/[site]/[[...path]]`, rendering hardcoded fixtures
+in `web/src/fixtures/`, never the database. Every `api` content endpoint sits behind `JwtAuthGuard`,
+so an anonymous visitor had no way to get a page at all. `CNT-07` replaces that stand-in.
+
+**Decision, in five parts:**
+
+1. **A new unauthenticated read path in `api`.** Returns a page only when `status = published` **and**
+   `archivedAt IS NULL`. Drafts, archived pages and pages of any other site return a plain 404,
+   indistinguishable from a page that doesn't exist, so a visitor can't probe for unpublished paths.
+   The filter lives in `ContentRepository` (invariant 1: scoping is structural), not in the controller
+   or in `web`. Archived counts as "not live" even though it's a separate column, not a `status` value:
+   archiving a page takes it off the public site.
+2. **Tenants are addressed by subdomain.** `sites` gains a unique `subdomain` column (`corrick`). A
+   visitor's host has a configured root domain stripped from it and the remainder is looked up by
+   `subdomain`. `sites.host` stays as it is, reserved for real custom domains later (`DEP-02`).
+3. **Root domain is per environment.** `lvh.me` locally (`corrick.lvh.me:3000`): a public DNS wildcard
+   that resolves every subdomain to `127.0.0.1`, the same approach Rails apps use. Production's root is
+   still open (`DEC-2`); only the env var changes.
+4. **`web` reads the host in middleware and rewrites**, e.g. `corrick.lvh.me/wholesale` → internal
+   `/_sites/corrick/wholesale`. The tenant becomes part of the route, so Next's cache key includes it
+   (invariant 6), which is what `CNT-08` (ISR revalidation) builds on. Reading `headers()` inside the
+   page was rejected: it forces every request to render dynamically, and `CNT-08` would have to undo it.
+5. **No fixture content is migrated into the database.** `web/src/fixtures/`, the `/preview/[site]`
+   route and the `/` comparison view are deleted (`BACKLOG.md` B-07). The public site shows whatever
+   is in the DB, which today is Corrick's Home page only. The Kestrel tenant disappears until
+   `GOV-08a`.
+
+**Options considered for the host lookup:** (1) the `subdomain` column, chosen; (2) keep only `host`
+and have `web` rewrite `.lvh.me` to the production root before lookup. Rejected (2) because it's a
+dev-only translation hack tied to a production domain that isn't decided yet, and it would occupy
+`host`, which custom domains need.
+
+**Known caveat:** `lvh.me` depends on public DNS, so local development of the public site needs a
+network connection. If that bites, `*.localhost` resolves offline in modern browsers and only needs
+the root-domain env var changed.
+
+**Not decided here:** whether site staff can change their own subdomain. Raised in the same
+conversation, tracked as `BACKLOG.md` B-14.
 
 ---
 

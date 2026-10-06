@@ -123,6 +123,57 @@
   background: #135e96;
 }
 
+.settings-save:disabled {
+  background: #a7aaad;
+  cursor: default;
+}
+
+.settings-address-row {
+  display: flex;
+  align-items: center;
+  border: 1px solid #949494;
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.settings-address-row:focus-within {
+  outline: 2px solid #2271b1;
+  outline-offset: -1px;
+  border-color: #2271b1;
+}
+
+.settings-form .settings-address-row input {
+  border: none;
+  border-radius: 0;
+  flex: 1;
+  min-width: 4rem;
+  outline: none;
+}
+
+.settings-address-affix {
+  padding: 0 0.6rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  white-space: nowrap;
+  background: #f6f7f7;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.settings-help {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.settings-error-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #b32d2e;
+}
+
 .settings-saved-note {
   margin: 0.75rem 0 0;
   font-size: 0.75rem;
@@ -193,6 +244,24 @@
   .settings-form input:disabled {
     background: #232323;
     color: #9ca3af;
+  }
+
+  .settings-address-row {
+    background: #1a1a1a;
+    border-color: #444;
+  }
+
+  .settings-address-affix {
+    background: #232323;
+    color: #9ca3af;
+  }
+
+  .settings-help {
+    color: #9ca3af;
+  }
+
+  .settings-error-note {
+    color: #f86368;
   }
 
   .settings-url-visit {

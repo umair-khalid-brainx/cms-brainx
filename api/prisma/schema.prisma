@@ -20,7 +20,12 @@ datasource db {
 
 model Site {
   id        String   @id @default(cuid())
+  // Reserved for real custom domains (DEP-02). The public site is reached by
+  // `subdomain` under a per-environment root domain instead — see D-030.
   host      String   @unique
+  // `corrick` in `corrick.lvh.me` / `corrick.<root domain>`. Editable by
+  // owners and administrators (D-031); the rules live in SitesService.
+  subdomain String   @unique
   name      String
   themeJson Json     @default("{}") @map("theme_json")
   createdAt DateTime @default(now()) @map("created_at")

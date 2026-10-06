@@ -32,9 +32,16 @@ from the request `Host` header, SSR + ISR.
 - **Headless Chrome `--window-size` does not reliably set layout width.** For responsive checks,
   render the page in a fixed-width `<iframe>` in a probe page and screenshot that.
 - `NEXT_PUBLIC_API_URL` points at **`:4001`** locally, not 4000.
+- **`_folder` is a private folder in the App Router** and never becomes a route; that's why the
+  internal tenant route is `/sites/...`, not `/_sites/...`.
+- **`allowedDevOrigins: ["*.lvh.me"]`** in `next.config.ts` is required, or `next dev` blocks its own
+  dev assets and HMR on tenant hosts.
 
-## Temporary, delete later
+## How a request finds its tenant
 
-`src/app/page.tsx` (two-tenant comparison view) and `src/app/preview/[site]/` exist only until the
-real host-resolved catch-all route lands (`CNT-07`). Tracked as `../docs/BACKLOG.md` B-07.
-Fixtures in `src/fixtures/` stand in for rows in `content`.
+`src/proxy.ts` (Next 16's name for middleware) strips `PUBLIC_ROOT_DOMAIN` from the `Host` header
+and rewrites `corrick.lvh.me/wholesale` to `/sites/corrick/wholesale`. `app/sites/[subdomain]/layout.tsx`
+loads the site, `[[...path]]/page.tsx` loads the page, both from `api`'s unauthenticated `/public`
+routes in `src/lib/publicApi.ts`. Two 404s: `app/not-found.tsx` (no such site, plain styling) and
+`app/sites/[subdomain]/not-found.tsx` (no such live page, inside the site's theme). See
+`../docs/DECISIONS.md` D-030, D-031.

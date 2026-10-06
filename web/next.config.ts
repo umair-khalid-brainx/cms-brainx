@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   // cms-blocks ships raw TS/TSX source (no build step, see D-010's reasoning
   // for Tailwind); Turbopack otherwise treats node_modules as pre-built.
   transpilePackages: ["cms-blocks"],
+  // Tenant sites are served on `<subdomain>.lvh.me` locally (D-030); without
+  // this, `next dev` blocks its own dev assets and HMR on those hosts.
+  allowedDevOrigins: ["*.lvh.me"],
 };
 
 export default nextConfig;

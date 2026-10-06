@@ -20,6 +20,16 @@ export class ContentRepository {
     return this.prisma.content.findFirst({ where: { siteId, slug } });
   }
 
+  /**
+   * The only read the public site uses. "Live" means `status = published` —
+   * a draft or archived page is indistinguishable from a missing one to an
+   * anonymous visitor (D-030). Archived is a status of its own (D-032), so
+   * this one condition already excludes it; there's no second flag to forget.
+   */
+  findLiveByPath(siteId: string, path: string) {
+    return this.prisma.content.findFirst({ where: { siteId, path, status: 'published' } });
+  }
+
   create(siteId: string, data: Omit<Prisma.ContentUncheckedCreateInput, 'siteId'>) {
     return this.prisma.content.create({ data: { ...data, siteId } });
   }

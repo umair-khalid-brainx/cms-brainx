@@ -1,7 +1,7 @@
 import type { Role } from './roles';
 
 export type AuthenticatedUser = { id: string; email: string; name: string };
-export type Membership = { siteId: string; siteName: string; role: Role };
+export type Membership = { siteId: string; siteName: string; siteSubdomain: string; role: Role };
 export type Session = { accessToken: string; user: AuthenticatedUser; memberships: Membership[] };
 
 const STORAGE_KEY = 'cms-admin.session';
@@ -32,4 +32,15 @@ export function clearSession(): void {
   } catch {
     // ignore
   }
+}
+
+/**
+ * Replaces the stored user and memberships with fresh ones from the API,
+ * keeping the token. Lets a subdomain rename (or a role change by someone
+ * else) show up without logging out and back in.
+ */
+export function refreshSession(fresh: Pick<Session, 'user' | 'memberships'>): void {
+  const session = getSession();
+  if (!session) return;
+  setSession({ ...session, user: fresh.user, memberships: fresh.memberships });
 }

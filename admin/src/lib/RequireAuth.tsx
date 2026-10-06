@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router';
 import { apiGet, ApiError } from './api';
-import { getSession } from './auth';
+import { getSession, refreshSession, type Session } from './auth';
 
 type Status = 'checking' | 'valid' | 'invalid';
 
@@ -21,9 +21,13 @@ function RequireAuth() {
     if (!session) return;
     let cancelled = false;
 
-    apiGet('/auth/me', session.accessToken)
-      .then(() => {
-        if (!cancelled) setStatus('valid');
+    // Also refreshes the stored memberships, so a session saved before a
+    // field was added (siteSubdomain, D-030) or before a rename picks it up.
+    apiGet<Pick<Session, 'user' | 'memberships'>>('/auth/me', session.accessToken)
+      .then((fresh) => {
+        if (cancelled) return;
+        refreshSession(fresh);
+        setStatus('valid');
       })
       .catch((error: unknown) => {
         if (cancelled) return;

@@ -62,7 +62,7 @@ The invariants everything else is built on. Nothing here is demoable — say so 
 | `FND-01` | Database schema and initial migration | A | 0.25 | 1 | — | ✅ done (MVP slice — 4 models, not the full eventual schema; see `WORKLOG.md` 2026-09-25) |
 | `FND-02` | Scoped repository layer | D | 0.30 | 1 | FND-01 | ✅ done — `ContentRepository` (`api/src/content/content.repository.ts`); every method takes `siteId`, nothing outside it touches `PrismaService` for content; see `WORKLOG.md` 2026-09-25 |
 | `FND-03` | Tenant invariant tests | D | 0.15 | 1 | FND-02 | ⬜ todo |
-| `FND-04` | Host to site resolution with cache | B | 0.20 | 1 | FND-01 | ⬜ todo |
+| `FND-04` | Host to site resolution with cache | B | 0.20 | 1 | FND-01 | 🟨 in progress — resolution built with `CNT-07` (host → subdomain in `web/src/proxy.ts`, subdomain → site via `SiteRepository.findBySubdomain`); the in-memory cache is not, so every request does one site lookup |
 | `FND-05` | Auth: JWT, login, guards, role decorators | B | 0.35 | 1 | FND-01 | ✅ done — `POST /auth/login`, `GET /auth/me`, `JwtAuthGuard` wired to the real `admin` login page (bcrypt hash, JWT, localStorage session, route guard, forced re-login on an expired/invalid token). Role decorators landed with `GOV-06`: `PermissionsGuard` + `@RequirePermission(...)`, checked in the API against a hardcoded per-role permission map, not just hidden UI — see `DECISIONS.md` D-023. This row previously said role enforcement didn't exist yet; stale as of `GOV-06` landing the same day, corrected 2026-09-28 |
 | `FND-06` | Seed: first tenant and admin user | A | 0.10 | 1 | FND-01, FND-05 | ✅ done — `npm run db:seed` (manual, not wired into `prisma migrate reset`'s seed hook) creates Corrick Oyster Co. and one owner account |
 
@@ -88,7 +88,7 @@ Edit, publish, live. Once this closes there is always something demonstrable —
 | `CNT-04` | Slug handling and per-site uniqueness | D | 0.15 | 1 | CNT-01 | ⬜ todo |
 | `CNT-05` | Page hierarchy: parent, depth limit, cycle guard | D | 0.20 | 1 | CNT-01 | ⬜ todo |
 | `CNT-06` | Denormalised path and recursive recomputation | D | 0.35 | 1 | CNT-05 | ⬜ todo |
-| `CNT-07` | Next catch-all route, host resolution, render | D | 0.45 | 2 | FND-04, CNT-06, BLK-01 | 🟨 in progress — `/preview/[site]/[[...path]]` resolves a page by path and renders it per-tenant; host resolution still stubbed by the slug-based preview prefix, not done |
+| `CNT-07` | Next catch-all route, host resolution, render | D | 0.45 | 2 | FND-04, CNT-06, BLK-01 | ✅ done 2026-10-06 — tenant from subdomain (`corrick.lvh.me:3000`) via `web/src/proxy.ts` rewrite to `/sites/[subdomain]/[[...path]]`; pages read from the DB through unauthenticated `GET /public/sites/:subdomain[/page]`, which only returns published, non-archived pages; separate 404s for unknown site vs. missing page. Also includes editable subdomains (Settings → Site Address, Owner/Administrator). Fixtures and `/preview` deleted. No caching yet (`CNT-08`); header/footer show the site name only until `GOV-04`. See D-030, D-031, `WORKLOG.md` 2026-10-06 |
 | `CNT-08` | ISR revalidation on publish, host-inclusive cache key | D | 0.45 | 2 | CNT-07, GOV-08a | ⬜ todo |
 | `CNT-09` | Signed-token preview URLs | B | 0.20 | 2 | CNT-07 | ⬜ todo |
 | `CNT-10` | Duplicate page | A | 0.15 | 2 | CNT-01 | ⬜ todo |

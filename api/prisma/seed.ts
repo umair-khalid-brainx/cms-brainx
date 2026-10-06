@@ -17,6 +17,7 @@ async function main(): Promise<void> {
     update: {},
     create: {
       host: 'corrick.yourcms.com',
+      subdomain: 'corrick',
       name: 'Corrick Oyster Co.',
       // Matches web/src/fixtures/corrick.ts and admin/src/puck/config.tsx —
       // the same theme already used everywhere else this demo touches.

@@ -38,3 +38,8 @@ export function canPublishContent(role: Role | undefined): boolean {
 export function canArchiveContent(role: Role | undefined): boolean {
   return role === 'owner' || role === 'administrator' || role === 'editor';
 }
+
+/** Changing the site's subdomain — Owner and Administrator, matching the API's site:manage (D-031). */
+export function canManageSite(role: Role | undefined): boolean {
+  return role === 'owner' || role === 'administrator';
+}
