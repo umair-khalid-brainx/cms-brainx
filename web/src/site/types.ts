@@ -1,4 +1,5 @@
-import type { Block, SiteTheme } from 'cms-blocks';
+import type { SiteTheme } from 'cms-blocks';
+import type { PublicSite } from '@/lib/publicApi';
 
 /**
  * Header and footer are per-site rather than per-page, so they live in site
@@ -6,12 +7,9 @@ import type { Block, SiteTheme } from 'cms-blocks';
  * branding vary; the layout is fixed.
  */
 export type SiteSettings = {
-  slug: string;
   /** Wordmark text. A logo image replaces this once media exists. */
   name: string;
   tagline: string;
-  /** Host this tenant answers on in production. Shown here for orientation. */
-  host: string;
   nav: { label: string; href: string }[];
   footer: {
     note: string;
@@ -20,13 +18,17 @@ export type SiteSettings = {
   theme: SiteTheme;
 };
 
-export type SitePage = {
-  path: string;
-  title: string;
-  blocks: Block[];
-};
-
-export type SiteFixture = {
-  settings: SiteSettings;
-  pages: SitePage[];
-};
+/**
+ * The database stores a site's name and theme, but not yet its tagline,
+ * navigation or footer links — that's `GOV-04`. Until then the header and
+ * footer show the site name only.
+ */
+export function settingsFromSite(site: PublicSite): SiteSettings {
+  return {
+    name: site.name,
+    tagline: '',
+    nav: [],
+    footer: { note: '', groups: [] },
+    theme: site.theme,
+  };
+}

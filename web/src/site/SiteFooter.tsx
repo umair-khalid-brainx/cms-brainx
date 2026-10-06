@@ -32,7 +32,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
 
       <div className="mx-auto w-full max-w-6xl border-t border-[var(--site-line)] py-5">
         <p className="font-[family-name:var(--site-font-utility)] text-xs tracking-[0.08em] text-[var(--site-muted)]">
-          {settings.host}
+          &copy; {new Date().getFullYear()} {settings.name}
         </p>
       </div>
     </footer>
