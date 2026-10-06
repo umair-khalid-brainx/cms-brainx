@@ -48,6 +48,10 @@ export const blockRegistry: Registry = {
 
 export const blockTypes = Object.keys(blockRegistry) as BlockType[];
 
-export function getBlockComponent(block: Block): BlockComponent<BlockType> {
-  return blockRegistry[block.type].component as BlockComponent<BlockType>;
+/**
+ * Undefined for a type this build doesn't know — stored JSON can be newer than
+ * the running code (a block added in `admin` before `web` is redeployed).
+ */
+export function getBlockComponent(block: Block): BlockComponent<BlockType> | undefined {
+  return blockRegistry[block.type]?.component as BlockComponent<BlockType> | undefined;
 }
