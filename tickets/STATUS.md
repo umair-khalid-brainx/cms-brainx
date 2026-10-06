@@ -40,7 +40,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | CNT-11 | Trash, restore, permanent delete | DONE | 0 |  |
 | CNT-12 | Pre-publish validation | TODO | 0 |  |
 | BLK-02 | Remaining render blocks: gallery, embed, FAQ | IN-PROGRESS | 0 | Embed not built |
-| BLK-03 | Editor canvas (Puck): add, delete, reorder, duplicate | IN-PROGRESS | 0 | Not tested by hand in a browser |
+| BLK-03 | Editor canvas (Puck): add, delete, reorder, duplicate | IN-PROGRESS | 0 | Tests pass; driven in real Chrome; user's own hands-on check pending |
 | TYP-05 | Four seeded starter block arrangements | TODO | 0 |  |
 
 ## M3 (week 3)

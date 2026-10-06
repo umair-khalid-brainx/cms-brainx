@@ -5,6 +5,31 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-06 — Persistence tests for the editor canvas (`BLK-03`)
+
+`admin` now has a test runner (vitest, D-034) and its first test file,
+`admin/src/lib/contentApi.test.ts`: 26 tests that save and reload each canvas action (add,
+add-in-the-middle, delete, delete-last, reorder, swap two of the same type, duplicate, edit a
+duplicate, publish, PricingTable features, all 14 type names) through the real
+`saveDraft`/`publishPage`/`getPage`, with `fetch` swapped for an in-memory API.
+
+- Verified: `npm test` 26/26; `npm run typecheck` and oxlint clean. Each test group was confirmed to
+  fail when `contentApi.ts` was deliberately broken (every block given the same id → 2 fail; blocks
+  saved in reverse → 7 fail; Puck ids leaked into storage → 18 fail), then restored.
+
+- Then driven in real Chrome (headless, trusted mouse input via the DevTools protocol) against the
+  running api/admin on a throwaway page `blk-03-canvas-test` in the shared `cms` DB: dragged Hero,
+  RichText, Faq in from the sidebar; duplicated Hero; deleted RichText; dragged Faq to the top;
+  reloaded; published. Canvas and `GET /content/:slug` matched after every step — final
+  `[faq, hero, hero]`, 3 unique ids, `published`. The earlier "drag can't be tested headlessly" was
+  only true of synthetic JS events and one-jump drags; see the new gotcha in `CLAUDE.md`.
+
+**Not done:** the user's own hands-on pass in a browser (BLK-03 DoD). (Test page
+`blk-03-canvas-test` deleted from the `cms` DB afterwards.) No API e2e test for block order (the API
+stores the array as-is in JSONB). The CDP drive script lives in the session scratchpad, not the repo.
+
+---
+
 ## 2026-10-06 — Tickets split into `tickets/`, one file each
 
 Created `tickets/` in the workflow kit's layout (D-033): `STATUS.md` plus one `<ID>.md` per ticket,
