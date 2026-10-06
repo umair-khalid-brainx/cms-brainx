@@ -5,6 +5,31 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-06 — In-memory subdomain → site cache in `api` (`FND-04` done)
+
+Public page views no longer look the site up in Postgres every time. Decision in D-035.
+
+- New `api/src/sites/subdomain-cache.ts` (`SubdomainCache`, provided and exported by `SitesModule`).
+  It caches `subdomain → siteId` only, with a 5-minute TTL as a safety net, and never caches misses.
+  A generation counter stops an in-flight lookup from re-adding a name that was just renamed away.
+- `PublicService` resolves through the cache: `getPage` now needs no site query once warm. `getSite`
+  still reads name and theme fresh with `findById`.
+- `SitesService.updateSubdomain` invalidates the old subdomain after the write.
+- Tests: `subdomain-cache.spec.ts` (5 tests) covers hit, case-insensitivity, no miss caching, TTL
+  expiry, the in-flight race, and rename → old null / new resolves. `npm test`, typecheck and lint
+  all clean.
+- Verified live against a copy of the DB (`cms_fnd04`, dropped afterwards), API on `:4011`, with
+  Postgres statement logging on that copy only: 10 cold page views → 1 `sites` query; 10
+  unknown-subdomain requests → 10 (not cached); `PATCH /sites/:id/subdomain` corrick → corrick-farm
+  gave `corrick` 404 and `corrick-farm` 200 straight away. Renamed back afterwards.
+
+**Not done:** built without `/build`, so no reviewer or verifier agent ran. The `BLK-06` worktree
+has uncommitted edits to `api/src/public/public.service.ts` (`submit` calls `findSite`, which is now
+`findSiteId`), so expect a small merge conflict there. Both `BLK-03` and `BLK-06` branches claim
+D-034, which is why this entry is D-035.
+
+---
+
 ## 2026-10-06 — Tickets split into `tickets/`, one file each
 
 Created `tickets/` in the workflow kit's layout (D-033): `STATUS.md` plus one `<ID>.md` per ticket,

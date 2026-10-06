@@ -57,10 +57,11 @@ a `WHERE` clause, which matters more when an agent is writing the queries.
 (`PUBLIC_ROOT_DOMAIN`: `lvh.me` locally) and rewrites `corrick.lvh.me/wholesale` to the internal
 route `/sites/corrick/wholesale`, so the tenant is part of the route and of Next's cache key. That
 route asks `api`'s unauthenticated `GET /public/sites/:subdomain[/page?path=]`, which looks the site
-up by its unique `sites.subdomain` and returns only live pages (published and not archived).
+up by its unique `sites.subdomain` — through `SubdomainCache`, an in-memory `subdomain → siteId` map
+(`FND-04`, D-035) — and returns only live pages (published and not archived).
 `sites.host` is kept for custom domains later. One catch-all route serves all tenants; there are no
-per-tenant route files or builds. Not built yet: an in-memory cache of the subdomain-to-site lookup
-(`FND-04`) and ISR (`CNT-08`) — every request currently renders fresh. See `DECISIONS.md` D-030, D-031.
+per-tenant route files or builds. Not built yet: ISR (`CNT-08`) — every request currently renders
+fresh. See `DECISIONS.md` D-030, D-031, D-035.
 
 **Branding** — each site carries a `theme_json` blob: palette, type set, shape, density, texture.
 Rendering flattens it to `--site-*` CSS custom properties on a wrapper element. Blocks read those
@@ -91,8 +92,8 @@ the same way.
 ```
 GET https://corrick.<domain>/about
   → nginx routes by host to cms-web
-  → cms-web resolves host → site (cached)
-  → fetch content by (site_id, path) from cms-api
+  → cms-web turns host → subdomain, asks cms-api
+  → cms-api resolves subdomain → site_id (in-memory cache), fetches content by (site_id, path)
   → SiteThemeRoot applies theme_json as --site-* variables
   → BlockRenderer maps blocks[] through the registry to components
   → real HTML with real meta tags; result cached by ISR under a host-inclusive key

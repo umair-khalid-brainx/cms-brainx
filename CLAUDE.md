@@ -139,7 +139,9 @@ https://claude.ai/code/artifact/a86e0066-2565-4026-b18d-faf2802f0890
   decide.** Do not settle architecture unilaterally. Record the outcome in `docs/DECISIONS.md`.
 - **Verify before asserting.** Run it, curl it, screenshot it. Do not describe behaviour you have
   not observed.
-- **Do not spawn subagents or run workflows** unless I ask for them.
+- **Subagents are allowed without asking** — use them when they help, and always run the
+  reviewer and verifier for a ticket before marking it DONE. Multi-agent workflows still need my
+  ask first.
 - Say plainly what is done, what is not, and what was skipped.
 - Do not throw too much information at one time. comunicate with me like a friend and ask me back and forth questions and explain me concepts in a interactive conversations. dont just throw all the information at once
 

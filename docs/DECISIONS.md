@@ -8,6 +8,29 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-035 — 2026-10-06 — Subdomain lookup cached in `api`: id only, misses never cached
+
+**Decision:** `api` keeps an in-memory `subdomain → siteId` map (`api/src/sites/subdomain-cache.ts`,
+`SubdomainCache`) in front of `SiteRepository.findBySubdomain` for the public endpoints (`FND-04`).
+
+**Options the user chose between:**
+
+- **Where:** `api`, not `web`. The rename (`SitesService.updateSubdomain`) runs in the same process,
+  so it clears the entry directly. A cache in `web` would never hear about a rename.
+- **What:** the site id only, not the whole site row. Name and theme are read fresh, so editing them
+  never has to remember to clear this cache. Cost: `GET /public/sites/:subdomain` still does one
+  `findById` for name/theme; the page endpoint saves its lookup entirely.
+- **Misses:** never cached. A free subdomain can be claimed by a rename at any time and must resolve
+  at once. Cost: requests for unknown subdomains each hit the DB. Side benefit: the map can't grow
+  beyond the number of sites, so no size limit is needed.
+
+**Also:** found entries expire after 5 minutes as a safety net. With one API process the explicit
+invalidate is what matters; with more than one (e.g. a PM2 cluster) another process's rename isn't
+seen, and the TTL bounds how long the old name keeps resolving. A generation counter stops a lookup
+that was in flight during a rename from writing the old mapping back.
+
+---
+
 ## D-033 — 2026-10-06 — Tickets live in `tickets/`, one file each; `STATUS.md` owns status
 
 **Decision:** every ticket from `EXECUTION_PLAN.md` now has its own file, `tickets/<ID>.md`, in the

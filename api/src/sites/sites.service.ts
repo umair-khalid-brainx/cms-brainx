@@ -1,12 +1,16 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { SiteRepository } from './site.repository.js';
+import { SubdomainCache } from './subdomain-cache.js';
 
 export type SiteSummary = { id: string; name: string; subdomain: string };
 
 @Injectable()
 export class SitesService {
-  constructor(private readonly sites: SiteRepository) {}
+  constructor(
+    private readonly sites: SiteRepository,
+    private readonly subdomainCache: SubdomainCache,
+  ) {}
 
   async get(siteId: string): Promise<SiteSummary> {
     const site = await this.sites.findById(siteId);
@@ -17,7 +21,9 @@ export class SitesService {
   /**
    * Format and reserved names are already checked by the DTO. The old
    * subdomain stops resolving immediately and becomes free for any site to
-   * take — no redirect from it (D-031).
+   * take — no redirect from it (D-031). Clearing the old name from the
+   * cache is what makes "immediately" true (D-035); the new name needs no
+   * clearing because misses are never cached.
    */
   async updateSubdomain(siteId: string, subdomain: string): Promise<SiteSummary> {
     const current = await this.get(siteId);
@@ -28,6 +34,7 @@ export class SitesService {
 
     try {
       const site = await this.sites.updateSubdomain(siteId, subdomain);
+      this.subdomainCache.invalidate(current.subdomain);
       return { id: site.id, name: site.name, subdomain: site.subdomain };
     } catch (error) {
       // Two sites claiming the same free name at the same moment: the check

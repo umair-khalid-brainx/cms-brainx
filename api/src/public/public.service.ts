@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ContentRepository } from '../content/content.repository.js';
 import { SiteRepository } from '../sites/site.repository.js';
+import { SubdomainCache } from '../sites/subdomain-cache.js';
 
 export type PublicSite = { name: string; subdomain: string; theme: unknown };
 export type PublicPage = { title: string; path: string; blocks: unknown; updatedAt: Date };
@@ -15,24 +16,27 @@ export class PublicService {
   constructor(
     private readonly sites: SiteRepository,
     private readonly content: ContentRepository,
+    private readonly subdomainCache: SubdomainCache,
   ) {}
 
   async getSite(subdomain: string): Promise<PublicSite> {
-    const site = await this.findSite(subdomain);
+    // Name and theme are read fresh, not cached (D-035).
+    const site = await this.sites.findById(await this.findSiteId(subdomain));
+    if (!site) throw new NotFoundException('Site not found');
     return { name: site.name, subdomain: site.subdomain, theme: site.themeJson };
   }
 
   async getPage(subdomain: string, rawPath: string | undefined): Promise<PublicPage> {
-    const site = await this.findSite(subdomain);
-    const page = await this.content.findLiveByPath(site.id, normalisePath(rawPath));
+    const siteId = await this.findSiteId(subdomain);
+    const page = await this.content.findLiveByPath(siteId, normalisePath(rawPath));
     if (!page) throw new NotFoundException('Page not found');
     return { title: page.title, path: page.path, blocks: page.blocks, updatedAt: page.updatedAt };
   }
 
-  private async findSite(subdomain: string) {
-    const site = await this.sites.findBySubdomain(subdomain.toLowerCase());
-    if (!site) throw new NotFoundException('Site not found');
-    return site;
+  private async findSiteId(subdomain: string): Promise<string> {
+    const siteId = await this.subdomainCache.resolve(subdomain);
+    if (!siteId) throw new NotFoundException('Site not found');
+    return siteId;
   }
 }
 

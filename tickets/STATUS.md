@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 13, IN-PROGRESS 7, TODO 33 (54 tickets). Updated 2026-10-06.
+**Totals:** BACKLOG 1, DONE 14, IN-PROGRESS 6, TODO 33 (54 tickets). Updated 2026-10-06.
 
 ## M1 (week 1)
 
@@ -21,7 +21,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | CNT-02 | Admin content list and edit screens | DONE | 0 |  |
 | CNT-03 | Publish states and transitions | DONE | 0 |  |
 | FND-03 | Tenant invariant tests | TODO | 0 |  |
-| FND-04 | Host to site resolution with cache | IN-PROGRESS | 0 | Lookup works; in-memory cache not built |
+| FND-04 | Host to site resolution with cache | DONE | 0 |  |
 | XRP-02 | CI pipeline per repository | TODO | 0 |  |
 | CNT-04 | Slug handling and per-site uniqueness | TODO | 0 |  |
 | CNT-05 | Page hierarchy: parent, depth limit, cycle guard | TODO | 0 |  |
