@@ -1,8 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import PublishChecksPanel from '../components/PublishChecksPanel';
 import Select, { type SelectOption } from '../components/Select';
 import { getSession } from '../lib/auth';
-import { deletePage, duplicatePage, listArchivedPages, listPages, setPageStatus, type PageStatus, type PageSummary } from '../lib/contentApi';
+import {
+  deletePage,
+  duplicatePage,
+  listArchivedPages,
+  listPages,
+  publishChecksFromError,
+  setPageStatus,
+  type PageStatus,
+  type PageSummary,
+  type PublishChecks,
+} from '../lib/contentApi';
 import { canArchiveContent, canPublishContent } from '../lib/roles';
 import { siteUrl } from '../data/site';
 import './PagesListPage.css';
@@ -35,11 +46,14 @@ function PagesListPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   // The copy just made, so its row can be highlighted and announced.
   const [justCopied, setJustCopied] = useState<PageSummary | null>(null);
+  // A publish (or restore to published) the API refused, with why (CNT-12).
+  const [refused, setRefused] = useState<{ page: PageSummary; checks: PublishChecks } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoad({ status: 'loading' });
     setJustCopied(null);
+    setRefused(null);
     (tab === 'active' ? listPages() : listArchivedPages())
       .then((result) => {
         if (cancelled) return;
@@ -61,6 +75,7 @@ function PagesListPage() {
     setBusySlug(page.slug);
     setActionError(null);
     setJustCopied(null);
+    setRefused(null);
     try {
       const updated = await setPageStatus(page.slug, status);
       // A page crossing the archived line leaves this tab's list; any other
@@ -69,7 +84,9 @@ function PagesListPage() {
       else if (status === 'archived') setPages((prev) => prev.filter((p) => p.slug !== page.slug));
       else setPages((prev) => prev.map((p) => (p.slug === page.slug ? updated : p)));
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Could not change this page’s status');
+      const checks = publishChecksFromError(error);
+      if (checks) setRefused({ page, checks });
+      else setActionError(error instanceof Error ? error.message : 'Could not change this page’s status');
     } finally {
       setBusySlug(null);
     }
@@ -146,6 +163,13 @@ function PagesListPage() {
         <p className="pages-error" role="alert">
           {actionError}
         </p>
+      )}
+      {refused && (
+        <div className="pages-checks">
+          <PublishChecksPanel checks={refused.checks} pageTitle={refused.page.title} onClose={() => setRefused(null)}>
+            {refused.page.status !== 'archived' && <Link to={`/editor/${refused.page.slug}`}>Fix in editor</Link>}
+          </PublishChecksPanel>
+        </div>
       )}
       <p className="pages-notice" aria-live="polite">
         {justCopied && tab === 'active' && (

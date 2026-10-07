@@ -1,9 +1,16 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { hasPermission } from '../auth/permission.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
+import { checkPublishable } from './publish-checks.js';
 
 @Injectable()
 export class ContentService {
@@ -27,6 +34,11 @@ export class ContentService {
     const page = await this.content.findBySlug(siteId, slug);
     if (!page) throw new NotFoundException('Page not found');
     return page;
+  }
+
+  /** What would stop this page being published, as saved now (CNT-12). */
+  async checks(userId: string, slug: string) {
+    return checkPublishable((await this.get(userId, slug)).blocks);
   }
 
   async create(userId: string, dto: CreateContentDto) {
@@ -61,6 +73,18 @@ export class ContentService {
     const leaving = dto.status !== undefined && dto.status !== 'archived' && existing.status === 'archived';
     if ((entering || leaving) && !hasPermission(membership.role, 'content:delete')) {
       throw new ForbiddenException('Missing permission: content:delete');
+    }
+
+    // Any move to `published` — publish, restore, or re-publishing from the
+    // editor — must pass the publish checks, against the blocks it would go
+    // live with. Draft saves (no status, or `draft`) never are (CNT-12). An
+    // autosave of an already-live page isn't either: blocking it mid-edit
+    // would lose work, and the editor checks before its Publish (D-036).
+    if (dto.status === 'published') {
+      const checks = checkPublishable(dto.blocks ?? existing.blocks);
+      if (checks.errors.length > 0) {
+        throw new UnprocessableEntityException({ statusCode: 422, message: 'Fix these before publishing', ...checks });
+      }
     }
 
     await this.content.update(membership.siteId, slug, {

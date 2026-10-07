@@ -1,4 +1,9 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
 import { ContentService } from './content.service.js';
@@ -34,6 +39,11 @@ function fakeContent(
         return row;
       },
     ),
+    update: vi.fn(async (siteId: string, slug: string, data: Partial<Row>) => {
+      const row = table.find((r) => r.siteId === siteId && r.slug === slug);
+      if (row) Object.assign(row, data);
+      return { count: row ? 1 : 0 };
+    }),
   };
   const users = {
     findByIdWithMemberships: vi.fn(async (id: string) =>
@@ -162,5 +172,99 @@ describe('ContentService.duplicate', () => {
     );
     expect(content.findBySlug).toHaveBeenCalledWith('site-a', 'secret');
     expect(content.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ContentService.update publish checks', () => {
+  const broken = [{ type: 'hero', headline: '' }];
+
+  function setup() {
+    return fakeContent(
+      [
+        {
+          siteId: 'site-a',
+          title: 'Draft',
+          slug: 'draft',
+          path: '/draft',
+          status: 'draft',
+          blocks: broken,
+        },
+        {
+          siteId: 'site-a',
+          title: 'Old',
+          slug: 'old',
+          path: '/old',
+          status: 'archived',
+          blocks: broken,
+        },
+      ],
+      {
+        owner: { siteId: 'site-a', role: 'owner' },
+        contributor: { siteId: 'site-a', role: 'contributor' },
+      },
+    );
+  }
+
+  it('refuses to publish with a 422 listing each problem, and writes nothing', async () => {
+    const { service, content } = setup();
+
+    const error = await service
+      .update('owner', 'draft', { status: 'published' })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect((error as UnprocessableEntityException).getResponse()).toMatchObject(
+      {
+        errors: [
+          { blockIndex: 0, field: 'headline', message: 'Add a headline' },
+        ],
+        warnings: [],
+      },
+    );
+    expect(content.update).not.toHaveBeenCalled();
+  });
+
+  it('checks the blocks sent with the publish, not the saved ones', async () => {
+    const { service, table } = setup();
+
+    await service.update('owner', 'draft', {
+      status: 'published',
+      blocks: [{ type: 'hero', headline: 'Fixed' }],
+    });
+
+    expect(table.find((r) => r.slug === 'draft')?.status).toBe('published');
+  });
+
+  it('never blocks a draft save', async () => {
+    const { service, table } = setup();
+
+    await service.update('owner', 'draft', {
+      blocks: [{ type: 'faq', items: [] }],
+    });
+    await service.update('owner', 'draft', {
+      status: 'draft',
+      title: 'Still broken',
+    });
+
+    expect(table.find((r) => r.slug === 'draft')).toMatchObject({
+      status: 'draft',
+      title: 'Still broken',
+    });
+  });
+
+  it('also checks a restore straight to published', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.update('owner', 'old', { status: 'published' }),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
+  it('answers a missing permission with 403 before running the checks', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.update('contributor', 'draft', { status: 'published' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

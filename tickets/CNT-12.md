@@ -12,9 +12,10 @@ _Confirmed with the user 2026-10-07; rules chosen by Claude at the user's reques
   missing label or href; an image with no `src`; a list block with zero items (FAQ, stats,
   gallery, feature grid, logo cloud, pricing, team, form fields); an unknown block type
 - [ ] Warning only (never blocks): an image with a `src` but no alt text
-- [ ] Checks run in the API: any `PATCH` whose result is a published page with new blocks
-  (publish, restore-to-published, or saving a live page) → `422` with a per-block list
-  (`{ blockIndex, blockType, field, message }`)
+- [ ] Checks run in the API: any `PATCH` that sets `status: published` (publish,
+  restore-to-published, re-publish from the editor) → `422` with a per-block list
+  (`{ blockIndex, blockType, blockLabel, field, message }`). Autosaves of a live page are not
+  checked (would lose work mid-edit — D-036)
 - [ ] `GET /content/:slug/checks` returns `{ errors, warnings }` for the saved page
 - [ ] Saving a draft is never blocked
 - [ ] Editor: Publish shows the list per block when there are errors; warnings are shown but

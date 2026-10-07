@@ -3,7 +3,17 @@ import { Puck, type Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
 import { Link, Navigate, useParams } from 'react-router';
 import { config, type EditorComponents } from '../puck/config';
-import { getPage, publishPage, saveDraft, type Page } from '../lib/contentApi';
+import PublishChecksPanel from '../components/PublishChecksPanel';
+import { getSession } from '../lib/auth';
+import {
+  getPage,
+  getPublishChecks,
+  publishChecksFromError,
+  publishPage,
+  saveDraft,
+  type Page,
+  type PublishChecks,
+} from '../lib/contentApi';
 import './EditorPage.css';
 
 const AUTOSAVE_DELAY_MS = 500;
@@ -17,6 +27,8 @@ function EditorPage() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [published, setPublished] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [checks, setChecks] = useState<PublishChecks | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const timeoutRef = useRef<number | undefined>(undefined);
   // Tracks the live data from onChange so our own Publish button (see below)
   // can save it on click without needing to reach into Puck's internal store.
@@ -30,6 +42,7 @@ function EditorPage() {
     // page's data before the new one loads, not render it under a new title.
     setLoad({ status: 'loading' });
     setPage(null);
+    setChecks(null);
 
     if (!slug) {
       setLoad({ status: 'notFound' });
@@ -75,17 +88,36 @@ function EditorPage() {
     }, AUTOSAVE_DELAY_MS);
   }
 
-  function publishNow() {
+  // Save, ask the API what would stop this going live, and only publish
+  // when nothing does (CNT-12). Warnings show first but can be skipped with
+  // "Publish anyway"; errors can't — the API re-checks and refuses with 422.
+  async function publishNow(skipWarnings = false) {
     window.clearTimeout(timeoutRef.current);
-    if (!latestDataRef.current) return;
-    publishPage(page!.slug, latestDataRef.current)
-      .then(() => {
-        setSavedAt(new Date());
-        setSaveError(null);
-        setPublished(true);
-        window.setTimeout(() => setPublished(false), 2500);
-      })
-      .catch(() => setSaveError('Could not publish — check your connection'));
+    const data = latestDataRef.current;
+    if (!data || publishing) return;
+    setPublishing(true);
+    try {
+      if (!skipWarnings) {
+        await saveDraft(page!.slug, data);
+        const result = await getPublishChecks(page!.slug);
+        if (result.errors.length > 0 || result.warnings.length > 0) {
+          setChecks(result);
+          return;
+        }
+      }
+      await publishPage(page!.slug, data);
+      setChecks(null);
+      setSavedAt(new Date());
+      setSaveError(null);
+      setPublished(true);
+      window.setTimeout(() => setPublished(false), 2500);
+    } catch (error) {
+      const refused = publishChecksFromError(error);
+      if (refused) setChecks(refused);
+      else setSaveError('Could not publish — check your connection');
+    } finally {
+      setPublishing(false);
+    }
   }
 
   return (
@@ -98,7 +130,7 @@ function EditorPage() {
         <span className="editor-status" role="status">
           {saveError ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
         </span>
-        <span className="editor-site">Corrick Oyster Co.</span>
+        <span className="editor-site">{getSession()?.memberships[0]?.siteName}</span>
         {/* This is the only Publish button — Puck's own native one (rendered
             in its header via `overrides.headerActions`) is suppressed below.
             D-019 originally found Puck's button didn't render at all in this
@@ -106,10 +138,16 @@ function EditorPage() {
             live Publish buttons stacked on top of each other. `onPublish`
             stays wired on <Puck> below regardless, so Puck's suppressed
             button would still work if the override were ever removed. */}
-        <button type="button" className="editor-publish" onClick={publishNow}>
-          Publish
+        <button type="button" className="editor-publish" disabled={publishing} onClick={() => publishNow()}>
+          {publishing ? 'Publishing…' : 'Publish'}
         </button>
       </header>
+
+      {checks && (
+        <div className="editor-checks">
+          <PublishChecksPanel checks={checks} onClose={() => setChecks(null)} onPublishAnyway={() => publishNow(true)} />
+        </div>
+      )}
 
       <div className="editor-puck">
         {/* `data` is keyed to remount Puck when the slug changes — Puck owns

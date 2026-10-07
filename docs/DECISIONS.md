@@ -8,6 +8,32 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-036 — 2026-10-07 — Publish checks live once, in `api`; they gate moves to `published`, not autosaves
+
+**Decision:** the rules that stop a page going live (`CNT-12`) are one module,
+`api/src/content/publish-checks.ts`. `ContentService.update` runs them on any `PATCH` that sets
+`status: published` (publish, restore to published, re-publish from the editor) and answers `422`
+with `{ errors, warnings }`, one entry per problem with block index, type, label, field and message.
+`GET /content/:slug/checks` returns the same for the saved page. `admin` never re-implements them:
+the editor calls `/checks` before publishing and both screens render the API's list.
+
+**Rules (chosen by Claude at the user's request):** errors for no blocks, blank required text,
+half-filled or missing required links, missing required images, empty lists, and an unknown block
+type; a warning only for an image with no alt text (user's choice).
+
+**Why one copy in `api`:** the API is the enforcement point (a client can `PATCH` directly), and a
+second copy in `admin` would drift. `api` can't import `cms-blocks` (D-012), so the block shapes are
+hand-written; `publish-checks.spec.ts` reads `cms-blocks/src/types.ts` and fails when a block type
+is added there without a rule here. Cost: adding a block (e.g. `BLK-02`'s embed) now also means adding
+its rule, or pages with it can't be published — fail-closed on purpose.
+
+**Why not autosaves:** a page has one `blocks` column, so the editor's autosave on an already-live
+page writes straight to the live page. Checking those saves would refuse an edit mid-typing (say,
+clearing a headline to retype it) and lose work. So a live page can still be autosaved into a broken
+state; the real fix is separate draft and live content (revisions, `GOV-01`), not a stricter check.
+
+---
+
 ## D-035 — 2026-10-06 — Subdomain lookup cached in `api`: id only, misses never cached
 
 **Decision:** `api` keeps an in-memory `subdomain → siteId` map (`api/src/sites/subdomain-cache.ts`,

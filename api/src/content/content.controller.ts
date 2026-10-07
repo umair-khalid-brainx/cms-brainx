@@ -52,6 +52,12 @@ export class ContentController {
     return this.content.get(request.user.sub, slug);
   }
 
+  @Get(':slug/checks')
+  @RequirePermission('content:read')
+  checks(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.checks(request.user.sub, slug);
+  }
+
   @Post()
   @RequirePermission('content:write')
   create(

@@ -1,0 +1,172 @@
+/* Shaped like a WordPress admin notice: white box, coloured left edge.
+   Red edge when publishing is blocked, amber when it's only warnings. */
+.publish-checks {
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-left-width: 4px;
+  border-radius: 2px;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  color: #1e1e1e;
+  line-height: 1.5;
+}
+
+.publish-checks:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+.publish-checks-blocked {
+  border-left-color: #d63638;
+}
+
+.publish-checks-warn {
+  border-left-color: #dba617;
+}
+
+.publish-checks-title {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.publish-checks-subtitle {
+  margin: 0.75rem 0 0.35rem;
+  font-weight: 600;
+  color: #50575e;
+}
+
+.publish-checks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.publish-checks-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.publish-checks-icon {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  align-self: center;
+}
+
+.publish-checks-item-error .publish-checks-icon {
+  fill: #d63638;
+}
+
+.publish-checks-item-warning .publish-checks-icon {
+  fill: #b58500;
+}
+
+.publish-checks-where {
+  flex: none;
+  font-weight: 600;
+  color: #3c434a;
+}
+
+.publish-checks-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.publish-checks-actions a {
+  color: #2271b1;
+  font-weight: 500;
+}
+
+.publish-checks-primary,
+.publish-checks-secondary {
+  border-radius: 4px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.publish-checks-primary {
+  background: #2271b1;
+  color: #fff;
+  border: 1px solid #2271b1;
+}
+
+.publish-checks-primary:hover {
+  background: #135e96;
+}
+
+.publish-checks-secondary {
+  background: #f6f7f7;
+  color: #2271b1;
+  border: 1px solid #2271b1;
+}
+
+.publish-checks-secondary:hover {
+  background: #f0f0f1;
+}
+
+.publish-checks-primary:focus-visible,
+.publish-checks-secondary:focus-visible,
+.publish-checks-actions a:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .publish-checks {
+    background: #18191b;
+    border-color: #3c434a;
+    color: #ededed;
+  }
+
+  .publish-checks-blocked {
+    border-left-color: #f86368;
+  }
+
+  .publish-checks-warn {
+    border-left-color: #f0c33c;
+  }
+
+  .publish-checks-subtitle,
+  .publish-checks-where {
+    color: #c3c4c7;
+  }
+
+  .publish-checks-item-error .publish-checks-icon {
+    fill: #f86368;
+  }
+
+  .publish-checks-item-warning .publish-checks-icon {
+    fill: #f0c33c;
+  }
+
+  .publish-checks-actions a {
+    color: #6ab6f2;
+  }
+
+  .publish-checks-secondary {
+    background: transparent;
+    color: #6ab6f2;
+    border-color: #6ab6f2;
+  }
+
+  .publish-checks-secondary:hover {
+    background: #1d2327;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .publish-checks-primary,
+  .publish-checks-secondary {
+    transition: none;
+  }
+}

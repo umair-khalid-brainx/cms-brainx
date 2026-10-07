@@ -212,6 +212,10 @@
   border-radius: 2px;
 }
 
+.pages-checks {
+  margin: 0 0 1rem;
+}
+
 /* Reserves its line so the table doesn't jump when the message appears. */
 .pages-notice {
   min-height: 1.2em;
