@@ -15,7 +15,13 @@ const prisma = new PrismaClient({
 // Dev-only credentials, shared by every seeded owner.
 const DEV_PASSWORD = '1234567890';
 
-type SeedPage = { title: string; slug: string; path: string; status: 'draft' | 'published'; blocks: Prisma.InputJsonValue };
+type SeedPage = {
+  title: string;
+  slug: string;
+  path: string;
+  status: 'draft' | 'published';
+  blocks: Prisma.InputJsonValue;
+};
 
 type SeedSite = {
   host: string;
@@ -121,7 +127,8 @@ const kestrel: SeedSite = {
         },
         {
           type: 'testimonial',
-          quote: 'The comparison against last year’s survey took ten minutes because the station numbering had not moved. That is not normal in this industry.',
+          quote:
+            'The comparison against last year’s survey took ten minutes because the station numbering had not moved. That is not normal in this industry.',
           attribution: 'Dan Whitlock',
           role: 'Asset manager, Northmoor Wind',
         },
@@ -143,7 +150,8 @@ const kestrel: SeedSite = {
         {
           type: 'featureGrid',
           heading: 'Capability',
-          intro: 'One crew, one mobilisation. Inspection and repair are the same visit unless the damage needs a workshop.',
+          intro:
+            'One crew, one mobilisation. Inspection and repair are the same visit unless the damage needs a workshop.',
           items: [
             {
               label: 'LEI',
@@ -190,9 +198,15 @@ async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
   const site = await prisma.site.upsert({
     where: { host: spec.host },
     update: {},
-    create: { host: spec.host, subdomain: spec.subdomain, name: spec.name, themeJson: spec.theme },
+    create: {
+      host: spec.host,
+      subdomain: spec.subdomain,
+      name: spec.name,
+      themeJson: spec.theme,
+    },
   });
 
+  // Resets the owner's password to DEV_PASSWORD on every run, on purpose.
   const user = await prisma.user.upsert({
     where: { email: spec.owner.email },
     update: { passwordHash },
@@ -214,7 +228,9 @@ async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
     });
   }
 
-  console.log(`Seeded ${user.email} as owner of ${site.name} (${site.subdomain}, ${spec.pages.length} pages)`);
+  console.log(
+    `Ensured ${user.email} owns ${site.name} (${site.subdomain}, ${spec.pages.length} seed pages)`,
+  );
 }
 
 async function main(): Promise<void> {
