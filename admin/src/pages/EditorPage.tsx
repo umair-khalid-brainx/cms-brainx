@@ -34,6 +34,15 @@ function EditorPage() {
   // can save it on click without needing to reach into Puck's internal store.
   const latestDataRef = useRef<Data<EditorComponents> | null>(null);
   const publishButtonRef = useRef<HTMLButtonElement>(null);
+  // Set when a publish closes the checks panel, so focus lands back on
+  // Publish instead of <body> — once the button is enabled again (below).
+  const refocusPublishRef = useRef(false);
+
+  useEffect(() => {
+    if (publishing || !refocusPublishRef.current) return;
+    refocusPublishRef.current = false;
+    publishButtonRef.current?.focus();
+  }, [publishing]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,8 +120,7 @@ function EditorPage() {
       }
       window.clearTimeout(timeoutRef.current);
       await publishPage(page!.slug, latestDataRef.current);
-      // The panel (if any) is about to unmount; don't drop focus on <body>.
-      if (checks) publishButtonRef.current?.focus();
+      if (checks) refocusPublishRef.current = true;
       setChecks(null);
       setSavedAt(new Date());
       setSaveError(null);
