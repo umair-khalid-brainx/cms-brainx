@@ -6,6 +6,7 @@ const MEDIA_SELECT = {
   id: true,
   siteId: true,
   url: true,
+  thumbnailUrl: true,
   filename: true,
   mimetype: true,
   size: true,

@@ -64,8 +64,8 @@
 .media-card {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0;
+  gap: 0.15rem;
+  padding: 0 0 0.6rem;
   border: 1px solid #c3c4c7;
   border-radius: 6px;
   background: #fff;
@@ -79,21 +79,95 @@
   border-color: #2271b1;
 }
 
-.media-thumb {
-  width: 100%;
+.media-card:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+/* A transparency checkerboard rather than a flat grey: logos and cut-out PNGs
+   are a large share of what a site uploads, and on flat grey you can't tell a
+   transparent edge from a grey one. */
+.media-thumb-frame {
+  position: relative;
+  display: block;
   aspect-ratio: 1 / 1;
+  margin-bottom: 0.45rem;
+  overflow: hidden;
+  background: repeating-conic-gradient(#f0f0f1 0 25%, #fff 0 50%) 0 0 / 14px 14px;
+  border-bottom: 1px solid #e2e4e7;
+}
+
+/* Absolutely placed so a large original (pre-thumbnail uploads) can't stretch
+   the square frame through aspect-ratio's automatic minimum height. */
+.media-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  background: #f0f0f1;
   display: block;
 }
 
-.media-card-name {
-  padding: 0 0.6rem 0.6rem;
-  font-size: 0.75rem;
-  color: #3c434a;
+/* SVGs are almost always logos and icons — cropping them to fill the square
+   cuts the mark itself off, so they sit whole with breathing room. */
+.media-thumb--contain {
+  object-fit: contain;
+  padding: 14%;
+  box-sizing: border-box;
+}
+
+.media-format {
+  position: absolute;
+  left: 0.4rem;
+  bottom: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background: rgba(30, 30, 30, 0.78);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+.media-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  background: rgba(30, 30, 30, 0.7);
+}
+
+.media-play::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 6px 0 6px 10px;
+  border-color: transparent transparent transparent #fff;
+}
+
+.media-card-name,
+.media-card-size {
+  padding: 0 0.6rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.media-card-name {
+  font-size: 0.75rem;
+  color: #3c434a;
+}
+
+.media-card-size {
+  font-size: 0.6875rem;
+  color: #6b7280;
 }
 
 .media-detail-backdrop {
@@ -234,8 +308,17 @@
     color: #b0b0b0;
   }
 
-  .media-thumb {
-    background: #232323;
+  .media-card-size {
+    color: #8c8f94;
+  }
+
+  .media-thumb-frame {
+    background: repeating-conic-gradient(#232323 0 25%, #2c2d30 0 50%) 0 0 / 14px 14px;
+    border-bottom-color: #3c434a;
+  }
+
+  .media-card:focus-visible {
+    outline-color: #72aee6;
   }
 
   .media-detail {

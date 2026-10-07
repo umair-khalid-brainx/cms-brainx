@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listMedia, type MediaItem } from '../lib/mediaApi'
+import { formatBadge, listMedia, previewUrl, type MediaItem } from '../lib/mediaApi'
 import './MediaLibraryModal.css'
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' }
@@ -71,7 +71,13 @@ function MediaLibraryModal({ onSelect, onClose, accept = 'image/' }: MediaLibrar
                 title={item.filename}
                 onClick={() => onSelect(item.url)}
               >
-                <img className="media-library-thumb" src={item.url} alt={item.filename} loading="lazy" />
+                <img
+                  className={`media-library-thumb${item.mimetype === 'image/svg+xml' ? ' media-library-thumb--contain' : ''}`}
+                  src={previewUrl(item)}
+                  alt={item.filename}
+                  loading="lazy"
+                />
+                {formatBadge(item) && <span className="media-library-format">{formatBadge(item)}</span>}
               </button>
             ))}
           </div>

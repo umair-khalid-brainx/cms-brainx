@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { deleteMedia, listMedia, uploadMedia, type MediaItem } from '../lib/mediaApi';
+import { deleteMedia, formatBadge, listMedia, previewUrl, uploadMedia, type MediaItem } from '../lib/mediaApi';
 import './MediaPage.css';
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
@@ -127,12 +127,24 @@ function MediaPage() {
         <div className="media-grid">
           {items.map((item) => (
             <button type="button" key={item.id} className="media-card" onClick={() => openDetail(item)}>
-              {item.mimetype.startsWith('video/') ? (
-                <video className="media-thumb" src={item.url} muted />
-              ) : (
-                <img className="media-thumb" src={item.url} alt={item.filename} loading="lazy" />
-              )}
+              <span className="media-thumb-frame">
+                {item.mimetype.startsWith('video/') ? (
+                  <>
+                    <video className="media-thumb" src={item.url} muted preload="metadata" />
+                    <span className="media-play" aria-hidden="true" />
+                  </>
+                ) : (
+                  <img
+                    className={`media-thumb${item.mimetype === 'image/svg+xml' ? ' media-thumb--contain' : ''}`}
+                    src={previewUrl(item)}
+                    alt={item.filename}
+                    loading="lazy"
+                  />
+                )}
+                {formatBadge(item) && <span className="media-format">{formatBadge(item)}</span>}
+              </span>
               <span className="media-card-name">{item.filename}</span>
+              <span className="media-card-size">{formatBytes(item.size)}</span>
             </button>
           ))}
         </div>

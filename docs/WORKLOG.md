@@ -5,6 +5,34 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-07 — Media thumbnails with `sharp` (`MED-01`)
+
+Uploads now get a small preview, and the media library shows it. Decision in D-036.
+
+- `api`: new `src/media/thumbnail.ts` (`makeThumbnail`), called from `MediaService.store` before
+  anything is written. PNG/JPEG/WebP → 400px-wide WebP at `<uuid>-thumb.webp`; SVG/GIF/video → none.
+  Undecodable images, or images over 50 MP, → 400. `remove` deletes the thumbnail too. New nullable `Media.thumbnailUrl`
+  (migration `20261007090742_add_media_thumbnail`), returned by `GET /media` and `POST /media`.
+  `sharp` added as a dependency.
+- `admin`: `mediaApi.ts` gains `thumbnailUrl`, `previewUrl()` and `formatBadge()`. `MediaPage` grid
+  and `MediaLibraryModal` show the thumbnail (fallback `url`), on a transparency checkerboard; SVGs
+  are contained not cropped; GIF/SVG get a format tag; video gets a play mark; cards show file size
+  and a visible keyboard focus ring. Fixed a sizing bug where a large original stretched its card.
+- Tests: `thumbnail.spec.ts` (10 cases): size/format for each raster type, no enlarging, null for
+  SVG/GIF/video, rejection of fake image bytes and of a 50.4 MP image. `npm test` 16/16, lint and
+  both typechecks clean.
+- Reviewer (general-purpose agent; the kit's `reviewer`/`verifier` refuse to run without
+  `docs/plan.md`) asked for the pixel limit, now added. Verifier passed both open DoD items with its
+  own uploads, then deleted them.
+- Verified live, API on `:4011`, admin on `:5183`: JPEG 2400×1600 → 400×267 WebP (40 KB → 2 KB);
+  PNG thumbnailed; SVG `thumbnailUrl: null`; fake PNG → 400 with nothing on disk; delete removed
+  original and thumbnail. Grid checked in light and dark.
+
+**Not done:** no backfill for files uploaded before today (they show the original). Public pages
+still serve originals; responsive image sizes there would be new work.
+
+---
+
 ## 2026-10-06 — In-memory subdomain → site cache in `api` (`FND-04` done)
 
 Public page views no longer look the site up in Postgres every time. Decision in D-035.
