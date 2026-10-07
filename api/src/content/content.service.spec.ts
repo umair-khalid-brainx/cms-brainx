@@ -10,6 +10,7 @@ import type { PreviewLinkRepository } from './preview-link.repository.js';
 import { ContentService } from './content.service.js';
 
 type Row = {
+  id?: string;
   siteId: string;
   title: string;
   slug: string;
@@ -26,6 +27,7 @@ type Row = {
 function fakeContent(
   rows: Row[],
   members: Record<string, { siteId: string; role: string }>,
+  previewLinks: Partial<PreviewLinkRepository> = {},
 ) {
   const table = rows.map((row) => ({ ...row }));
   const content = {
@@ -54,7 +56,7 @@ function fakeContent(
   const service = new ContentService(
     content as unknown as ContentRepository,
     users as unknown as UserRepository,
-    {} as PreviewLinkRepository,
+    previewLinks as PreviewLinkRepository,
   );
   return { service, table, content };
 }
@@ -268,5 +270,97 @@ describe('ContentService.update publish checks', () => {
     await expect(
       service.update('contributor', 'draft', { status: 'published' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+describe('ContentService preview links (CNT-09)', () => {
+  function setup() {
+    // contentId → link; the fake enforces the same one-per-page rule as the unique index.
+    const links = new Map<
+      string,
+      { siteId: string; token: string; createdAt: Date }
+    >();
+    const previewLinks = {
+      findByContent: vi.fn(async (siteId: string, contentId: string) => {
+        const link = links.get(contentId);
+        return link?.siteId === siteId ? link : null;
+      }),
+      findOrCreate: vi.fn(
+        async (siteId: string, contentId: string, token: string) => {
+          if (!links.has(contentId))
+            links.set(contentId, { siteId, token, createdAt: new Date() });
+          return links.get(contentId)!;
+        },
+      ),
+      deleteByContent: vi.fn(async (_siteId: string, contentId: string) => {
+        links.delete(contentId);
+        return { count: 1 };
+      }),
+    };
+    const page = (slug: string, status: string) => ({
+      id: `id-${slug}`,
+      siteId: 'site-a',
+      title: slug,
+      slug,
+      path: `/${slug}`,
+      status,
+      blocks: [],
+    });
+    const fake = fakeContent(
+      [page('draft', 'draft'), page('old', 'archived')],
+      {
+        alice: { siteId: 'site-a', role: 'owner' },
+        bob: { siteId: 'site-b', role: 'owner' },
+      },
+      previewLinks as unknown as Partial<PreviewLinkRepository>,
+    );
+    return { ...fake, previewLinks };
+  }
+
+  it('creates one unguessable link per page, and returns the same one again', async () => {
+    const { service } = setup();
+
+    const first = await service.createPreviewLink('alice', 'draft');
+    const second = await service.createPreviewLink('alice', 'draft');
+
+    expect(first.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(second.token).toBe(first.token);
+    await expect(
+      service.getPreviewLink('alice', 'draft'),
+    ).resolves.toMatchObject({ token: first.token });
+  });
+
+  it('is a 404 before a link exists and after it is revoked', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.getPreviewLink('alice', 'draft'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await service.createPreviewLink('alice', 'draft');
+    await service.revokePreviewLink('alice', 'draft');
+    await expect(
+      service.getPreviewLink('alice', 'draft'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('refuses to share an archived page', async () => {
+    const { service, previewLinks } = setup();
+
+    await expect(
+      service.createPreviewLink('alice', 'old'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(previewLinks.findOrCreate).not.toHaveBeenCalled();
+  });
+
+  it("can't touch another site's page's link", async () => {
+    const { service, previewLinks } = setup();
+
+    await expect(
+      service.createPreviewLink('bob', 'draft'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.revokePreviewLink('bob', 'draft'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(previewLinks.deleteByContent).not.toHaveBeenCalled();
   });
 });

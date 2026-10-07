@@ -38,10 +38,12 @@ export const getPage = cache((subdomain: string, path: string) =>
  * not. Never cached — a revoked link must stop working on the next request,
  * and an edit must show on the next reload.
  */
-export async function getPreview(subdomain: string, token: string): Promise<PreviewPage | null> {
+// cache() only dedupes within one request (metadata + page) — still a fresh
+// fetch on every view.
+export const getPreview = cache(async (subdomain: string, token: string): Promise<PreviewPage | null> => {
   const path = `/public/sites/${encodeURIComponent(subdomain)}/preview/${encodeURIComponent(token)}`;
   const response = await fetch(`${API_URL}${path}`, { cache: 'no-store' });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`API ${response.status} for preview`);
   return (await response.json()) as PreviewPage;
-}
+});

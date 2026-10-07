@@ -15,7 +15,8 @@ decisions themselves were made on the dates shown.
 expiry: it works until someone turns it off (`DELETE /content/:slug/preview-link`). Anyone with
 `content:write` can create, read or revoke it. It shows the page's latest saved blocks, draft or
 published, and keeps working after publish. Archived pages give 404, and the link can't be
-created for them.
+created for them. Archiving doesn't delete the link, so restoring the page brings the same link
+back. That's deliberate: archive is reversible, and the link goes with the page.
 
 **Why stored, not a signed JWT:** a JWT can't be revoked before it expires, and the user wanted no
 expiry and manual revocation. The token is stored as-is, not hashed, because the editor shows the

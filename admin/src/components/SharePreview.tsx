@@ -23,6 +23,17 @@ function SharePreview({ slug }: { slug: string }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
+  const createRef = useRef<HTMLButtonElement>(null);
+  // Create and Turn off each unmount the button that was clicked; this says
+  // where keyboard focus goes next, once the new state has rendered.
+  const focusNextRef = useRef<'url' | 'create' | null>(null);
+
+  useEffect(() => {
+    const target = focusNextRef.current;
+    focusNextRef.current = null;
+    if (target === 'url') urlRef.current?.focus();
+    if (target === 'create') createRef.current?.focus();
+  }, [state]);
   const panelId = useId();
 
   useEffect(() => {
@@ -43,22 +54,28 @@ function SharePreview({ slug }: { slug: string }) {
       if (!rootRef.current?.contains(event.target as Node)) close(false);
     }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') close(true);
+      if (event.key !== 'Escape') return;
+      // Ours, not Puck's: caught in the capture phase and stopped, since
+      // Puck's editor also listens for Escape.
+      event.stopPropagation();
+      close(true);
     }
     document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
     return () => {
       cancelled = true;
       document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [open, slug]);
 
-  async function run(action: () => Promise<State>, done: string) {
+  async function run(action: () => Promise<State>, done: string, focusNext: 'url' | 'create') {
     setBusy(true);
     setAnnouncement({ text: '' });
     try {
-      setState(await action());
+      const next = await action();
+      focusNextRef.current = focusNext;
+      setState(next);
       setAnnouncement({ text: done });
     } catch (error) {
       setState({ status: 'error', message: error instanceof Error ? error.message : 'Something went wrong' });
@@ -68,7 +85,7 @@ function SharePreview({ slug }: { slug: string }) {
   }
 
   function create() {
-    return run(async () => ({ status: 'ready', link: await createPreviewLink(slug) }), 'Preview link created');
+    return run(async () => ({ status: 'ready', link: await createPreviewLink(slug) }), 'Preview link created', 'url');
   }
 
   function revoke() {
@@ -76,7 +93,7 @@ function SharePreview({ slug }: { slug: string }) {
     return run(async () => {
       await revokePreviewLink(slug);
       return { status: 'none' };
-    }, 'Preview link turned off');
+    }, 'Preview link turned off', 'create');
   }
 
   async function copy(url: string) {
@@ -124,7 +141,7 @@ function SharePreview({ slug }: { slug: string }) {
           )}
 
           {state.status === 'none' && (
-            <button type="button" className="share-preview-primary" disabled={busy} onClick={create}>
+            <button ref={createRef} type="button" className="share-preview-primary" disabled={busy} onClick={create}>
               {busy ? 'Creating…' : 'Create preview link'}
             </button>
           )}

@@ -18,6 +18,9 @@ export class PreviewLinkRepository {
    * one link, not a unique-constraint error.
    */
   findOrCreate(siteId: string, contentId: string, token: string) {
+    // `where` can only name a unique field, so it's `contentId` alone; safe
+    // because the caller resolved `contentId` inside `siteId`, and a page
+    // never changes site.
     return this.prisma.previewLink.upsert({
       where: { contentId },
       update: {},

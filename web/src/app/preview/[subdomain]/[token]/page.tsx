@@ -13,10 +13,11 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: PageProps<'/preview/[subdomain]/[token]'>): Promise<Metadata> {
   const { subdomain, token } = await params;
   const [site, page] = await Promise.all([getSite(subdomain), getPreview(subdomain, token)]);
-  // A preview must never be indexed, even if the link leaks.
-  const robots = { index: false, follow: false };
-  if (!site || !page) return { robots };
-  return { title: `Preview: ${page.title} · ${site.name}`, robots };
+  // A preview must never be indexed, even if the link leaks, and its URL
+  // (the token) must not travel in a Referer header to sites it links to.
+  const base: Metadata = { robots: { index: false, follow: false }, referrer: 'no-referrer' };
+  if (!site || !page) return base;
+  return { ...base, title: `Preview: ${page.title} · ${site.name}` };
 }
 
 /**
