@@ -5,6 +5,43 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-07 — Media replace-in-place and "used on" delete warning (`MED-02` done)
+
+The two open `MED-02` items, built after confirming three choices with the owner (D-037).
+
+- **API**: `PUT /media/:id` (`content:write`) replaces a file's bytes and keeps its URL. It accepts
+  the same mimetype only and returns 400 otherwise. The new bytes go to a temp file that is renamed
+  over the original, and a failed write cleans up the temp file. If a Delete lands mid-replace, the
+  file is removed and the call returns 404. `GET /media/:id/usage` (`content:read`) lists pages of
+  any status whose blocks mention `/uploads/<siteId>/<filename>`, using
+  `ContentRepository.findReferencing`, a site-scoped `strpos(blocks::text, …)` raw query.
+- **Admin `/media`**: the detail panel shows "Used on" and has a "Replace file" button (its picker
+  is limited to the same type). The Delete confirm lists the pages using the file and still allows
+  the delete. After a replace, previews add `?v=` so this tab refetches. The stored URL is unchanged.
+- Tests: `media.service.spec.ts` (6 tests). API 12/12 pass; typecheck and oxlint are clean in both
+  repos.
+- Verified live with a throwaway API on `:4012` and admin on `:5184`, against the local DB:
+  - Replace kept the URL and the served bytes changed (sha matched the new file).
+  - A JPEG for a PNG got 400, and an unknown id got 404.
+  - Usage found a draft page.
+  - `/uploads` sends `Cache-Control: max-age=0` with an ETag.
+  - In the browser, the preview swapped, a wrong type was refused, and the Delete confirm listed
+    the page.
+  - The test page and file were deleted afterwards.
+- A general-purpose reviewer and verifier ran; the project kit's own agents refused because there
+  is no `docs/plan.md`. The verifier passed every DoD item. The reviewer's three fixes are applied:
+  a stale panel reopening after a replace, a leftover `.tmp`, and the replace/delete race.
+
+**Not done / known gaps:**
+- Other admin surfaces (the media picker, `ImageUploadField`, the editor canvas) can show the old
+  image in the same tab until a reload.
+- "Used on" refreshes only when the panel is reopened.
+- When `MED-01` thumbnails land (that branch's D-036), replace must regenerate the thumbnail too.
+- While stopping a test server, I killed the main `:4001` API and the `blk-02` worktree's `:4002`
+  API by mistake. Both were restarted and are healthy.
+
+---
+
 ## 2026-10-06 — In-memory subdomain → site cache in `api` (`FND-04` done)
 
 Public page views no longer look the site up in Postgres every time. Decision in D-035.

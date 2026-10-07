@@ -66,9 +66,14 @@ export async function apiSend<T>(
 }
 
 /** Authenticated multipart upload — no Content-Type set manually, so fetch adds the multipart boundary itself. */
-export async function apiUpload<T>(path: string, body: FormData, accessToken: string): Promise<T> {
+export async function apiUpload<T>(
+  path: string,
+  body: FormData,
+  accessToken: string,
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
+    method,
     headers: { Authorization: `Bearer ${accessToken}` },
     body,
   });

@@ -30,6 +30,10 @@ export class MediaRepository {
     return this.prisma.media.create({ data, select: MEDIA_SELECT });
   }
 
+  updateSize(siteId: string, id: string, size: number) {
+    return this.prisma.media.updateMany({ where: { id, siteId }, data: { size } });
+  }
+
   delete(siteId: string, id: string) {
     return this.prisma.media.deleteMany({ where: { id, siteId } });
   }

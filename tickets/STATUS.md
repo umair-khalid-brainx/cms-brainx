@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 14, IN-PROGRESS 6, TODO 33 (54 tickets). Updated 2026-10-06.
+**Totals:** BACKLOG 1, DONE 15, IN-PROGRESS 5, TODO 33 (54 tickets). Updated 2026-10-07.
 
 ## M1 (week 1)
 
@@ -56,7 +56,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | TYP-03 | Type-driven routing | TODO | 0 |  |
 | TYP-04 | Template selection on create | TODO | 0 |  |
 | MED-01 | Upload, thumbnails, local disk | IN-PROGRESS | 0 | No thumbnails yet |
-| MED-02 | Library grid, reuse, replace, delete, metadata | IN-PROGRESS | 0 | No replace-in-place |
+| MED-02 | Library grid, reuse, replace, delete, metadata | DONE | 0 |  |
 | MED-03 | Media picker in block settings | DONE | 0 |  |
 
 ## M4 (week 4)
