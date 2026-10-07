@@ -8,6 +8,36 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-039 — 2026-10-07 — Public pages use ISR: refreshed on demand by `api`, 60 s backstop
+
+**Decision:** `web`'s tenant page route (`/sites/[subdomain]/[[...path]]`) is ISR. It has
+`revalidate = 60` and an empty `generateStaticParams`, so each page renders on first visit and is
+then served from Next's cache, and its API fetches are cached for 60 s too. `api` keeps it fresh: when
+`ContentService.update` changes a page that was live before or after the write (publish, unpublish,
+archive, or saving a live page), `RevalidationService` POSTs `{ subdomain, path }` to `web`'s
+`/__revalidate` with a shared secret. `web` then calls `revalidatePath('/sites/<sub><path>')`.
+
+**Why the tenant can't leak:** the cache entry is the rewrite destination, which contains the
+subdomain (D-030, invariant 6). Tested with two hosts: a refresh of `kestrel.lvh.me/capability` left
+`corrick.lvh.me/` and `kestrel.lvh.me/` as cache HITs.
+
+**Options the user chose between:**
+- **Triggers:** publish/unpublish/archive and saving a live page are pushed. Theme, site-name and
+  subdomain changes are not; they wait for the 60 s timer (the user accepted that delay).
+- **If `web` is down:** the change still succeeds. The call has a 2 s timeout and never throws, it logs
+  a warning, and the 60 s timer is the backstop. Refusing to publish when the cache can't be told
+  would let a `web` outage block every editor.
+
+**Mechanics worth knowing:** `/__revalidate` is reserved on every host. Like `/__preview`
+(D-037) it's mapped in `src/proxy.ts`, to `/internal/revalidate`, which can't be reached directly.
+`revalidatePath` must name the rewrite destination, not the visitor's URL (Next 16 docs). A route
+handler's `revalidatePath` makes the next visit render fresh (MISS), not stale. The timer is
+stale-while-revalidate: after 60 s, the first request still gets the old page and triggers the
+re-render, and the one after it is fresh. ISR is off under `next dev`, so check caching with
+`next build && next start`.
+
+---
+
 ## D-038 — 2026-10-07 — Starter layouts are one global table, not per site
 
 **Decision (user's call):** `TYP-05`'s four starter layouts (Landing, About, Contact, Article) live in

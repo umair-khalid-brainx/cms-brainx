@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { RevalidationService } from '../revalidation/revalidation.service.js';
 import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
 import type { PreviewLinkRepository } from './preview-link.repository.js';
@@ -31,10 +32,12 @@ function fakeContent(
 ) {
   const table = rows.map((row) => ({ ...row }));
   const content = {
-    findBySlug: vi.fn(
-      async (siteId: string, slug: string) =>
-        table.find((r) => r.siteId === siteId && r.slug === slug) ?? null,
-    ),
+    // A copy, like Prisma's: a later update must not change a row the
+    // service already read.
+    findBySlug: vi.fn(async (siteId: string, slug: string) => {
+      const row = table.find((r) => r.siteId === siteId && r.slug === slug);
+      return row ? { ...row } : null;
+    }),
     create: vi.fn(
       async (siteId: string, data: Omit<Row, 'siteId' | 'status'>) => {
         const row = { status: 'draft', ...data, siteId };
@@ -49,16 +52,29 @@ function fakeContent(
     }),
   };
   const users = {
+    // Each site's subdomain is its id without `site-`: site-a → `a`.
     findByIdWithMemberships: vi.fn(async (id: string) =>
-      members[id] ? { id, memberships: [members[id]] } : null,
+      members[id]
+        ? {
+            id,
+            memberships: [
+              {
+                ...members[id],
+                site: { subdomain: members[id].siteId.replace('site-', '') },
+              },
+            ],
+          }
+        : null,
     ),
   };
+  const revalidation = { page: vi.fn(async () => {}) };
   const service = new ContentService(
     content as unknown as ContentRepository,
     users as unknown as UserRepository,
     previewLinks as PreviewLinkRepository,
+    revalidation as unknown as RevalidationService,
   );
-  return { service, table, content };
+  return { service, table, content, revalidation };
 }
 
 const blocks = [{ type: 'hero', headline: 'Hello' }];
@@ -362,5 +378,73 @@ describe('ContentService preview links (CNT-09)', () => {
       service.revokePreviewLink('bob', 'draft'),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(previewLinks.deleteByContent).not.toHaveBeenCalled();
+  });
+});
+
+describe('ContentService.update revalidation (CNT-08)', () => {
+  const good = [{ type: 'hero', headline: 'Hello' }];
+
+  function setup() {
+    return fakeContent(
+      [
+        {
+          siteId: 'site-a',
+          title: 'Draft',
+          slug: 'draft',
+          path: '/draft',
+          status: 'draft',
+          blocks: good,
+        },
+        {
+          siteId: 'site-a',
+          title: 'Live',
+          slug: 'live',
+          path: '/live',
+          status: 'published',
+          blocks: good,
+        },
+      ],
+      { owner: { siteId: 'site-a', role: 'owner' } },
+    );
+  }
+
+  it('refreshes the page on publish, with its site and path', async () => {
+    const { service, revalidation } = setup();
+
+    await service.update('owner', 'draft', { status: 'published' });
+
+    expect(revalidation.page).toHaveBeenCalledExactlyOnceWith('a', '/draft');
+  });
+
+  it.each([
+    ['saving a live page', { blocks: good }],
+    ['unpublishing', { status: 'draft' as const }],
+    ['archiving', { status: 'archived' as const }],
+  ])('refreshes on %s', async (_name, dto) => {
+    const { service, revalidation } = setup();
+
+    await service.update('owner', 'live', dto);
+
+    expect(revalidation.page).toHaveBeenCalledExactlyOnceWith('a', '/live');
+  });
+
+  it('leaves the cache alone for a draft that stays a draft', async () => {
+    const { service, revalidation } = setup();
+
+    await service.update('owner', 'draft', {
+      blocks: good,
+      title: 'Still draft',
+    });
+
+    expect(revalidation.page).not.toHaveBeenCalled();
+  });
+
+  it("doesn't refresh when the publish is refused", async () => {
+    const { service, revalidation } = setup();
+
+    await expect(
+      service.update('owner', 'draft', { status: 'published', blocks: [] }),
+    ).rejects.toThrow();
+    expect(revalidation.page).not.toHaveBeenCalled();
   });
 });

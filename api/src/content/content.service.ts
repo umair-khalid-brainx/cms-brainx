@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { hasPermission } from '../auth/permission.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
@@ -20,6 +21,7 @@ export class ContentService {
     private readonly content: ContentRepository,
     private readonly users: UserRepository,
     private readonly previewLinks: PreviewLinkRepository,
+    private readonly revalidation: RevalidationService,
   ) {}
 
   async list(userId: string) {
@@ -96,7 +98,15 @@ export class ContentService {
       ...(entering && { archivedAt: new Date() }),
       ...(leaving && { archivedAt: null }),
     });
-    return this.content.findBySlug(membership.siteId, slug);
+    const updated = await this.content.findBySlug(membership.siteId, slug);
+
+    // Live before or after this write → the public page changed: publish,
+    // unpublish, archive, or a save to a live page. Refresh exactly that
+    // site + path in `web`'s cache (CNT-08). Draft-only edits aren't public.
+    if (existing.status === 'published' || updated?.status === 'published') {
+      await this.revalidation.page(membership.site.subdomain, existing.path);
+    }
+    return updated;
   }
 
   // A copy is always a fresh draft (CNT-10): duplicating a live page must

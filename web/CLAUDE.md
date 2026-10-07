@@ -32,10 +32,17 @@ from the request `Host` header, SSR + ISR.
 - **Headless Chrome `--window-size` does not reliably set layout width.** For responsive checks,
   render the page in a fixed-width `<iframe>` in a probe page and screenshot that.
 - `NEXT_PUBLIC_API_URL` points at **`:4001`** locally, not 4000.
+- `REVALIDATE_SECRET` must match `api`'s, or every on-demand refresh is a 403 and pages update only
+  on the 60 s timer.
 - **`_folder` is a private folder in the App Router** and never becomes a route; that's why the
   internal tenant route is `/sites/...`, not `/_sites/...`.
 - **`allowedDevOrigins: ["*.lvh.me"]`** in `next.config.ts` is required, or `next dev` blocks its own
   dev assets and HMR on tenant hosts.
+- **ISR only exists in `next build && next start`.** Under `next dev` every request renders fresh,
+  so "my edit showed up" in dev proves nothing about the cache. The `x-nextjs-cache` response header
+  says HIT/MISS/STALE (D-039).
+- **`revalidatePath` takes the rewrite destination** (`/sites/corrick/about`), not the visitor's URL
+  (`/about`). The visitor's URL matches no cache entry, so the call silently does nothing.
 
 ## How a request finds its tenant
 

@@ -12,12 +12,16 @@ export type PreviewPage = PublicPage & { status: 'draft' | 'published' };
  * return live content (D-030). `null` means 404 — unknown site, or a page
  * that is missing, draft or archived; the API doesn't say which, on purpose.
  *
- * `no-store` for now: every request renders fresh, so a publish or a
- * subdomain rename shows up immediately. Caching with on-demand revalidation
- * on publish is `CNT-08`.
+ * Cached (CNT-08, D-039): a page and the fetches behind it are kept for up to
+ * `PUBLIC_REVALIDATE_SECONDS`, and `api` clears a page the moment it changes
+ * (publish, unpublish, archive, saving a live page) via `/__revalidate`. The
+ * timer is only the backstop — for a theme or subdomain change, which isn't
+ * pushed, and for a refresh call that never arrived.
  */
+export const PUBLIC_REVALIDATE_SECONDS = 60;
+
 async function getJson<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${API_URL}${path}`, { cache: 'no-store' });
+  const response = await fetch(`${API_URL}${path}`, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`API ${response.status} for ${path}`);
   return (await response.json()) as T;
