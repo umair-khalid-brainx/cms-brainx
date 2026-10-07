@@ -116,6 +116,13 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
   Puck's via `overrides={{ headerActions: () => <></> }}` — without that override, both render and a
   user sees two working Publish buttons stacked on top of each other.
 
+- **Contact forms need `FORM_SUBMIT_SECRET` set to the same value in `api/.env` and
+  `web/.env.local`.** Missing or mismatched, every submission fails with a generic "could not be
+  sent" (web logs why; the API returns 503 or 403). Restart both after changing it (D-034).
+- **The contact form rate limit trusts the last `X-Forwarded-For` entry.** `next dev` passes a
+  client-sent one straight through, so locally it can be faked. Production nginx must overwrite it
+  with `$remote_addr` (`DEP-01a`).
+
 ## Docs index
 
 | File | Read it when |

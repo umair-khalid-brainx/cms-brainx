@@ -10,7 +10,9 @@ export type PermissionKey =
   | 'content:delete'
   | 'members:manage'
   // Site-level settings, currently just the subdomain (D-031).
-  | 'site:manage';
+  | 'site:manage'
+  // Contact form submissions hold visitors' personal details (BLK-06, D-034).
+  | 'submissions:read';
 
 // Author/Contributor differ from Editor only by permission level here, not by
 // content ownership — this app has no concept of "who wrote this page" on
@@ -18,9 +20,9 @@ export type PermissionKey =
 // can act on any page, not just "their own." Deliberate simplification,
 // recorded in D-023.
 export const ROLE_PERMISSIONS: Record<Role, PermissionKey[]> = {
-  owner: ['content:read', 'content:write', 'content:publish', 'content:delete', 'members:manage', 'site:manage'],
-  administrator: ['content:read', 'content:write', 'content:publish', 'content:delete', 'members:manage', 'site:manage'],
-  editor: ['content:read', 'content:write', 'content:publish', 'content:delete'],
+  owner: ['content:read', 'content:write', 'content:publish', 'content:delete', 'members:manage', 'site:manage', 'submissions:read'],
+  administrator: ['content:read', 'content:write', 'content:publish', 'content:delete', 'members:manage', 'site:manage', 'submissions:read'],
+  editor: ['content:read', 'content:write', 'content:publish', 'content:delete', 'submissions:read'],
   author: ['content:read', 'content:write', 'content:publish'],
   contributor: ['content:read', 'content:write'],
 };

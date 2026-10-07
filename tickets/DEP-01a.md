@@ -8,6 +8,7 @@ A skeleton deploy on the real server and domain.
 ## Definition of Done
 _Items marked Draft were written from the plan, decisions and code, not from use cases. Confirm them before `/build`._
 - [ ] Draft: EC2 box with nginx routing `*.<domain>` → web, `admin.<domain>` → admin, `api.<domain>` → api
+- [ ] nginx sets `proxy_set_header X-Forwarded-For $remote_addr;` (overwrite, not `$proxy_add_x_forwarded_for`) for `*.<domain>` → web, and web's port is not reachable except through nginx. Otherwise the contact form rate limit can be dodged by faking the header (D-034)
 - [ ] Draft: wildcard TLS certificate
 - [ ] Draft: apps run under pm2 and restart on reboot
 - [ ] Draft: blocked until the domain is chosen (DEC-2)

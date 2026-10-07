@@ -1,3 +1,4 @@
+import { resolveContactFieldNames, type ContactFormField } from 'cms-blocks';
 import type { Data } from '@puckeditor/core';
 import type { EditorComponents } from '../puck/config';
 import { ApiError, apiDelete, apiGet, apiSend } from './api';
@@ -71,6 +72,11 @@ function puckItemToBlock(item: { type: string; props: Record<string, unknown> })
   const type = decapitalize(item.type);
   if (item.type === 'PricingTable' && 'plans' in fields) {
     return { type, ...fields, plans: plansToFlat(fields.plans) };
+  }
+  // A field left without a name gets one from its label, so the live form
+  // can always be submitted (the API refuses a form with a nameless field).
+  if (item.type === 'ContactForm' && Array.isArray(fields.fields)) {
+    return { type, ...fields, fields: resolveContactFieldNames(fields.fields as ContactFormField[]) };
   }
   return { type, ...fields };
 }

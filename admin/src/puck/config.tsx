@@ -357,9 +357,15 @@ export const config: Config<EditorComponents> = {
         submitLabel: { type: 'text' },
         fields: {
           type: 'array',
+          // The sidebar shows each field by its label instead of "Item #0".
+          getItemSummary: (item, index = 0) => item.label || item.name || `Field ${index + 1}`,
           arrayFields: {
-            name: { type: 'text' },
             label: { type: 'text' },
+            name: {
+              type: 'text',
+              label: 'name (optional)',
+              placeholder: 'Made from the label if left empty',
+            },
             fieldType: {
               type: 'radio',
               options: [

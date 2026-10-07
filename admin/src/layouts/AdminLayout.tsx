@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router'
 import { clearSession, getSession } from '../lib/auth'
-import { canManageTeam } from '../lib/roles'
+import { canManageTeam, canReadSubmissions } from '../lib/roles'
 import './AdminLayout.css'
 
 const navItems = [
@@ -30,6 +30,16 @@ const navItems = [
         <path d="M3 4h14v12H3V4Zm2 2v8l4-3.2 2.4 1.9L15 8.5V6H5Zm2 1a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z" />
       </svg>
     ),
+  },
+  {
+    to: '/submissions',
+    label: 'Submissions',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M2 4h16v12H2V4Zm1.8 1.5L10 10.2l6.2-4.7H3.8ZM3.5 7.2v7.3h13V7.2L10 12.1 3.5 7.2Z" />
+      </svg>
+    ),
+    requiresSubmissionsRead: true,
   },
   {
     to: '/team',
@@ -69,8 +79,11 @@ function AdminLayout() {
   // Affordance only (admin/CLAUDE.md invariant 3) — hiding the nav item for
   // a role that can't manage the team is UX, not the real gate; the API
   // enforces members:manage for real on every team/invite route.
+  const role = session?.memberships[0]?.role
   const visibleNavItems = navItems.filter(
-    (item) => !item.requiresTeamManage || canManageTeam(session?.memberships[0]?.role),
+    (item) =>
+      (!item.requiresTeamManage || canManageTeam(role)) &&
+      (!item.requiresSubmissionsRead || canReadSubmissions(role)),
   )
 
   function handleLogout() {

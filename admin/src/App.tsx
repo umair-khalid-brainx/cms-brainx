@@ -11,6 +11,8 @@ import CreatePagePage from './pages/CreatePagePage.tsx'
 import MediaPage from './pages/MediaPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import TeamPage from './pages/TeamPage.tsx'
+import SubmissionsPage from './pages/SubmissionsPage.tsx'
+import SubmissionDetailPage from './pages/SubmissionDetailPage.tsx'
 import EditorPage from './pages/EditorPage.tsx'
 
 function App() {
@@ -28,6 +30,8 @@ function App() {
           <Route path="/pages" element={<PagesListPage />} />
           <Route path="/pages/new" element={<CreatePagePage />} />
           <Route path="/media" element={<MediaPage />} />
+          <Route path="/submissions" element={<SubmissionsPage />} />
+          <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
           <Route path="/team" element={<TeamPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

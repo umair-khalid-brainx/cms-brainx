@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { BlockRenderer } from 'cms-blocks';
+import { BlockRenderer, ContactFormProvider } from 'cms-blocks';
 import { getPage, getSite } from '@/lib/publicApi';
+import { submitContactForm } from '@/site/contactFormAction';
 
 function toPath(segments: string[] | undefined): string {
   return segments?.length ? `/${segments.join('/')}` : '/';
@@ -24,5 +25,11 @@ export default async function SitePage({ params }: PageProps<'/sites/[subdomain]
   const page = await getPage(subdomain, toPath(path));
   if (!page) notFound();
 
-  return <BlockRenderer blocks={page.blocks} />;
+  // The provider is how a ContactForm block on this page finds its server
+  // action (D-034); the editor canvas has none, so its forms never send.
+  return (
+    <ContactFormProvider submit={submitContactForm}>
+      <BlockRenderer blocks={page.blocks} />
+    </ContactFormProvider>
+  );
 }

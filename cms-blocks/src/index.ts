@@ -16,5 +16,6 @@ export * from './Gallery';
 export * from './PricingTable';
 export * from './TeamGrid';
 export * from './ContactForm';
+export * from './contactFormFields';
 export * from './theme/theme';
 export * from './theme/SiteThemeRoot';

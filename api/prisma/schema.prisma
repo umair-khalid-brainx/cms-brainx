@@ -35,6 +35,7 @@ model Site {
   content     Content[]
   invites     Invite[]
   media       Media[]
+  submissions Submission[]
 
   @@map("sites")
 }
@@ -137,7 +138,8 @@ model Content {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
-  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  submissions Submission[]
 
   // Matches the actual read pattern (ARCHITECTURE.md: "fetch content by
   // (site_id, path)"). path === slug for now since hierarchy is deferred.
@@ -166,4 +168,27 @@ model Media {
   uploadedBy User @relation(fields: [uploadedByUserId], references: [id])
 
   @@map("media")
+}
+
+// One contact form submission from a public-site visitor (BLK-06, D-034).
+// `answers` is an ordered array of `{ name, label, value }`, not an object
+// keyed by name: the editor defines each form's fields, JSONB objects don't
+// keep key order, and a snapshot of each label keeps old submissions
+// readable after the editor renames or removes a field. `pageTitle` and
+// `pagePath` are snapshots for the same reason; `contentId` goes null if the
+// page is deleted, the submission stays.
+model Submission {
+  id        String   @id @default(cuid())
+  siteId    String   @map("site_id")
+  contentId String?  @map("content_id")
+  pageTitle String   @map("page_title")
+  pagePath  String   @map("page_path")
+  answers   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  site    Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  content Content? @relation(fields: [contentId], references: [id], onDelete: SetNull)
+
+  @@index([siteId, createdAt])
+  @@map("submissions")
 }

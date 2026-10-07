@@ -1,4 +1,7 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
+import { createSubmissionSchema, type CreateSubmissionDto } from '../submissions/dto/submission.dto.js';
+import { FormSecretGuard } from '../submissions/form-secret.guard.js';
 import { PublicService } from './public.service.js';
 
 // Deliberately unguarded: this is what `web` calls to render a tenant's public
@@ -19,5 +22,17 @@ export class PublicController {
   @Get('page')
   getPage(@Param('subdomain') subdomain: string, @Query('path') path?: string) {
     return this.publicSite.getPage(subdomain, path);
+  }
+
+  // The one write under /public. Not open like the reads: only `web`'s server
+  // action holds the secret, so the honeypot and rate limit there can't be
+  // skipped by calling this directly (D-034).
+  @Post('submissions')
+  @UseGuards(FormSecretGuard)
+  submit(
+    @Param('subdomain') subdomain: string,
+    @Body(new ZodValidationPipe(createSubmissionSchema)) body: CreateSubmissionDto,
+  ) {
+    return this.publicSite.submit(subdomain, body);
   }
 }
