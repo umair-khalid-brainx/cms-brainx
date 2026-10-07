@@ -6,10 +6,13 @@
 ## Goal
 Duplicate an existing page as a new draft.
 ## Definition of Done
-_Items marked Draft were written from the plan, decisions and code, not from use cases. Confirm them before `/build`._
-- [ ] Draft: a Duplicate action on the Pages list creates a copy with the same blocks
-- [ ] Draft: the copy is a draft with a unique slug (e.g. `about-copy`)
-- [ ] Draft: duplicating never crosses sites
+_Confirmed with the user 2026-10-07._
+- [ ] `POST /content/:slug/duplicate` (needs `content:write`) creates a copy with the same blocks, as a `draft`, never archived
+- [ ] Slug is `<slug>-copy`, then `<slug>-copy-2`, `-copy-3` … if taken; title gets ` (copy)`
+- [ ] The copy sits under the same parent as the original (same path prefix; top-level today, since hierarchy is `CNT-05`)
+- [ ] Duplicating never crosses sites: an unknown slug or another site's slug → 404
+- [ ] Pages list (active tab) has a Duplicate row action; the copy appears in the list without a reload
 - [ ] All tests pass. Reviewer approved. Verifier passed.
 ## Technical notes
-`ContentService`, `PagesListPage.tsx`.
+`ContentService.duplicate`, `ContentController`, `admin/src/lib/contentApi.ts`, `PagesListPage.tsx`.
+UI built with the `frontend-design` / `ui-ux-pro-max` skills, matching the existing admin look.
