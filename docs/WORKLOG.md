@@ -5,6 +5,28 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-07 — Public pages cached with ISR, refreshed on publish (`CNT-08` done)
+
+`web`'s tenant route is now ISR, and `api` tells `web` exactly which site and path to refresh when a
+live page changes: publish, unpublish, archive, or saving a live page (D-039). The 60 s timer is the
+backstop for theme and subdomain changes (the user's call) and for a refresh that never arrived.
+
+- `api`: `src/revalidation/` (`RevalidationService`: 2 s timeout, never throws, logs on failure),
+  called from `ContentService.update` when the page was live before or after the write. Needs
+  `WEB_REVALIDATE_URL` + `REVALIDATE_SECRET`.
+- `web`: `revalidate = 60` + empty `generateStaticParams` on the page route, with fetches cached. The
+  proxy maps `/__revalidate` to `app/internal/revalidate/route.ts` (timing-safe secret check). The
+  proxy's branches were tidied in the same pass.
+- Verified on `next build && next start` (dev mode has no ISR). Pages go MISS then HIT. A direct DB
+  edit stays hidden while an API save shows on the next request. Publish, unpublish and archive show
+  at once. Same path on both tenants gives separate entries, and refreshing one leaves the other HIT.
+  With web down, a publish still returns 200 and the page catches up within 60 s.
+
+**Not done:** anyone can fill the cache with 404s (`B-17`), and `/__revalidate` should be blocked
+in nginx (`B-18`). Both are for deploy.
+
+---
+
 ## 2026-10-07 — Four starter layouts as data (`TYP-05` done)
 
 `starter_layouts`, one global table with no `siteId` (D-038), is seeded from `api/prisma/starter-layouts.ts`:

@@ -27,6 +27,7 @@ describe('RevalidationService', () => {
         method: 'POST',
         headers: expect.objectContaining({ 'x-revalidate-secret': 's3cret' }),
         body: JSON.stringify({ subdomain: 'corrick', path: '/about' }),
+        signal: expect.any(AbortSignal),
       }),
     );
   });
@@ -49,11 +50,19 @@ describe('RevalidationService', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('does nothing when not configured', async () => {
+  it('does nothing unless both the URL and the secret are set', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
 
     await service({}).page('corrick', '/');
+    await service({ WEB_REVALIDATE_URL: configured.WEB_REVALIDATE_URL }).page(
+      'corrick',
+      '/',
+    );
+    await service({ REVALIDATE_SECRET: configured.REVALIDATE_SECRET }).page(
+      'corrick',
+      '/',
+    );
 
     expect(fetch).not.toHaveBeenCalled();
   });

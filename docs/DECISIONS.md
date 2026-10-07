@@ -36,6 +36,12 @@ stale-while-revalidate: after 60 s, the first request still gets the old page an
 re-render, and the one after it is fresh. ISR is off under `next dev`, so check caching with
 `next build && next start`.
 
+**Known costs (review, 2026-10-07):** anyone can now fill the cache. Every unknown path or subdomain
+writes a cached 404 to disk (`B-17`). `/__revalidate` answers on every public host, guarded only by
+the secret, so nginx should block it outside localhost (`B-18`, `DEP-01b`). The call to `web` is
+awaited, so a slow `web` adds up to 2 s to a save. That's deliberate: a page opened from the editor
+right after publishing must already be fresh.
+
 ---
 
 ## D-038 — 2026-10-07 — Starter layouts are one global table, not per site
