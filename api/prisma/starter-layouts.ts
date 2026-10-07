@@ -12,6 +12,9 @@
  * the reason a new page can't be published.
  */
 
+// Blocks are typed loosely (`api` can't import cms-blocks' types), so a
+// misspelled optional prop wouldn't be caught here or by the publish checks;
+// the spec at least holds every layout to registry types and required fields.
 export type StarterLayout = {
   key: string;
   name: string;
@@ -57,11 +60,12 @@ export const STARTER_LAYOUTS: StarterLayout[] = [
       {
         type: 'stats',
         heading: 'In numbers',
+        // `00` so nobody publishes a figure they never checked.
         items: [
-          { label: 'Years in business', value: '10+' },
-          { label: 'Customers served', value: '500' },
-          { label: 'Average rating', value: '4.9' },
-          { label: 'People on the team', value: '12' },
+          { label: 'Your first number', value: '00' },
+          { label: 'Your second number', value: '00' },
+          { label: 'Your third number', value: '00' },
+          { label: 'Your fourth number', value: '00' },
         ],
       },
       {
@@ -103,6 +107,7 @@ export const STARTER_LAYOUTS: StarterLayout[] = [
           { name: 'Team member name', role: 'Their role' },
           { name: 'Team member name', role: 'Their role' },
           { name: 'Team member name', role: 'Their role' },
+          { name: 'Team member name', role: 'Their role' },
         ],
       },
       {
@@ -128,7 +133,7 @@ export const STARTER_LAYOUTS: StarterLayout[] = [
       {
         type: 'contactForm',
         heading: 'Send us a message',
-        intro: 'We reply to every message within two working days.',
+        intro: 'Say how quickly you reply, so people know what to expect.',
         submitLabel: 'Send message',
         fields: [
           {

@@ -236,11 +236,20 @@ async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
 
 // Global, not per site (TYP-05, D-038). Unlike pages, a re-run *does*
 // overwrite: the layouts are platform data owned by this file, not
-// something a tenant edits.
+// something a tenant edits. It never deletes, though: a layout removed from
+// the file stays in the table until removed by hand.
 async function seedStarterLayouts(): Promise<void> {
   for (const [sortOrder, layout] of STARTER_LAYOUTS.entries()) {
-    const data = { ...layout, blocks: layout.blocks as Prisma.InputJsonValue, sortOrder };
-    await prisma.starterLayout.upsert({ where: { key: layout.key }, update: data, create: data });
+    const data = {
+      ...layout,
+      blocks: layout.blocks as Prisma.InputJsonValue,
+      sortOrder,
+    };
+    await prisma.starterLayout.upsert({
+      where: { key: layout.key },
+      update: data,
+      create: data,
+    });
   }
   console.log(`Ensured ${STARTER_LAYOUTS.length} starter layouts`);
 }

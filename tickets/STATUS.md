@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 18, IN-PROGRESS 6, TODO 29 (54 tickets). Updated 2026-10-07.
+**Totals:** BACKLOG 1, DONE 19, IN-PROGRESS 6, TODO 28 (54 tickets). Updated 2026-10-07.
 
 ## M1 (week 1)
 
@@ -41,7 +41,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | CNT-12 | Pre-publish validation | DONE | 0 |  |
 | BLK-02 | Remaining render blocks: gallery, embed, FAQ | IN-PROGRESS | 0 | Embed not built |
 | BLK-03 | Editor canvas (Puck): add, delete, reorder, duplicate | IN-PROGRESS | 0 |  |
-| TYP-05 | Four seeded starter block arrangements | TODO | 0 |  |
+| TYP-05 | Four seeded starter block arrangements | DONE | 0 |  |
 
 ## M3 (week 3)
 
