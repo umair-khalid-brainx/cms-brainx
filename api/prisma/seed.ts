@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 import { PrismaClient, type Prisma } from '../src/generated/prisma/client.js';
+import { STARTER_LAYOUTS } from './starter-layouts.js';
 
 // One-off seed for local development — run manually with `npm run db:seed`.
 // Not wired into `prisma migrate reset`'s seed hook (FND-06 proper); this just
@@ -233,10 +234,22 @@ async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
   );
 }
 
+// Global, not per site (TYP-05, D-038). Unlike pages, a re-run *does*
+// overwrite: the layouts are platform data owned by this file, not
+// something a tenant edits.
+async function seedStarterLayouts(): Promise<void> {
+  for (const [sortOrder, layout] of STARTER_LAYOUTS.entries()) {
+    const data = { ...layout, blocks: layout.blocks as Prisma.InputJsonValue, sortOrder };
+    await prisma.starterLayout.upsert({ where: { key: layout.key }, update: data, create: data });
+  }
+  console.log(`Ensured ${STARTER_LAYOUTS.length} starter layouts`);
+}
+
 async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
   await seedSite(corrick, passwordHash);
   await seedSite(kestrel, passwordHash);
+  await seedStarterLayouts();
 }
 
 main()

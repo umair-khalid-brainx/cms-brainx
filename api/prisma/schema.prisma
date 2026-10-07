@@ -188,3 +188,20 @@ model PreviewLink {
 
   @@map("preview_links")
 }
+
+// Starter page layouts (TYP-05), offered on page creation (TYP-04). Global,
+// shared by every site: platform data like the block registry, not tenant
+// content, so there's no `siteId` (D-038). Filled by the seed from
+// prisma/starter-layouts.ts, upserted by `key`.
+model StarterLayout {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String
+  blocks      Json
+  sortOrder   Int      @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("starter_layouts")
+}

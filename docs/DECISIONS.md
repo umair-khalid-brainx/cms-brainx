@@ -8,6 +8,29 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-038 — 2026-10-07 — Starter layouts are one global table, not per site
+
+**Decision (user's call):** `TYP-05`'s four starter layouts (Landing, About, Contact, Article) live in
+`starter_layouts`: key, name, description, `blocks` (JSONB, the same contract as `content.blocks`)
+and sort order. One set is shared by every site. The seed upserts them by `key` from
+`api/prisma/starter-layouts.ts`. `GET /starter-layouts` (`content:write`) lists them for `TYP-04`.
+
+**Options:** a global table (chosen); a copy per site (each tenant could tweak its own, but that
+means tenant scoping and seeding per site for a read-only list nobody edits yet); or a JSON file in
+`api` (simplest, but invariant 8 asks for "data, not code-defined blocks", and a table is
+what makes that true).
+
+**Why no `siteId`:** this is platform data, like the block registry, not tenant content. Invariant 1
+("every content method takes `siteId`") is about tenant content, so `StarterLayoutRepository` is the
+one repository with unscoped reads, and its header comment says why. If tenants ever get their own
+layouts, that's a new `siteId`-scoped table, not a column added to this one.
+
+**Also:** the layouts use generic placeholder copy and no block that needs an image, so a page made
+from one passes `CNT-12`'s publish checks as-is. `starter-layouts.spec.ts` enforces that, along with
+"registry block types only".
+
+---
+
 ## D-037 — 2026-10-07 — Preview links: one stored random token per page, no expiry, revocable
 
 **Decision (user's call):** `CNT-09`'s "signed, expiring token" became a stored, unguessable link.
