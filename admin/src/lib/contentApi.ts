@@ -163,6 +163,14 @@ export async function setPageStatus(slug: string, status: PageStatus): Promise<P
   return toSummary(record);
 }
 
+// The API decides the copy's slug (`<slug>-copy`, `-copy-2`, ...) and always
+// makes it a draft (CNT-10).
+export async function duplicatePage(slug: string): Promise<PageSummary> {
+  const session = requireSession();
+  const record = await apiSend<ContentRecord>('POST', `/content/${slug}/duplicate`, {}, session.accessToken);
+  return toSummary(record);
+}
+
 export async function deletePage(slug: string): Promise<void> {
   const session = requireSession();
   await apiDelete(`/content/${slug}`, session.accessToken);

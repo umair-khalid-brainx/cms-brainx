@@ -61,6 +61,12 @@ export class ContentController {
     return this.content.create(request.user.sub, body);
   }
 
+  @Post(':slug/duplicate')
+  @RequirePermission('content:write')
+  duplicate(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.duplicate(request.user.sub, slug);
+  }
+
   @Patch(':slug')
   @RequirePermission('content:write')
   update(

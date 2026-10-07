@@ -72,6 +72,26 @@ export class ContentService {
     return this.content.findBySlug(membership.siteId, slug);
   }
 
+  // A copy is always a fresh draft (CNT-10), whatever the original's status:
+  // duplicating a live page must never put a second copy of it live.
+  // `<slug>-copy`, then `-copy-2`, ... via uniqueSlug, next to the original —
+  // same parent path, so this stays right once hierarchy (CNT-05) exists.
+  async duplicate(userId: string, slug: string) {
+    const siteId = await this.resolveSiteId(userId);
+    const source = await this.content.findBySlug(siteId, slug);
+    if (!source) throw new NotFoundException('Page not found');
+
+    const copySlug = await this.uniqueSlug(siteId, `${source.slug}-copy`);
+    const parentPath = source.path.slice(0, source.path.lastIndexOf('/'));
+
+    return this.content.create(siteId, {
+      title: `${source.title} (copy)`,
+      slug: copySlug,
+      path: `${parentPath}/${copySlug}`,
+      blocks: source.blocks as Prisma.InputJsonValue,
+    });
+  }
+
   // Only archived pages can be hard-deleted — the pages list offers Delete
   // Permanently on the Archived tab alone (see PagesListPage.tsx), and this
   // guard means that's structural, not just a UI affordance a client could

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import Select, { type SelectOption } from '../components/Select';
 import { getSession } from '../lib/auth';
-import { deletePage, listArchivedPages, listPages, setPageStatus, type PageStatus, type PageSummary } from '../lib/contentApi';
+import { deletePage, duplicatePage, listArchivedPages, listPages, setPageStatus, type PageStatus, type PageSummary } from '../lib/contentApi';
 import { canArchiveContent, canPublishContent } from '../lib/roles';
 import { siteUrl } from '../data/site';
 import './PagesListPage.css';
@@ -33,6 +33,8 @@ function PagesListPage() {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
   const [busySlug, setBusySlug] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // The copy just made, so its row can be highlighted and announced.
+  const [justCopied, setJustCopied] = useState<PageSummary | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +88,21 @@ function PagesListPage() {
     );
   }
 
+  async function handleDuplicate(page: PageSummary) {
+    setBusySlug(page.slug);
+    setActionError(null);
+    try {
+      const copy = await duplicatePage(page.slug);
+      // Newest first, matching the API's order (updatedAt desc).
+      setPages((prev) => [copy, ...prev]);
+      setJustCopied(copy);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not duplicate this page');
+    } finally {
+      setBusySlug(null);
+    }
+  }
+
   async function handleDelete(page: PageSummary) {
     if (!window.confirm(`Permanently delete "${page.title}"? This can't be undone.`)) return;
     setBusySlug(page.slug);
@@ -123,7 +140,19 @@ function PagesListPage() {
 
       {load.status === 'error' && <p className="pages-error">{load.message}</p>}
       {load.status === 'loading' && <p className="pages-loading">Loading…</p>}
-      {actionError && <p className="pages-error">{actionError}</p>}
+      {actionError && (
+        <p className="pages-error" role="alert">
+          {actionError}
+        </p>
+      )}
+      <p className="pages-notice" aria-live="polite">
+        {justCopied && tab === 'active' && (
+          <>
+            Created “{justCopied.title}” as a draft.{' '}
+            <Link to={`/editor/${justCopied.slug}`}>Open in editor</Link>
+          </>
+        )}
+      </p>
 
       {load.status === 'ready' && rows.length === 0 && (
         <p className="pages-loading">{tab === 'active' ? 'No pages yet.' : 'No archived pages.'}</p>
@@ -141,7 +170,7 @@ function PagesListPage() {
           </thead>
           <tbody>
             {pages.map((page) => (
-              <tr key={page.slug}>
+              <tr key={page.slug} className={justCopied?.slug === page.slug ? 'pages-row-new' : undefined}>
                 <td>
                   <Link to={`/editor/${page.slug}`} className="pages-row-title">
                     {page.title}
@@ -157,6 +186,14 @@ function PagesListPage() {
                     View
                     <span aria-hidden="true">&#8599;</span>
                   </a>
+                  <button
+                    type="button"
+                    className="pages-row-duplicate"
+                    disabled={busySlug === page.slug}
+                    onClick={() => handleDuplicate(page)}
+                  >
+                    {busySlug === page.slug ? 'Duplicating…' : 'Duplicate'}
+                  </button>
                   {statusMenu(page)}
                 </td>
               </tr>
