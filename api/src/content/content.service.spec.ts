@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
 import { ContentService } from './content.service.js';
@@ -134,6 +134,24 @@ describe('ContentService.duplicate', () => {
     ]);
 
     expect((await service.duplicate('alice', 'home')).path).toBe('/home-copy');
+  });
+
+  it('refuses to copy an archived page', async () => {
+    const { service, content } = setup([
+      {
+        siteId: 'site-a',
+        title: 'Old',
+        slug: 'old',
+        path: '/old',
+        status: 'archived',
+        blocks,
+      },
+    ]);
+
+    await expect(service.duplicate('alice', 'old')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(content.create).not.toHaveBeenCalled();
   });
 
   it("can't reach another site's page, and never writes to it", async () => {

@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 15, IN-PROGRESS 6, TODO 32 (54 tickets). Updated 2026-10-07.
+**Totals:** BACKLOG 1, DONE 16, IN-PROGRESS 6, TODO 31 (54 tickets). Updated 2026-10-07.
 
 ## M1 (week 1)
 
@@ -36,7 +36,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | CNT-07 | Next catch-all route, host resolution, render | DONE | 0 | Built before CNT-06; nested paths untested |
 | CNT-08 | ISR revalidation on publish, host-inclusive cache key | TODO | 0 |  |
 | CNT-09 | Signed-token preview URLs | TODO | 0 |  |
-| CNT-10 | Duplicate page | TODO | 0 |  |
+| CNT-10 | Duplicate page | DONE | 0 |  |
 | CNT-11 | Trash, restore, permanent delete | DONE | 0 |  |
 | CNT-12 | Pre-publish validation | TODO | 0 |  |
 | BLK-02 | Remaining render blocks: gallery, embed, FAQ | IN-PROGRESS | 0 | Embed not built |

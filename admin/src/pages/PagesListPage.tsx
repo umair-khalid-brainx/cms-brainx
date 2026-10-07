@@ -39,6 +39,7 @@ function PagesListPage() {
   useEffect(() => {
     let cancelled = false;
     setLoad({ status: 'loading' });
+    setJustCopied(null);
     (tab === 'active' ? listPages() : listArchivedPages())
       .then((result) => {
         if (cancelled) return;
@@ -59,6 +60,7 @@ function PagesListPage() {
     if (status === 'archived' && !window.confirm(`Archive "${page.title}"? It will be hidden from the site and moved to the Archived tab.`)) return;
     setBusySlug(page.slug);
     setActionError(null);
+    setJustCopied(null);
     try {
       const updated = await setPageStatus(page.slug, status);
       // A page crossing the archived line leaves this tab's list; any other
@@ -148,7 +150,7 @@ function PagesListPage() {
       <p className="pages-notice" aria-live="polite">
         {justCopied && tab === 'active' && (
           <>
-            Created “{justCopied.title}” as a draft.{' '}
+            Created “{justCopied.title}” at {justCopied.path} as a draft.{' '}
             <Link to={`/editor/${justCopied.slug}`}>Open in editor</Link>
           </>
         )}

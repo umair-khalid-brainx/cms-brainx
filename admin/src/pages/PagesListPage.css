@@ -242,7 +242,6 @@
 @media (prefers-reduced-motion: reduce) {
   .pages-row-new td {
     animation: none;
-    background: #f0f6fc;
   }
 }
 
@@ -340,8 +339,3 @@
   }
 }
 
-@media (prefers-color-scheme: dark) and (prefers-reduced-motion: reduce) {
-  .pages-row-new td {
-    background: #12304a;
-  }
-}
