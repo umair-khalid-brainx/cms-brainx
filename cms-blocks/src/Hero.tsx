@@ -1,5 +1,5 @@
 import type { HeroBlock } from './types';
-import { ActionLink, Eyebrow, Heading, Prose, Section } from './ui';
+import { ActionLink, Eyebrow, Heading, Prose, Section, hasImage, hasLink } from './ui';
 
 export function Hero({ block }: { block: HeroBlock }) {
   const { eyebrow, headline, body, primaryAction, secondaryAction, image, facts } = block;
@@ -11,15 +11,15 @@ export function Hero({ block }: { block: HeroBlock }) {
           {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
           <Heading level={1}>{headline}</Heading>
           {body ? <Prose className="text-[1.1875rem]">{body}</Prose> : null}
-          {primaryAction || secondaryAction ? (
+          {hasLink(primaryAction) || hasLink(secondaryAction) ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-8 gap-y-4">
-              {primaryAction ? <ActionLink action={primaryAction} variant="primary" /> : null}
-              {secondaryAction ? <ActionLink action={secondaryAction} variant="secondary" /> : null}
+              {hasLink(primaryAction) ? <ActionLink action={primaryAction} variant="primary" /> : null}
+              {hasLink(secondaryAction) ? <ActionLink action={secondaryAction} variant="secondary" /> : null}
             </div>
           ) : null}
         </div>
 
-        {image ? (
+        {hasImage(image) ? (
           <figure className="site-rise site-rise-delay overflow-hidden rounded-[var(--site-radius-lg)] border border-[var(--site-line)]">
             {/* eslint-disable-next-line @next/next/no-img-element -- fixture SVGs; next/image lands with the media library */}
             <img src={image.src} alt={image.alt} className="block h-full w-full object-cover" />

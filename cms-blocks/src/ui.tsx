@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { LinkRef } from './types';
+import type { ImageRef, LinkRef } from './types';
 
 /** Vertical rhythm and the page gutter, both driven by the site's density. */
 export function Section({
@@ -59,6 +59,19 @@ export function Prose({ children, className = '' }: { children: ReactNode; class
       {children}
     </p>
   );
+}
+
+// An optional link or image the editor left empty is stored as an object of
+// blank strings (`{ label: '', href: '' }`, `{ src: '', alt: '' }`), not as
+// `undefined`. Rendering on mere existence would draw an empty button or a
+// broken image frame, so blank counts as absent — the same rule the API's
+// publish checks use (CNT-12, D-036).
+export function hasLink(link: LinkRef | undefined): link is LinkRef {
+  return Boolean(link && (link.label?.trim() || link.href?.trim()));
+}
+
+export function hasImage(image: ImageRef | undefined): image is ImageRef {
+  return Boolean(image?.src?.trim());
 }
 
 const focus =

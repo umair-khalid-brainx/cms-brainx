@@ -118,6 +118,31 @@ describe('checkPublishable', () => {
     ]);
   });
 
+  it('flags a blank pricing feature and duplicate form field names', () => {
+    const { errors } = checkPublishable([
+      {
+        type: 'pricingTable',
+        plans: [
+          {
+            name: 'Pro',
+            price: '£9',
+            features: ['Fast', ' '],
+            action: { label: 'Buy', href: '/buy' },
+          },
+        ],
+      },
+      {
+        type: 'contactForm',
+        submitLabel: 'Send',
+        fields: [
+          { name: 'email', label: 'Email', fieldType: 'email' },
+          { name: 'email', label: 'Work email', fieldType: 'email' },
+        ],
+      },
+    ]);
+    expect(fields(errors)).toEqual(['0:plans.0.features.1', '1:fields.1.name']);
+  });
+
   it('refuses a block type it has no rule for', () => {
     const { errors } = checkPublishable([
       { type: 'embed', url: 'https://example.com' },
@@ -139,7 +164,9 @@ describe('checkPublishable', () => {
       resolve(__dirname, '../../../cms-blocks/src/types.ts'),
       'utf8',
     );
-    const contractTypes = [...contract.matchAll(/^\s+type: '(\w+)';$/gm)]
+    const contractTypes = [
+      ...contract.matchAll(/^\s*type:\s*['"](\w+)['"];?\s*$/gm),
+    ]
       .map((m) => m[1])
       .sort();
     expect(contractTypes.length).toBeGreaterThan(0);

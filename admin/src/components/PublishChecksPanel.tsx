@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { PublishChecks, PublishProblem } from '../lib/contentApi';
 import './PublishChecksPanel.css';
 
@@ -46,10 +46,13 @@ function ProblemList({ problems, kind }: { problems: PublishProblem[]; kind: 'er
 /**
  * The publish checks the API ran (CNT-12): errors block, warnings don't.
  * Focuses itself when it appears so keyboard and screen-reader users land
- * on the list instead of on a Publish button that silently did nothing.
+ * on the list instead of on a Publish button that silently did nothing. A
+ * labelled region rather than `role="alert"`: moving focus already reads
+ * it out, and an alert on top would announce it twice.
  */
 function PublishChecksPanel({ checks, pageTitle, onClose, onPublishAnyway, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const titleId = useId();
   const blocked = checks.errors.length > 0;
 
   useEffect(() => {
@@ -65,11 +68,11 @@ function PublishChecksPanel({ checks, pageTitle, onClose, onPublishAnyway, child
     <div
       ref={ref}
       tabIndex={-1}
-      role={blocked ? 'alert' : 'status'}
-      aria-labelledby="publish-checks-title"
+      role="region"
+      aria-labelledby={titleId}
       className={`publish-checks ${blocked ? 'publish-checks-blocked' : 'publish-checks-warn'}`}
     >
-      <p id="publish-checks-title" className="publish-checks-title">
+      <p id={titleId} className="publish-checks-title">
         {title}
       </p>
       {blocked && <ProblemList problems={checks.errors} kind="error" />}

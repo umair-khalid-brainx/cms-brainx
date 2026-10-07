@@ -85,9 +85,10 @@ class BlockCheck {
   }
 
   /**
-   * A button. An optional one left completely empty counts as absent (the
-   * editor stores `{ label: '', href: '' }` for an untouched optional link);
-   * half-filled is always an error, because it renders as a broken button.
+   * A button. An optional one left completely empty counts as absent: the
+   * editor stores `{ label: '', href: '' }` once a field has been typed in
+   * and cleared, and the renderers skip it (`hasLink` in cms-blocks).
+   * Half-filled is always an error, because it renders as a broken button.
    */
   link(
     fields: Fields,
@@ -107,7 +108,10 @@ class BlockCheck {
     if (noHref) this.error(`${path}.href`, `Add a link to ${name}`);
   }
 
-  /** An image. Optional and empty counts as absent, like `link`. Missing alt text only warns. */
+  /**
+   * An image. Optional and empty counts as absent, like `link` (`hasImage` in
+   * cms-blocks; TeamGrid's default photo is `{ src: '' }`). Missing alt text only warns.
+   */
   image(
     fields: Fields,
     key: string,
@@ -215,6 +219,14 @@ const RULES: Record<KnownBlockType, Rule> = {
       c.text(plan, 'name', `${path}.name`, `Name plan ${n}`);
       c.text(plan, 'price', `${path}.price`, `Add a price to plan ${n}`);
       c.link(plan, 'action', `${path}.action`, `the button of plan ${n}`, true);
+      const features = Array.isArray(plan.features) ? plan.features : [];
+      features.forEach((feature, i) => {
+        if (isBlank(feature))
+          c.error(
+            `${path}.features.${i}`,
+            `Add text to feature ${i + 1} of plan ${n}`,
+          );
+      });
     });
   },
   teamGrid(c, b) {
@@ -235,6 +247,19 @@ const RULES: Record<KnownBlockType, Rule> = {
     c.list(b, 'fields', 'Add at least one form field', 1, (field, path, n) => {
       c.text(field, 'label', `${path}.label`, `Add a label to field ${n}`);
       c.text(field, 'name', `${path}.name`, `Add a name to field ${n}`);
+    });
+    // Two fields with one name would overwrite each other's answer.
+    const names = (Array.isArray(b.fields) ? b.fields : []).map(
+      (f) => asFields(f)?.name,
+    );
+    names.forEach((name, i) => {
+      const first = names.indexOf(name);
+      if (typeof name === 'string' && name.trim() && first < i) {
+        c.error(
+          `fields.${i}.name`,
+          `Give field ${i + 1} a different name from field ${first + 1}`,
+        );
+      }
     });
   },
 };

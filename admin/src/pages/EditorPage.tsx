@@ -33,6 +33,7 @@ function EditorPage() {
   // Tracks the live data from onChange so our own Publish button (see below)
   // can save it on click without needing to reach into Puck's internal store.
   const latestDataRef = useRef<Data<EditorComponents> | null>(null);
+  const publishButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,21 +92,27 @@ function EditorPage() {
   // Save, ask the API what would stop this going live, and only publish
   // when nothing does (CNT-12). Warnings show first but can be skipped with
   // "Publish anyway"; errors can't — the API re-checks and refuses with 422.
+  // The publish sends whatever is newest by then (`latestDataRef`), not what
+  // was on screen at the click: typing during the round-trip must not be
+  // overwritten by an older copy. Errors in those late edits are still
+  // caught by the API's own check; a new warning in them is not shown.
   async function publishNow(skipWarnings = false) {
     window.clearTimeout(timeoutRef.current);
-    const data = latestDataRef.current;
-    if (!data || publishing) return;
+    if (!latestDataRef.current || publishing) return;
     setPublishing(true);
     try {
       if (!skipWarnings) {
-        await saveDraft(page!.slug, data);
+        await saveDraft(page!.slug, latestDataRef.current);
         const result = await getPublishChecks(page!.slug);
         if (result.errors.length > 0 || result.warnings.length > 0) {
           setChecks(result);
           return;
         }
       }
-      await publishPage(page!.slug, data);
+      window.clearTimeout(timeoutRef.current);
+      await publishPage(page!.slug, latestDataRef.current);
+      // The panel (if any) is about to unmount; don't drop focus on <body>.
+      if (checks) publishButtonRef.current?.focus();
       setChecks(null);
       setSavedAt(new Date());
       setSaveError(null);
@@ -130,7 +137,7 @@ function EditorPage() {
         <span className="editor-status" role="status">
           {saveError ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
         </span>
-        <span className="editor-site">{getSession()?.memberships[0]?.siteName}</span>
+        <span className="editor-site">{getSession()?.memberships[0]?.siteName ?? 'No site'}</span>
         {/* This is the only Publish button — Puck's own native one (rendered
             in its header via `overrides.headerActions`) is suppressed below.
             D-019 originally found Puck's button didn't render at all in this
@@ -138,7 +145,7 @@ function EditorPage() {
             live Publish buttons stacked on top of each other. `onPublish`
             stays wired on <Puck> below regardless, so Puck's suppressed
             button would still work if the override were ever removed. */}
-        <button type="button" className="editor-publish" disabled={publishing} onClick={() => publishNow()}>
+        <button ref={publishButtonRef} type="button" className="editor-publish" disabled={publishing} onClick={() => publishNow()}>
           {publishing ? 'Publishing…' : 'Publish'}
         </button>
       </header>
