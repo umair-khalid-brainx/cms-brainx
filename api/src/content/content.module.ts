@@ -6,6 +6,7 @@ import { UsersModule } from '../users/users.module.js';
 import { ContentController } from './content.controller.js';
 import { ContentRepository } from './content.repository.js';
 import { ContentService } from './content.service.js';
+import { PreviewLinkRepository } from './preview-link.repository.js';
 
 @Module({
   // AuthModule import brings in JwtModule (re-exported by AuthModule) so
@@ -14,8 +15,8 @@ import { ContentService } from './content.service.js';
   // providers.
   imports: [UsersModule, AuthModule],
   controllers: [ContentController],
-  providers: [ContentRepository, ContentService, JwtAuthGuard, PermissionsGuard],
-  // For PublicModule's live-page read.
-  exports: [ContentRepository],
+  providers: [ContentRepository, PreviewLinkRepository, ContentService, JwtAuthGuard, PermissionsGuard],
+  // For PublicModule's live-page and preview reads.
+  exports: [ContentRepository, PreviewLinkRepository],
 })
 export class ContentModule {}

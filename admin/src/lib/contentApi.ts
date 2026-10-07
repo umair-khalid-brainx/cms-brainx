@@ -196,6 +196,31 @@ export async function duplicatePage(slug: string): Promise<PageSummary> {
   return toSummary(record);
 }
 
+// One preview link per page, no expiry, until revoked (CNT-09). The API
+// returns only the token; where `web` serves it is admin's to know.
+export type PreviewLink = { token: string; createdAt: string };
+
+export async function getPreviewLink(slug: string): Promise<PreviewLink | null> {
+  const session = requireSession();
+  try {
+    return await apiGet<PreviewLink>(`/content/${slug}/preview-link`, session.accessToken);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/** Creates the page's link, or returns the one it already has. */
+export async function createPreviewLink(slug: string): Promise<PreviewLink> {
+  const session = requireSession();
+  return apiSend<PreviewLink>('POST', `/content/${slug}/preview-link`, {}, session.accessToken);
+}
+
+export async function revokePreviewLink(slug: string): Promise<void> {
+  const session = requireSession();
+  await apiDelete(`/content/${slug}/preview-link`, session.accessToken);
+}
+
 export async function deletePage(slug: string): Promise<void> {
   const session = requireSession();
   await apiDelete(`/content/${slug}`, session.accessToken);

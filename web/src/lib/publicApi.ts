@@ -5,6 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4001';
 
 export type PublicSite = { name: string; subdomain: string; theme: SiteTheme };
 export type PublicPage = { title: string; path: string; blocks: Block[]; updatedAt: string };
+export type PreviewPage = PublicPage & { status: 'draft' | 'published' };
 
 /**
  * Both reads hit the API's unauthenticated `/public` routes, which only ever
@@ -31,3 +32,16 @@ export const getSite = cache((subdomain: string) =>
 export const getPage = cache((subdomain: string, path: string) =>
   getJson<PublicPage>(`/public/sites/${encodeURIComponent(subdomain)}/page?path=${encodeURIComponent(path)}`),
 );
+
+/**
+ * A page behind a preview link (CNT-09): its latest saved blocks, draft or
+ * not. Never cached — a revoked link must stop working on the next request,
+ * and an edit must show on the next reload.
+ */
+export async function getPreview(subdomain: string, token: string): Promise<PreviewPage | null> {
+  const path = `/public/sites/${encodeURIComponent(subdomain)}/preview/${encodeURIComponent(token)}`;
+  const response = await fetch(`${API_URL}${path}`, { cache: 'no-store' });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`API ${response.status} for preview`);
+  return (await response.json()) as PreviewPage;
+}

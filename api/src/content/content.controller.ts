@@ -73,6 +73,27 @@ export class ContentController {
     return this.content.duplicate(request.user.sub, slug);
   }
 
+  // Preview links (CNT-09): sharing a draft is an editing act, so all three
+  // need content:write — reading the link included, since it is the share.
+  @Get(':slug/preview-link')
+  @RequirePermission('content:write')
+  getPreviewLink(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.getPreviewLink(request.user.sub, slug);
+  }
+
+  @Post(':slug/preview-link')
+  @RequirePermission('content:write')
+  createPreviewLink(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.createPreviewLink(request.user.sub, slug);
+  }
+
+  @Delete(':slug/preview-link')
+  @RequirePermission('content:write')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async revokePreviewLink(@Req() request: AuthenticatedRequest, @Param('slug') slug: string): Promise<void> {
+    await this.content.revokePreviewLink(request.user.sub, slug);
+  }
+
   @Patch(':slug')
   @RequirePermission('content:write')
   update(

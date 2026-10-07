@@ -13,7 +13,7 @@ draft "signed, expiring token")._
 - [ ] `GET/POST/DELETE /content/:slug/preview-link` (needs `content:write`): read, create-or-return, revoke
 - [ ] `<subdomain>.<root>/__preview/<token>` renders the page's latest saved blocks inside the site's chrome, marked `noindex`, never cached
 - [ ] Unknown or revoked token → 404; a token for site A on site B's host → 404
-- [ ] The link keeps working after the page is published; archived pages → 404
+- [ ] The link keeps working after the page is published; archived pages → 404, and a link can't be created for one (409)
 - [ ] `findLiveByPath` and the public page route are unchanged (drafts stay 404 at their real path)
 - [ ] Editor has a "Share preview" control: create, copy, revoke
 - [ ] All tests pass. Reviewer approved. Verifier passed.

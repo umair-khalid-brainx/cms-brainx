@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
+import type { PreviewLinkRepository } from './preview-link.repository.js';
 import { ContentService } from './content.service.js';
 
 type Row = {
@@ -53,6 +54,7 @@ function fakeContent(
   const service = new ContentService(
     content as unknown as ContentRepository,
     users as unknown as UserRepository,
+    {} as PreviewLinkRepository,
   );
   return { service, table, content };
 }

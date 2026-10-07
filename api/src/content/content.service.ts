@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   ConflictException,
   ForbiddenException,
@@ -10,6 +11,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
+import { PreviewLinkRepository } from './preview-link.repository.js';
 import { checkPublishable } from './publish-checks.js';
 
 @Injectable()
@@ -17,6 +19,7 @@ export class ContentService {
   constructor(
     private readonly content: ContentRepository,
     private readonly users: UserRepository,
+    private readonly previewLinks: PreviewLinkRepository,
   ) {}
 
   async list(userId: string) {
@@ -116,6 +119,29 @@ export class ContentService {
       path: `${parentPath}/${copySlug}`,
       blocks: source.blocks as Prisma.InputJsonValue,
     });
+  }
+
+  // A page's preview link (CNT-09): one per page, no expiry, until revoked.
+  // Only the token goes back; admin knows where `web` serves it.
+  async getPreviewLink(userId: string, slug: string) {
+    const page = await this.get(userId, slug);
+    const link = await this.previewLinks.findByContent(page.siteId, page.id);
+    if (!link) throw new NotFoundException('This page has no preview link');
+    return { token: link.token, createdAt: link.createdAt };
+  }
+
+  async createPreviewLink(userId: string, slug: string) {
+    const page = await this.get(userId, slug);
+    if (page.status === 'archived') throw new ConflictException('Restore this page before sharing a preview');
+    // 32 random bytes: the token is the only thing standing between a draft
+    // and anyone who has the URL, so it must be unguessable.
+    const link = await this.previewLinks.findOrCreate(page.siteId, page.id, randomBytes(32).toString('base64url'));
+    return { token: link.token, createdAt: link.createdAt };
+  }
+
+  async revokePreviewLink(userId: string, slug: string): Promise<void> {
+    const page = await this.get(userId, slug);
+    await this.previewLinks.deleteByContent(page.siteId, page.id);
   }
 
   // Only archived pages can be hard-deleted — the pages list offers Delete

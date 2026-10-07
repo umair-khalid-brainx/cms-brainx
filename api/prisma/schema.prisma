@@ -31,10 +31,11 @@ model Site {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships SiteMembership[]
-  content     Content[]
-  invites     Invite[]
-  media       Media[]
+  memberships  SiteMembership[]
+  content      Content[]
+  invites      Invite[]
+  media        Media[]
+  previewLinks PreviewLink[]
 
   @@map("sites")
 }
@@ -137,7 +138,8 @@ model Content {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
-  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  previewLink PreviewLink?
 
   // Matches the actual read pattern (ARCHITECTURE.md: "fetch content by
   // (site_id, path)"). path === slug for now since hierarchy is deferred.
@@ -166,4 +168,23 @@ model Media {
   uploadedBy User @relation(fields: [uploadedByUserId], references: [id])
 
   @@map("media")
+}
+
+// One shareable preview link per page (CNT-09): no expiry, lives until
+// someone revokes it. `token` is the secret (32 random bytes, base64url).
+// It's stored as-is, not hashed, because the editor shows the same link
+// again later. `siteId` duplicates the page's own so the public lookup is
+// scoped by site (invariant 1): a token used on another site's host matches
+// nothing.
+model PreviewLink {
+  id        String   @id @default(cuid())
+  siteId    String   @map("site_id")
+  contentId String   @unique @map("content_id")
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("preview_links")
 }

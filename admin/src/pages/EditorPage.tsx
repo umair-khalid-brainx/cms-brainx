@@ -4,6 +4,7 @@ import '@puckeditor/core/puck.css';
 import { Link, Navigate, useParams } from 'react-router';
 import { config, type EditorComponents } from '../puck/config';
 import PublishChecksPanel from '../components/PublishChecksPanel';
+import SharePreview from '../components/SharePreview';
 import { getSession } from '../lib/auth';
 import {
   getPage,
@@ -146,6 +147,7 @@ function EditorPage() {
           {saveError ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
         </span>
         <span className="editor-site">{getSession()?.memberships[0]?.siteName ?? 'No site'}</span>
+        <SharePreview slug={page.slug} />
         {/* This is the only Publish button — Puck's own native one (rendered
             in its header via `overrides.headerActions`) is suppressed below.
             D-019 originally found Puck's button didn't render at all in this

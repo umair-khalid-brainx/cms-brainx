@@ -3,6 +3,10 @@ import { subdomainFromHost } from './lib/tenant';
 
 const ROOT_DOMAIN = process.env.PUBLIC_ROOT_DOMAIN ?? 'lvh.me';
 
+// `/__preview/<token>` on a tenant host is a preview link (CNT-09). No page
+// slug can start with `_` (slugify strips it), so this never shadows a page.
+const PREVIEW_PATH = /^\/__preview\/([A-Za-z0-9_-]+)\/?$/;
+
 /**
  * Turns the tenant in the host into part of the route:
  * `corrick.lvh.me/wholesale` is rendered by `/sites/corrick/wholesale`.
@@ -19,7 +23,13 @@ export function proxy(request: NextRequest) {
   // Not a tenant host (bare root domain, 127.0.0.1, ...). Rewritten to a path
   // no route matches, so it gets app/not-found.tsx with a 404 — and so
   // `/sites/<anything>` can't be reached directly, bypassing the host.
-  url.pathname = subdomain ? `/sites/${subdomain}${url.pathname === '/' ? '' : url.pathname}` : '/no-site';
+  const preview = subdomain ? PREVIEW_PATH.exec(url.pathname) : null;
+
+  // Previews go to their own uncached route, outside `/sites` so they can
+  // never land in a page's ISR cache entry. Like `/sites`, `/preview` itself
+  // is unreachable directly: on a tenant host it's rewritten under `/sites`.
+  if (preview) url.pathname = `/preview/${subdomain}/${preview[1]}`;
+  else url.pathname = subdomain ? `/sites/${subdomain}${url.pathname === '/' ? '' : url.pathname}` : '/no-site';
   return NextResponse.rewrite(url);
 }
 

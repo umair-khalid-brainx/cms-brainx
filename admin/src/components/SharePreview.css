@@ -1,0 +1,217 @@
+.share-preview {
+  position: relative;
+}
+
+/* Secondary to Publish: outlined on the dark top bar. */
+.share-preview-trigger {
+  background: transparent;
+  color: #f0f0f1;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms, background-color 150ms;
+}
+
+.share-preview-trigger:hover,
+.share-preview-trigger[aria-expanded='true'] {
+  border-color: #f0f0f1;
+  background: #2c3338;
+}
+
+.share-preview-trigger:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.share-preview-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 50;
+  width: min(24rem, calc(100vw - 2rem));
+  background: #fff;
+  color: #1e1e1e;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  padding: 0.9rem 1rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.share-preview-panel:focus {
+  outline: none;
+}
+
+.share-preview-intro {
+  margin: 0 0 0.75rem;
+  color: #3c434a;
+}
+
+.share-preview-muted {
+  margin: 0;
+  color: #646970;
+}
+
+.share-preview-error {
+  margin: 0;
+  color: #b32d2e;
+}
+
+.share-preview-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+
+.share-preview-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.share-preview-url {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  background: #f6f7f7;
+  color: #1e1e1e;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.share-preview-url:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 1px;
+}
+
+.share-preview-primary {
+  flex: none;
+  background: #2271b1;
+  color: #fff;
+  border: 1px solid #2271b1;
+  border-radius: 4px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.share-preview-primary:hover {
+  background: #135e96;
+}
+
+.share-preview-primary:disabled {
+  background: #72aee6;
+  border-color: #72aee6;
+  cursor: default;
+}
+
+.share-preview-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.share-preview-footer a {
+  display: inline-flex;
+  gap: 0.2rem;
+  color: #2271b1;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.share-preview-footer a:hover {
+  text-decoration: underline;
+}
+
+.share-preview-revoke {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #b32d2e;
+  font-size: inherit;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.share-preview-revoke:hover {
+  text-decoration: underline;
+}
+
+.share-preview-revoke:disabled {
+  color: #b0b0b0;
+  cursor: default;
+}
+
+.share-preview-primary:focus-visible,
+.share-preview-revoke:focus-visible,
+.share-preview-footer a:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+/* Reserves a line so the panel doesn't grow when "Link copied" appears. */
+.share-preview-announce {
+  min-height: 1.2em;
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: #00762c;
+}
+
+.share-preview-announce-failed {
+  color: #b32d2e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .share-preview-panel {
+    background: #18191b;
+    color: #ededed;
+    border-color: #3c434a;
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
+  }
+
+  .share-preview-intro,
+  .share-preview-muted {
+    color: #b0b0b0;
+  }
+
+  .share-preview-error,
+  .share-preview-revoke {
+    color: #f86368;
+  }
+
+  .share-preview-url {
+    background: #101112;
+    color: #ededed;
+    border-color: #50575e;
+  }
+
+  .share-preview-footer a {
+    color: #6ab6f2;
+  }
+
+  .share-preview-announce {
+    color: #4fd67a;
+  }
+
+  .share-preview-announce-failed {
+    color: #f86368;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-preview-trigger,
+  .share-preview-primary {
+    transition: none;
+  }
+}

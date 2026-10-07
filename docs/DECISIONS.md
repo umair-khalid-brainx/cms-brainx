@@ -8,6 +8,32 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-037 — 2026-10-07 — Preview links: one stored random token per page, no expiry, revocable
+
+**Decision (user's call):** `CNT-09`'s "signed, expiring token" became a stored, unguessable link.
+`preview_links` holds one row per page with a 32-byte random token (base64url, 43 chars). It has no
+expiry: it works until someone turns it off (`DELETE /content/:slug/preview-link`). Anyone with
+`content:write` can create, read or revoke it. It shows the page's latest saved blocks, draft or
+published, and keeps working after publish. Archived pages give 404, and the link can't be
+created for them.
+
+**Why stored, not a signed JWT:** a JWT can't be revoked before it expires, and the user wanted no
+expiry and manual revocation. The token is stored as-is, not hashed, because the editor shows the
+same link again. Cost: someone with read access to the database could read live preview links.
+
+**How it stays tenant-safe:** the row carries `siteId`. The public lookup
+(`PreviewLinkRepository.findPageByToken(siteId, token)`) is scoped by the site of the host the link
+was opened on, so site A's token on site B's host matches nothing. `findLiveByPath` is untouched;
+previews are a separate door that needs the token.
+
+**How `web` serves it:** `src/proxy.ts` rewrites `<sub>.<root>/__preview/<token>` to
+`/preview/<sub>/<token>`. That's a `force-dynamic` route outside `/sites`, so it can never enter a
+page's ISR cache (`CNT-08`). No slug can start with `_`, so the path never shadows a page. The API
+sends `Cache-Control: private, no-store` and `X-Robots-Tag: noindex`, and the page sets
+`robots: noindex`. Bad, revoked, foreign and archived tokens all get the same 404.
+
+---
+
 ## D-036 — 2026-10-07 — Publish checks live once, in `api`; they gate moves to `published`, not autosaves
 
 **Decision:** the rules that stop a page going live (`CNT-12`) are one module,
