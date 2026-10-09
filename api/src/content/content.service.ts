@@ -14,6 +14,7 @@ import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
 import { checkPublishable } from './publish-checks.js';
+import { sanitizeBlocks } from './sanitize.js';
 
 @Injectable()
 export class ContentService {
@@ -55,7 +56,8 @@ export class ContentService {
       title: dto.title,
       slug,
       path,
-      blocks: dto.blocks as Prisma.InputJsonValue,
+      // Sanitise on write (BLK-05, invariant 5): what is stored is already safe.
+      blocks: sanitizeBlocks(dto.blocks) as Prisma.InputJsonValue,
     });
   }
 
@@ -80,13 +82,17 @@ export class ContentService {
       throw new ForbiddenException('Missing permission: content:delete');
     }
 
+    // Sanitise on write (BLK-05, invariant 5), before the checks below so they
+    // judge what would actually be stored.
+    const blocks = dto.blocks ? sanitizeBlocks(dto.blocks) : undefined;
+
     // Any move to `published` — publish, restore, or re-publishing from the
     // editor — must pass the publish checks, against the blocks it would go
     // live with. Draft saves (no status, or `draft`) never are (CNT-12). An
     // autosave of an already-live page isn't either: blocking it mid-edit
     // would lose work, and the editor checks before its Publish (D-036).
     if (dto.status === 'published') {
-      const checks = checkPublishable(dto.blocks ?? existing.blocks);
+      const checks = checkPublishable(blocks ?? existing.blocks);
       if (checks.errors.length > 0) {
         throw new UnprocessableEntityException({ statusCode: 422, message: 'Fix these before publishing', ...checks });
       }
@@ -94,7 +100,7 @@ export class ContentService {
 
     await this.content.update(membership.siteId, slug, {
       ...dto,
-      blocks: dto.blocks as Prisma.InputJsonValue | undefined,
+      blocks: blocks as Prisma.InputJsonValue | undefined,
       ...(entering && { archivedAt: new Date() }),
       ...(leaving && { archivedAt: null }),
     });
@@ -127,7 +133,10 @@ export class ContentService {
       title: `${source.title} (copy)`,
       slug: copySlug,
       path: `${parentPath}/${copySlug}`,
-      blocks: source.blocks as Prisma.InputJsonValue,
+      // A write like any other, so rows saved before sanitising existed are cleaned here too.
+      blocks: (Array.isArray(source.blocks)
+        ? sanitizeBlocks(source.blocks as Parameters<typeof sanitizeBlocks>[0])
+        : source.blocks) as Prisma.InputJsonValue,
     });
   }
 

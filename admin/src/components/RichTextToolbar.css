@@ -1,0 +1,153 @@
+/* Sits inside Puck's field panel, which is a fixed light theme that ignores the
+   OS dark-mode preference (see ImageUploadField.css), so there is no dark
+   variant here on purpose. Colours match Puck's own controls. */
+.rt-toolbar-wrap {
+  border-bottom: 1px solid #dcdcdc;
+  background: #f6f7f7;
+}
+
+.rt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+}
+
+/* Puck's field panel is narrow, so the style dropdown takes its own row and the
+   buttons sit together below it, instead of wrapping wherever they happen to. */
+.rt-block {
+  flex: 1 1 100%;
+  margin-bottom: 2px;
+  font: inherit;
+  font-size: 13px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e1e1e;
+  cursor: pointer;
+}
+
+.rt-block + .rt-divider {
+  display: none;
+}
+
+.rt-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: #dcdcdc;
+}
+
+.rt-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #1e1e1e;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.rt-button:hover:not(:disabled) {
+  background: #e6e7e8;
+}
+
+/* Pressed is shown by colour and a border, not colour alone. */
+.rt-button[aria-pressed='true'] {
+  background: #e5f0f8;
+  border-color: #2271b1;
+  color: #135e96;
+}
+
+.rt-button:disabled,
+.rt-block:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rt-button:focus-visible,
+.rt-block:focus-visible,
+.rt-link-input:focus-visible,
+.rt-link-apply:focus-visible,
+.rt-link-remove:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 1px;
+}
+
+.rt-link {
+  padding: 6px 8px 8px;
+  border-top: 1px solid #dcdcdc;
+}
+
+.rt-link-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.rt-link-row {
+  display: flex;
+  gap: 4px;
+}
+
+.rt-link-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  background: #fff;
+  color: #000;
+}
+
+.rt-link-input[aria-invalid='true'] {
+  border-color: #b32d2e;
+}
+
+.rt-link-apply,
+.rt-link-remove {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rt-link-apply {
+  border: 1px solid #2271b1;
+  background: #2271b1;
+  color: #fff;
+}
+
+.rt-link-remove {
+  border: 1px solid #dcdcdc;
+  background: #f0f0f1;
+  color: #1e1e1e;
+}
+
+.rt-link-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #b32d2e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-button {
+    transition: none;
+  }
+}

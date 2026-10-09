@@ -1,4 +1,4 @@
-import type { Config } from '@puckeditor/core';
+import type { Config, RichtextField } from '@puckeditor/core';
 import {
   Hero,
   RichText,
@@ -35,6 +35,7 @@ import {
   type SiteTheme,
 } from 'cms-blocks';
 import { ImageUploadField } from '../components/ImageUploadField';
+import { RichTextToolbar } from '../components/RichTextToolbar';
 
 // Field shapes mirror cms-blocks/src/types.ts exactly. Puck hands `render` the
 // field values flat; each block component wants them nested under `block`, so
@@ -78,6 +79,30 @@ export type EditorComponents = {
   TeamGrid: Omit<TeamGridBlock, 'type'>;
   ContactForm: Omit<ContactFormBlock, 'type'>;
   VideoEmbed: VideoEmbedFields;
+};
+
+// What the editor toolbar may produce (req. 2: headings, paragraphs, lists,
+// links, quotations, plus bold and italic). Everything else is switched off so
+// the editor can't create markup the API's sanitiser would then strip (BLK-05).
+const richTextOptions: RichtextField['options'] = {
+  heading: { levels: [2, 3] },
+  bold: {},
+  italic: {},
+  bulletList: {},
+  orderedList: {},
+  listItem: {},
+  blockquote: {},
+  // TipTap's defaults open links in a new tab and add `nofollow`: wrong for a
+  // client's own pages and bad for their SEO (req. 5). Plain links instead.
+  link: { openOnClick: false, HTMLAttributes: { target: null, rel: null } },
+  paragraph: {},
+  hardBreak: {},
+  code: false,
+  codeBlock: false,
+  horizontalRule: false,
+  strike: false,
+  underline: false,
+  textAlign: false,
 };
 
 // Corrick Oyster Co.'s real theme — same values as `web/src/fixtures/corrick.ts`.
@@ -170,11 +195,19 @@ export const config: Config<EditorComponents> = {
       label: 'Rich text',
       fields: {
         heading: { type: 'text', label: 'Heading' },
-        // Plain textarea for now — TipTap + sanitize-on-write is BLK-05.
-        html: { type: 'textarea', label: 'Content (HTML)' },
+        html: {
+          type: 'richtext',
+          label: 'Content',
+          contentEditable: true,
+          options: richTextOptions,
+          renderMenu: RichTextToolbar,
+          // Tall enough to keep writing room when the toolbar's link form is open.
+          initialHeight: 260,
+        },
       },
       defaultProps: { html: '<p>New paragraph.</p>' },
-      render: ({ heading, html }) => <RichText block={{ type: 'richText', heading, html }} />,
+      // In the canvas Puck hands `html` over as a rendered node, not a string.
+      render: ({ heading, html }) => <RichText block={{ type: 'richText', heading, html: html as string }} />,
     },
     ImageText: {
       label: 'Image and text',

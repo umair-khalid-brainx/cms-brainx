@@ -138,6 +138,19 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
   client-sent one straight through, so locally it can be faked. Production nginx must overwrite it
   with `$remote_addr` (`DEP-01a`).
 
+- **Puck's field panel is a single `<form>`.** A custom field that renders its own `<form>` nests
+  it, and pressing Enter or a submit button submits the outer one: the editor reloads (the URL gains a
+  trailing `?`). Use a `div`, `type="button"` and handle Enter yourself (`RichTextToolbar.tsx`, D-045).
+- **Puck's `richtext` value is a string in storage but a rendered node inside the canvas.** The
+  `RichText` block accepts both. Inside the canvas Puck also wraps the content in extra elements, so
+  style it with descendant selectors, not `>`; and Puck's own stylesheet can beat a plain utility (the
+  quote's left rule needed `!`).
+- **After editing a file under `cms-blocks/src`, admin's dev server may not regenerate Tailwind
+  classes** (it doesn't rescan `node_modules`). Rebuild `cms-blocks`, then `touch admin/src/index.css`
+  and reload; if classes are still missing, restart the dev server.
+- **Dev servers for a worktree:** run them with `npm --prefix <app> run dev`. `npx --prefix admin vite`
+  runs from the repo root and serves a blank page.
+
 ## Docs index
 
 | File | Read it when |

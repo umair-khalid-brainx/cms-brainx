@@ -79,7 +79,7 @@ whole stack once in the browser (editor, media, public site on two hosts).
 1. **Spike (first hour):** a Puck `richtext` field on the RichText block in the canvas. Confirm
    that it stores an HTML string, which extensions it allows, and how `contentEditable` hands the
    prop to `render` (a ReactNode, not a string). Record the result as a D-entry.
-2. `admin`: RichText `html` and FAQ answers use `type: 'richtext'` with the req. 2 toolbar.
+2. `admin`: the RichText block's `html` uses `type: 'richtext'` with the req. 2 toolbar. (FAQ answers stay plain text: the block renders them as text, and changing them would change the stored format.)
 3. `api`: one `sanitizeHtml()` helper with the toolbar's allowlist (`p h2 h3 strong em ul ol li a
    blockquote br`; `a[href]` limited to http/https/mailto, with `rel` forced on). It runs in the
    content write path over every rich-text prop and, later, rich-text field values. Starter layouts

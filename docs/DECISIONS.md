@@ -8,6 +8,48 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-045 — 2026-10-09 — Rich text: Puck's built-in `richtext` field, a custom toolbar, `sanitize-html` on write (`BLK-05`)
+
+**Decision (user's calls):**
+
+- **Editor:** Puck 0.23's own `richtext` field (it is TipTap underneath), not a separate TipTap
+  integration. It stores the same plain HTML string in the same `html` prop, so the stored block
+  shape (invariant 7) and the public renderer are unchanged. The same field gives `BLK-07` its
+  on-canvas editing (`contentEditable`). Spike result: in the sidebar and the canvas the field edits
+  the live prop, autosave stores the HTML, and old pages load into it.
+- **Toolbar:** exactly the client requirements' set (req. 2) plus bold and italic: Paragraph /
+  Heading / Subheading (h2, h3), bold, italic, bulleted and numbered lists, quote, link. Puck's default
+  toolbar has no quote or link button and shows underline and alignment greyed out, so it is replaced
+  (`admin/src/components/RichTextToolbar.tsx`) and the unused extensions are switched off in
+  `richTextOptions`. Links are plain: TipTap's defaults (`target="_blank"`, `rel="nofollow"`) are
+  removed, because they open a client's own pages in new tabs and add `nofollow` (req. 5).
+- **Sanitising:** `api/src/content/sanitize.ts` (`sanitize-html`) runs on create, update and duplicate
+  for every `richText` block's `html`. Allowlist = what the toolbar can produce: `p br h2 h3 strong em
+  ul ol li blockquote a`; `a` keeps only `href`, with schemes `http`, `https`, `mailto` or a relative
+  address. Everything else is dropped (scripts, handlers, styles, images, iframes). `<b>`/`<i>` become
+  `<strong>`/`<em>`. A link whose address was refused becomes plain text. It runs before the publish
+  checks, so they judge what would be stored. `web` renders stored HTML as-is (invariant 5).
+- **Typography:** headings, lists, quotes and links are styled in `cms-blocks/src/RichText.tsx`, using
+  only `--site-*` variables, so the editor canvas matches the public site (before, only `web` had a
+  few rules, and the canvas showed plain text). The old rules in `web/src/app/globals.css` are gone.
+
+**Why not the alternatives:** a separate TipTap setup would be a second editor to keep in step with
+Puck's, for no visible gain; a hand-built `Editable` primitive (the ticket's first idea) is more code
+for the same result.
+
+**Costs and limits:**
+
+- Rows saved before this are not rewritten: they are sanitised the next time they are saved or
+  duplicated. Existing seed content only uses `p` and `h2`, so nothing visible changes.
+- In the canvas Puck passes the field as a rendered node, not a string, so `RichText` accepts either
+  (string on the public site, node in the editor).
+- Only `richText.html` holds HTML. FAQ answers are plain text and stay so; a new block with an HTML
+  prop must be added to `sanitizeBlocks`.
+- Puck's field panel is one `<form>`: a nested `<form>` in a custom field submits it and reloads the
+  editor. The toolbar's link box is a plain `div` that handles Enter itself.
+
+---
+
 ## D-042 — 2026-10-06 — Contact form submissions go through `web`, guarded by a shared secret (`BLK-06`)
 
 **Decision:**

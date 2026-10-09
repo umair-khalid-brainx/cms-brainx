@@ -60,24 +60,6 @@ body {
     repeating-linear-gradient(to bottom, var(--site-line) 0 1px, transparent 1px 88px);
 }
 
-/* ---- rich text -------------------------------------------------------- */
-
-.site-richtext > * + * {
-  margin-top: 1.15em;
-}
-
-.site-richtext strong {
-  color: var(--site-ink);
-  font-weight: 600;
-}
-
-.site-richtext a {
-  color: var(--site-ink);
-  text-decoration: underline;
-  text-decoration-color: var(--site-accent);
-  text-underline-offset: 3px;
-}
-
 /* ---- entrance ---------------------------------------------------------- */
 
 @media (prefers-reduced-motion: no-preference) {

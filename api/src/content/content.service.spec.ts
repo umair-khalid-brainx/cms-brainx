@@ -448,3 +448,48 @@ describe('ContentService.update revalidation (CNT-08)', () => {
     expect(revalidation.page).not.toHaveBeenCalled();
   });
 });
+
+describe('ContentService sanitises rich text on write (BLK-05)', () => {
+  const dirty = [{ type: 'richText', html: '<p onclick="x()">Hi <a href="javascript:alert(1)">there</a></p><script>alert(1)</script>' }];
+  const clean = [{ type: 'richText', html: '<p>Hi there</p>' }];
+
+  function setup(rows: Row[] = []) {
+    return fakeContent(rows, { owner: { siteId: 'site-a', role: 'owner' } });
+  }
+
+  it('on create', async () => {
+    const { service, table } = setup();
+
+    await service.create('owner', { title: 'Page', blocks: dirty });
+
+    expect(table[0].blocks).toEqual(clean);
+  });
+
+  it('on update, and the publish checks see the cleaned blocks', async () => {
+    const { service, table } = setup([
+      { siteId: 'site-a', title: 'P', slug: 'p', path: '/p', status: 'draft', blocks: [] },
+    ]);
+
+    await service.update('owner', 'p', { blocks: dirty });
+
+    expect(table[0].blocks).toEqual(clean);
+  });
+
+  it('on duplicate, so rows saved before sanitising existed are cleaned', async () => {
+    const { service } = setup([
+      { siteId: 'site-a', title: 'P', slug: 'p', path: '/p', status: 'draft', blocks: dirty },
+    ]);
+
+    const copy = await service.duplicate('owner', 'p');
+
+    expect(copy.blocks).toEqual(clean);
+  });
+
+  it('leaves other blocks untouched', async () => {
+    const { service, table } = setup();
+
+    await service.create('owner', { title: 'Page', blocks: [{ type: 'hero', headline: 'Hello' }] });
+
+    expect(table[0].blocks).toEqual([{ type: 'hero', headline: 'Hello' }]);
+  });
+});
