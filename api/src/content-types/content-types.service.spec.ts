@@ -323,6 +323,18 @@ describe('fields on a type (TYP-02)', () => {
     });
   });
 
+  it('keeps a removed field hidden in the stored list and out of the listing', async () => {
+    const { service, repo, types } = setup();
+    types.find((x) => x.id === 'events-a')!.fields = [{ key: 'venue', label: 'Venue', kind: 'text', required: false }];
+
+    await service.update('alice', 'events-a', { fields: [] });
+
+    expect(repo.update).toHaveBeenCalledWith('site-a', 'events-a', {
+      fields: [{ key: 'venue', label: 'Venue', kind: 'text', required: false, hidden: true }],
+    });
+    expect((await service.list('alice')).find((x) => x.id === 'events-a')?.fields).toEqual([]);
+  });
+
   it('refuses to change an existing field’s kind, and changes nothing', async () => {
     const { service, repo, types } = setup();
     types.find((x) => x.id === 'events-a')!.fields = [{ key: 'venue', label: 'Venue', kind: 'text', required: false }];
@@ -342,5 +354,17 @@ describe('fields on a type (TYP-02)', () => {
 
     expect(list.find((x) => x.prefix === 'events')?.fields).toHaveLength(1);
     expect(list.find((x) => x.prefix === 'blog')?.fields).toEqual([]);
+  });
+});
+
+describe('an address change comes first (TYP-02 review)', () => {
+  it('saves nothing else when the address is refused', async () => {
+    const { service, repo } = setup();
+    repo.updatePrefixIfEmpty.mockResolvedValueOnce({ count: 0 });
+
+    await expect(
+      service.update('alice', 'events-a', { name: 'Happenings', prefix: 'happenings', fields: [] }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(repo.update).not.toHaveBeenCalled();
   });
 });

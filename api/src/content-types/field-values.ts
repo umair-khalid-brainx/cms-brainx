@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { sanitizeRichText } from '../content/sanitize.js';
-import { uploadFilename } from '../public/image-alt.js';
 import type { FieldDefinition, FieldKind } from './field-definitions.js';
 
 // What an entry may hold for each kind of field (TYP-02). Checked on every write,
@@ -15,7 +14,7 @@ const textValue = z.string().transform(NO_NUL).pipe(z.string().trim().max(500, '
 const richTextValue = z
   .string()
   .max(50_000, 'That is too long')
-  .transform((html) => sanitizeRichText(html));
+  .transform((html) => sanitizeRichText(NO_NUL(html)));
 
 const dateValue = z
   .string()
@@ -27,25 +26,37 @@ const dateValue = z
   }, 'That date does not exist');
 
 const LINK_SCHEMES = /^(https?:\/\/\S+|mailto:\S+|\/[^/\\\s]\S*|\/|#\S+)$/i;
+// Control, zero-width and line-separator characters have no place in an address.
+// eslint-disable-next-line no-control-regex
+const HIDDEN_CHARACTERS = /[\u0000-\u001f\u007f\u200b-\u200f\u2028-\u202f\u2060\ufeff]/;
 
 const linkValue = z
   .object({
     label: z.string().transform(NO_NUL).pipe(z.string().trim().max(100, 'Keep link text to 100 characters or fewer')),
     href: z.string().trim().max(500),
   })
+  .refine((link) => !HIDDEN_CHARACTERS.test(link.href), { message: 'That link has characters that can’t be used', path: ['href'] })
   .refine((link) => link.href === '' || LINK_SCHEMES.test(link.href), {
     message: 'A link must start with https://, http://, mailto:, / or #',
     path: ['href'],
   })
   .refine((link) => link.href === '' || link.label !== '', { message: 'Add the text of the link', path: ['label'] });
 
-/** A file from this site's own library, by its address. */
+/**
+ * A file from this site's own library. Only `/uploads/<this site>/<file>` is accepted, with
+ * or without the API's address in front, and what is stored is always the short form: the
+ * address in front is dropped, so nothing but our own path can ever be saved (a `javascript:`
+ * address, another host, another site's folder, a query string and any other path all fail).
+ * `web` adds the API's address when it shows the file.
+ */
 function mediaValue(siteId: string) {
+  const pattern = new RegExp(`^(?:https?://[^\\s/?#]+)?(/uploads/${siteId.replace(/[^A-Za-z0-9]/g, '')}/[A-Za-z0-9-]+\\.[A-Za-z0-9]+)$`);
   return z
     .string()
     .trim()
     .max(500)
-    .refine((url) => uploadFilename(url, siteId) !== null, 'Choose a file from this site’s media library');
+    .refine((url) => pattern.test(url), 'Choose a file from this site’s media library')
+    .transform((url) => url.replace(pattern, '$1'));
 }
 
 function selectValue(options: readonly string[] = []) {
@@ -64,16 +75,18 @@ const RULES: Record<FieldKind, ValueRule> = {
   link: () => linkValue,
 };
 
-const isBlank = (value: unknown): boolean =>
-  value === null ||
-  value === undefined ||
-  (typeof value === 'string' && value.trim() === '') ||
-  (typeof value === 'object' &&
-    value !== null &&
-    'href' in value &&
-    'label' in value &&
-    String((value as { href: unknown }).href).trim() === '' &&
-    String((value as { label: unknown }).label).trim() === '');
+const NOTHING_VISIBLE = /<[^>]*>|&nbsp;|\s/g;
+
+/** Nothing there: empty, only spaces, a link with no address, or formatted text with no words in it. */
+const isBlank = (value: unknown, kind?: FieldKind): boolean => {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string') {
+    if (value.trim() === '') return true;
+    return kind === 'richText' && value.replace(NOTHING_VISIBLE, '') === '';
+  }
+  if (typeof value === 'object' && 'href' in value) return String((value as { href: unknown }).href).trim() === '';
+  return false;
+};
 
 export type EntryDataResult =
   | { ok: true; values: Map<string, unknown>; cleared: Set<string> }
@@ -96,7 +109,7 @@ export function parseEntryData(fields: readonly FieldDefinition[], raw: unknown,
   for (const field of fields) {
     if (!Object.prototype.hasOwnProperty.call(input, field.key)) continue;
     const value = input[field.key];
-    if (isBlank(value)) {
+    if (isBlank(value, field.kind)) {
       cleared.add(field.key);
       continue;
     }
@@ -122,5 +135,5 @@ export function mergeEntryData(
 /** Required fields with no value, for the publish check. */
 export function missingRequired(fields: readonly FieldDefinition[], data: unknown): FieldDefinition[] {
   const saved = typeof data === 'object' && data !== null && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
-  return fields.filter((field) => field.required && isBlank(saved[field.key]));
+  return fields.filter((field) => field.required && isBlank(saved[field.key], field.kind));
 }

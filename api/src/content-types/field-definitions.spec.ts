@@ -70,6 +70,43 @@ describe('normaliseFields', () => {
     expect(problems[0]).toContain("doesn't exist");
   });
 
+  it('keeps a removed field, hidden, so its key stays taken', () => {
+    const { fields, stored } = normaliseFields([], [def('venue')]);
+    expect(fields).toEqual([]);
+    expect(stored).toEqual([{ ...def('venue'), hidden: true }]);
+  });
+
+  it('brings a removed field back with its old key when the name and kind match', () => {
+    const { fields, stored } = normaliseFields([{ label: 'Venue', kind: 'text', required: false }], [{ ...def('venue'), hidden: true }]);
+    expect(fields.map((f) => f.key)).toEqual(['venue']);
+    expect(stored.filter((f) => f.hidden)).toEqual([]);
+  });
+
+  it('never gives a removed field’s key to a field of another kind, so its saved values are not misread', () => {
+    const hidden = [{ ...def('photo', 'media'), hidden: true }];
+    for (const kind of ['date', 'richText', 'link', 'text'] as const) {
+      const { fields } = normaliseFields([{ label: 'Photo', kind, required: false }], hidden);
+      expect(fields[0].key).toBe('photo_2');
+    }
+  });
+
+  it('does not reuse a removed key for another new field in the same save', () => {
+    const { fields } = normaliseFields(
+      [{ label: 'Photo', kind: 'media', required: false }, { label: 'PHOTO!', kind: 'date', required: false }],
+      [{ ...def('photo', 'media'), hidden: true }],
+    );
+    expect(fields.map((f) => f.key)).toEqual(['photo', 'photo_2']);
+  });
+
+  it('never makes a key that means something to JavaScript objects', () => {
+    expect(keyFromLabel('constructor')).toBe('f_constructor');
+    expect(keyFromLabel('toString')).toBe('f_tostring');
+  });
+
+  it('strips a NUL character from select options', () => {
+    expect(fieldInputSchema.parse({ label: 'K', kind: 'select', options: ['A\u0000B'] }).options).toEqual(['AB']);
+  });
+
   it('removing a field from the list just drops it; a new field never reuses a live key', () => {
     const { fields } = normaliseFields([{ label: 'Venue', kind: 'text', required: false }], [def('venue')]);
     expect(fields.map((f) => f.key)).toEqual(['venue_2']);
@@ -93,6 +130,7 @@ describe('normaliseFields', () => {
 describe('parseStoredFields', () => {
   it('reads a good list and returns none for a damaged one', () => {
     expect(parseStoredFields([def('a')])).toHaveLength(1);
+    expect(parseStoredFields([{ ...def('a'), hidden: true }])).toEqual([{ ...def('a'), hidden: true }]);
     expect(parseStoredFields('nope')).toEqual([]);
     expect(parseStoredFields([{ key: 'A!', label: 'x', kind: 'text' }])).toEqual([]);
     expect(parseStoredFields([{ key: 'a', label: 'x', kind: 'number' }])).toEqual([]);

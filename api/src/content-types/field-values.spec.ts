@@ -37,7 +37,7 @@ describe('parseEntryData: each kind', () => {
       summary: 'A talk',
       body: '<p>Hi</p>', // sanitised on write
       when: '2026-02-28',
-      file: FILE,
+      file: `/uploads/${SITE}/aaa-111.pdf`, // stored in its short form
       kind: 'Talk',
       more: { label: 'Book', href: 'https://example.com/book' },
     });
@@ -58,6 +58,37 @@ describe('parseEntryData: each kind', () => {
     ['link as a string', { more: 'https://a.com' }, 'More'],
   ])('refuses %s', (_label, raw, expected) => {
     expect(problems(raw).join(' ')).toContain(expected);
+  });
+
+  it.each([
+    ['javascript: with the marker after it', `javascript:alert(1)//uploads/${SITE}/a.png`],
+    ['a query string', `/uploads/${SITE}/a.png?x=1`],
+    ['a fragment', `/uploads/${SITE}/a.png#x`],
+    ['a path inside another path', `/x/uploads/${SITE}/a.png`],
+    ['a nested path', `/uploads/${SITE}/sub/a.png`],
+    ['no extension', `/uploads/${SITE}/abc`],
+    ['an extension with a dot trick', `/uploads/${SITE}/a.png.html/`],
+    ['a data URL', `data:text/html,/uploads/${SITE}/a.png`],
+    ['a protocol-relative address', `//evil.com/uploads/${SITE}/a.png`],
+    ['a NUL character', `/uploads/${SITE}/a\u0000.png`],
+    ['a space', `/uploads/${SITE}/a b.png`],
+  ])('refuses media with %s', (_label, url) => {
+    expect(problems({ file: url }).join(' ')).toContain('media library');
+  });
+
+  it('stores media in the short form whichever way it came in, dropping any host', () => {
+    for (const url of [`/uploads/${SITE}/a-1.png`, `http://localhost:4001/uploads/${SITE}/a-1.png`, `https://evil.com/uploads/${SITE}/a-1.png`]) {
+      expect(ok({ file: url }).values.get('file')).toBe(`/uploads/${SITE}/a-1.png`);
+    }
+  });
+
+  it('cleans a NUL character out of formatted text and refuses it in a link address', () => {
+    expect(ok({ body: '<p>a\u0000b</p>' }).values.get('body')).toBe('<p>ab</p>');
+    expect(problems({ more: { label: 'x', href: 'https://a.com/\u0000' } }).join(' ')).toContain('characters');
+  });
+
+  it.each(['/\u200b/evil.com', 'https://a.com/\u2028x', 'https://a.com/a\ufeffb'])('refuses hidden characters in a link: %j', (href) => {
+    expect(problems({ more: { label: 'x', href } }).join(' ')).toContain('characters');
   });
 
   it('accepts same-site, mail and in-page links', () => {
@@ -85,6 +116,11 @@ describe('parseEntryData: blanks and unknown keys', () => {
   it('ignores keys that are not current fields (including prototype keys)', () => {
     const result = ok(JSON.parse('{"nope":1,"__proto__":{"x":1},"summary":"ok"}'));
     expect([...result.values.keys()]).toEqual(['summary']);
+  });
+
+  it('counts a link with no address, and formatted text with no words, as blank', () => {
+    expect(ok({ more: { label: 'x', href: '' } }).cleared.has('more')).toBe(true);
+    for (const html of ['<p></p>', '<p><br></p>', '<p>&nbsp;</p>', ' <p> </p> ']) expect(ok({ body: html }).cleared.has('body')).toBe(true);
   });
 
   it('leaves fields that were not sent untouched', () => {
@@ -116,6 +152,15 @@ describe('mergeEntryData', () => {
 });
 
 describe('missingRequired', () => {
+  it('does not count an empty paragraph or a link with no address as filled', () => {
+    const required: FieldDefinition[] = [
+      { key: 'b', label: 'B', kind: 'richText', required: true },
+      { key: 'l', label: 'L', kind: 'link', required: true },
+    ];
+    expect(missingRequired(required, { b: '<p></p>', l: { label: 'x', href: '' } }).map((f) => f.key)).toEqual(['b', 'l']);
+    expect(missingRequired(required, { b: '<p>Hi</p>', l: { label: 'x', href: '/a' } })).toEqual([]);
+  });
+
   it('lists required fields with no value', () => {
     expect(missingRequired(fields, {}).map((f) => f.key)).toEqual(['summary']);
     expect(missingRequired(fields, { summary: '  ' }).map((f) => f.key)).toEqual(['summary']);

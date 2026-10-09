@@ -14,7 +14,7 @@ import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
-import { parseStoredFields, type FieldDefinition } from '../content-types/field-definitions.js';
+import { parseStoredFields, visibleFields, type FieldDefinition } from '../content-types/field-definitions.js';
 import { mergeEntryData, missingRequired, parseEntryData } from '../content-types/field-values.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
 import { checkPublishable } from './publish-checks.js';
@@ -101,6 +101,8 @@ export class ContentService {
     // The saved values keep any field the type has since hidden.
     // Looked up only when needed: a plain autosave of blocks never touches the type.
     const needsFields = dto.data !== undefined || dto.status === 'published';
+    // A live entry can't have a needed field emptied: its values follow the same rule as publishing.
+    const keepsLiveRules = dto.data !== undefined && dto.status === undefined && existing.status === 'published';
     const fields = needsFields ? await this.fieldsOf(membership.siteId, existing.typeId) : [];
     let data: Record<string, unknown> | undefined;
     if (dto.data !== undefined) {
@@ -108,6 +110,12 @@ export class ContentService {
       const parsed = parseEntryData(fields, dto.data, membership.siteId);
       if (!parsed.ok) throw new BadRequestException(parsed.problems);
       data = mergeEntryData(existing.data, parsed);
+      if (keepsLiveRules) {
+        const problems = this.withRequiredFields({ errors: [] }, fields, data).errors;
+        if (problems.length > 0) {
+          throw new UnprocessableEntityException({ statusCode: 422, message: 'This entry is live, so these can’t be emptied', errors: problems, warnings: [] });
+        }
+      }
     }
 
     // Any move to `published` — publish, restore, or re-publishing from the
@@ -223,7 +231,7 @@ export class ContentService {
   /** The custom fields of an entry's type; none for a page. */
   private async fieldsOf(siteId: string, typeId: string | null): Promise<FieldDefinition[]> {
     if (!typeId) return [];
-    return parseStoredFields((await this.types.findById(siteId, typeId))?.fields);
+    return visibleFields(parseStoredFields((await this.types.findById(siteId, typeId))?.fields));
   }
 
   /** Adds "fill this in" errors for required fields with no value, so publishing waits for them. */

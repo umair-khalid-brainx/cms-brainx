@@ -9,7 +9,13 @@ import { Prisma } from '../generated/prisma/client.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentTypeRepository } from './content-type.repository.js';
 import type { CreateContentTypeDto, UpdateContentTypeDto } from './dto/content-type.dto.js';
-import { normaliseFields, parseStoredFields, type FieldDefinition, type FieldInput } from './field-definitions.js';
+import {
+  normaliseFields,
+  parseStoredFields,
+  visibleFields,
+  type FieldDefinition,
+  type FieldInput,
+} from './field-definitions.js';
 import { prefixProblem } from './prefix.js';
 
 @Injectable()
@@ -25,7 +31,7 @@ export class ContentTypesService {
     const [types, counts] = await Promise.all([this.types.findMany(siteId), this.types.countEntries(siteId)]);
     return types.map((type) => {
       const count = counts.get(type.id) ?? { active: 0, total: 0 };
-      return { ...type, fields: parseStoredFields(type.fields), entryCount: count.active, locked: type.isBuiltIn || count.total > 0 };
+      return { ...type, fields: visibleFields(parseStoredFields(type.fields)), entryCount: count.active, locked: type.isBuiltIn || count.total > 0 };
     });
   }
 
@@ -34,7 +40,7 @@ export class ContentTypesService {
     await this.assertPrefixFree(siteId, dto.prefix);
     await this.assertNameFree(siteId, dto.name);
     try {
-      const { fields } = this.checkedFields(dto.fields ?? [], []);
+      const { stored: fields } = this.checkedFields(dto.fields ?? [], []);
       const { fields: _ignored, ...rest } = dto;
       return await this.types.create(siteId, { ...rest, fields });
     } catch (error) {
@@ -61,9 +67,9 @@ export class ContentTypesService {
 
     const { prefix, fields: incoming, ...others } = dto;
     const rest: { name?: string; singularName?: string; fields?: FieldDefinition[] } = { ...others };
-    if (incoming) rest.fields = this.checkedFields(incoming, parseStoredFields(type.fields)).fields;
+    if (incoming) rest.fields = this.checkedFields(incoming, parseStoredFields(type.fields)).stored;
     try {
-      if (Object.keys(rest).length > 0) await this.types.update(siteId, id, rest);
+      // The address first: it is the step that can be refused, so nothing else is saved when it is.
       if (prefix !== undefined && prefix !== type.prefix) {
         // Checked above, and again here atomically: an entry created in between would
         // otherwise stay under the old address.
@@ -72,6 +78,7 @@ export class ContentTypesService {
           throw new ConflictException(`${type.name} just got an entry, so its address can't change now.`);
         }
       }
+      if (Object.keys(rest).length > 0) await this.types.update(siteId, id, rest);
     } catch (error) {
       throw this.asConflict(error, `Another content type already uses /${prefix}.`);
     }

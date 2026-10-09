@@ -60,7 +60,7 @@ export function ContentTypeForm({
   const firstField = useRef<HTMLInputElement>(null)
 
   const addressLocked = Boolean(type?.locked)
-  const fieldsChanged = JSON.stringify(stripRows(rows)) !== JSON.stringify(stripRows(toRows(type?.fields)).map((f) => f))
+  const fieldsChanged = JSON.stringify(stripRows(rows)) !== JSON.stringify(stripRows(toRows(type?.fields)))
   const dirty = !type
     ? name !== '' || singularName !== '' || prefix !== '' || rows.length > 0
     : name !== type.name || singularName !== type.singularName || prefix !== type.prefix || fieldsChanged
@@ -110,7 +110,9 @@ export function ContentTypeForm({
     setSaving(true)
     setError(null)
     try {
-      const input = { name, singularName, prefix, fields: stripRows(rows) }
+      // The field list only goes when this person changed it: sending a stale copy would undo
+      // another admin's new field just because someone renamed the type.
+      const input = { name, singularName, prefix, ...(fieldsChanged || !type ? { fields: stripRows(rows) } : {}) }
       const saved = type ? await updateContentType(type.id, input) : await createContentType(input)
       // The list endpoint adds the counts and the lock; the caller reloads it.
       onSaved({ ...(type ?? { entryCount: 0, locked: false, isBuiltIn: false }), ...saved })

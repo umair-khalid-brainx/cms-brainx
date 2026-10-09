@@ -691,6 +691,31 @@ describe('ContentService entry fields (TYP-02)', () => {
     expect(table[0]).toMatchObject({ status: 'published', data: { summary: 'Done' } });
   });
 
+  it('stops a live entry having a needed field emptied, but lets other changes through', async () => {
+    const { service, table } = setup([entry({ status: 'published', data: { summary: 'x' } } as Partial<Row>)]);
+
+    await expect(service.update('alice', 'fair', { data: { summary: '' } })).rejects.toMatchObject({
+      response: { errors: [expect.objectContaining({ field: 'data.summary' })] },
+    });
+    expect(table[0]).toMatchObject({ data: { summary: 'x' } });
+    await expect(service.update('alice', 'fair', { data: { when: '2026-05-05' } })).resolves.toBeTruthy();
+  });
+
+  it('only counts visible fields: a hidden one is never validated or required', async () => {
+    const hiddenTypes = [{ id: 'type-events', siteId: 'site-a', prefix: 'events', fields: [{ key: 'old', label: 'Old', kind: 'date', required: true, hidden: true }, ...FIELDS] }];
+    const { service, table } = fakeContent(
+      [entry({ data: { summary: 'x' } } as Partial<Row>)],
+      { alice: { siteId: 'site-a', role: 'owner' } },
+      {},
+      hiddenTypes,
+    );
+
+    await service.update('alice', 'fair', { status: 'published', data: { old: 'not a date' } });
+
+    expect(table[0].status).toBe('published');
+    expect(table[0]).toMatchObject({ data: { summary: 'x' } });
+  });
+
   it('a draft save never needs the required fields', async () => {
     const { service } = setup([entry()]);
 
