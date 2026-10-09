@@ -47,7 +47,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
 | Ticket | Title | Status | Tries | Note |
 |---|---|---|---|---|
-| BLK-04 | Per-block settings panel (Puck fields config) | IN-PROGRESS | 0 | Not tested by hand in a browser |
+| BLK-04 | Per-block settings panel (Puck fields config) | IN-PROGRESS | 0 | Labels done, checked in the in-app browser; needs a person to check by hand |
 | BLK-05 | TipTap integration and sanitisation on write | TODO | 0 |  |
 | BLK-06 | Form block, submissions table, admin list | IN-PROGRESS | 0 | Block renders; no submit endpoint or admin list |
 | BLK-07 | Inline editing: Editable primitive + TipTap in canvas | TODO | 0 |  |

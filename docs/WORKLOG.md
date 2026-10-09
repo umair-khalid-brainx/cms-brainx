@@ -5,6 +5,21 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-06 — BLK-04: settings panel labels, checked in the browser
+
+`admin/src/puck/config.tsx`: every field, block and list now has a human label (`Primary button`,
+`Link (URL or /path)`, `Call to action`, `FAQ`), and every list has a `getItemSummary`, so collapsed
+items read "Farms" / "Wholesale" instead of "Item 1". `linkField`/`imageField` became small
+functions taking the label.
+
+Verified in the in-app browser against a worktree API on :4011 and admin on :5175, on a draft page
+`blk04-settings-test` seeded with all 14 blocks: text, textarea, radio, yes/no radio, link object,
+image URL, list and list-inside-a-list all update the canvas live and survive a reload in the stored
+`cms-blocks` shape. Typecheck, lint and build pass.
+
+**Not done:** a person hasn't checked it by hand. Drag-from-drawer doesn't register with synthetic
+pointer events (BLK-03). Canvas theme is still hard-coded (B-16); Puck's page `title` field is a
+no-op (B-20).
 ## 2026-10-06 — Persistence tests for the editor canvas (`BLK-03`)
 
 `admin` now has a test runner (vitest, D-041) and its first test file,
