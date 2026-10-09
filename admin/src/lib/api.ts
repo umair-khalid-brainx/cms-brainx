@@ -4,10 +4,13 @@ const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:4001';
 
 export class ApiError extends Error {
   status: number;
+  /** The parsed error response, for callers that need more than `message` (e.g. a 422's problem list). */
+  body: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, body: unknown = null) {
     super(message);
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -91,7 +94,7 @@ async function handle<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (data ?? {}) as ErrorBody;
     const message = Array.isArray(body.message) ? body.message.join(', ') : (body.message ?? 'Request failed');
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, data);
   }
   return data as T;
 }

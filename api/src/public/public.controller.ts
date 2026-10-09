@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { PublicService } from './public.service.js';
 
 // Deliberately unguarded: this is what `web` calls to render a tenant's public
@@ -19,5 +19,14 @@ export class PublicController {
   @Get('page')
   getPage(@Param('subdomain') subdomain: string, @Query('path') path?: string) {
     return this.publicSite.getPage(subdomain, path);
+  }
+
+  // A draft behind a secret link: never cached by anything in between, never
+  // indexed even if the link leaks (CNT-09).
+  @Get('preview/:token')
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Robots-Tag', 'noindex, nofollow')
+  getPreview(@Param('subdomain') subdomain: string, @Param('token') token: string) {
+    return this.publicSite.getPreview(subdomain, token);
   }
 }

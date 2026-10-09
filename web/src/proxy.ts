@@ -3,6 +3,12 @@ import { subdomainFromHost } from './lib/tenant';
 
 const ROOT_DOMAIN = process.env.PUBLIC_ROOT_DOMAIN ?? 'lvh.me';
 
+// `/__preview/<token>` on a tenant host is a preview link (CNT-09). No page
+// slug can start with `_` (slugify strips it), so this never shadows a page.
+const PREVIEW_PATH = /^\/__preview\/([A-Za-z0-9_-]+)\/?$/;
+
+const REVALIDATE_PATH = '/__revalidate';
+
 /**
  * Turns the tenant in the host into part of the route:
  * `corrick.lvh.me/wholesale` is rendered by `/sites/corrick/wholesale`.
@@ -13,13 +19,32 @@ const ROOT_DOMAIN = process.env.PUBLIC_ROOT_DOMAIN ?? 'lvh.me';
  * and the base `CNT-08` builds ISR on. See DECISIONS.md D-030.
  */
 export function proxy(request: NextRequest) {
-  const subdomain = subdomainFromHost(request.headers.get('host'), ROOT_DOMAIN);
   const url = request.nextUrl.clone();
 
-  // Not a tenant host (bare root domain, 127.0.0.1, ...). Rewritten to a path
-  // no route matches, so it gets app/not-found.tsx with a 404 — and so
-  // `/sites/<anything>` can't be reached directly, bypassing the host.
-  url.pathname = subdomain ? `/sites/${subdomain}${url.pathname === '/' ? '' : url.pathname}` : '/no-site';
+  // The API's on-demand revalidation call (CNT-08), on any host. Mapped to an
+  // internal route that, like `/sites`, can't be reached directly; the route
+  // itself checks the shared secret. `__` can't clash with a page slug.
+  if (url.pathname === REVALIDATE_PATH) {
+    url.pathname = '/internal/revalidate';
+    return NextResponse.rewrite(url);
+  }
+
+  const subdomain = subdomainFromHost(request.headers.get('host'), ROOT_DOMAIN);
+  const preview = subdomain ? PREVIEW_PATH.exec(url.pathname) : null;
+
+  if (preview) {
+    // Previews go to their own uncached route, outside `/sites` so they can
+    // never land in a page's ISR cache entry. Like `/sites`, `/preview` itself
+    // is unreachable directly: on a tenant host it's rewritten under `/sites`.
+    url.pathname = `/preview/${subdomain}/${preview[1]}`;
+  } else if (subdomain) {
+    url.pathname = `/sites/${subdomain}${url.pathname === '/' ? '' : url.pathname}`;
+  } else {
+    // Not a tenant host (bare root domain, 127.0.0.1, ...). Rewritten to a
+    // path no route matches, so it gets app/not-found.tsx with a 404 — and so
+    // `/sites/<anything>` can't be reached directly, bypassing the host.
+    url.pathname = '/no-site';
+  }
   return NextResponse.rewrite(url);
 }
 

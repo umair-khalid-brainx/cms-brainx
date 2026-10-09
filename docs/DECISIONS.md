@@ -8,6 +8,118 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-039 — 2026-10-07 — Public pages use ISR: refreshed on demand by `api`, 60 s backstop
+
+**Decision:** `web`'s tenant page route (`/sites/[subdomain]/[[...path]]`) is ISR. It has
+`revalidate = 60` and an empty `generateStaticParams`, so each page renders on first visit and is
+then served from Next's cache, and its API fetches are cached for 60 s too. `api` keeps it fresh: when
+`ContentService.update` changes a page that was live before or after the write (publish, unpublish,
+archive, or saving a live page), `RevalidationService` POSTs `{ subdomain, path }` to `web`'s
+`/__revalidate` with a shared secret. `web` then calls `revalidatePath('/sites/<sub><path>')`.
+
+**Why the tenant can't leak:** the cache entry is the rewrite destination, which contains the
+subdomain (D-030, invariant 6). Tested with two hosts: a refresh of `kestrel.lvh.me/capability` left
+`corrick.lvh.me/` and `kestrel.lvh.me/` as cache HITs.
+
+**Options the user chose between:**
+- **Triggers:** publish/unpublish/archive and saving a live page are pushed. Theme, site-name and
+  subdomain changes are not; they wait for the 60 s timer (the user accepted that delay).
+- **If `web` is down:** the change still succeeds. The call has a 2 s timeout and never throws, it logs
+  a warning, and the 60 s timer is the backstop. Refusing to publish when the cache can't be told
+  would let a `web` outage block every editor.
+
+**Mechanics worth knowing:** `/__revalidate` is reserved on every host. Like `/__preview`
+(D-037) it's mapped in `src/proxy.ts`, to `/internal/revalidate`, which can't be reached directly.
+`revalidatePath` must name the rewrite destination, not the visitor's URL (Next 16 docs). A route
+handler's `revalidatePath` makes the next visit render fresh (MISS), not stale. The timer is
+stale-while-revalidate: after 60 s, the first request still gets the old page and triggers the
+re-render, and the one after it is fresh. ISR is off under `next dev`, so check caching with
+`next build && next start`.
+
+**Known costs (review, 2026-10-07):** anyone can now fill the cache. Every unknown path or subdomain
+writes a cached 404 to disk (`B-17`). `/__revalidate` answers on every public host, guarded only by
+the secret, so nginx should block it outside localhost (`B-18`, `DEP-01b`). The call to `web` is
+awaited, so a slow `web` adds up to 2 s to a save. That's deliberate: a page opened from the editor
+right after publishing must already be fresh.
+
+---
+
+## D-038 — 2026-10-07 — Starter layouts are one global table, not per site
+
+**Decision (user's call):** `TYP-05`'s four starter layouts (Landing, About, Contact, Article) live in
+`starter_layouts`: key, name, description, `blocks` (JSONB, the same contract as `content.blocks`)
+and sort order. One set is shared by every site. The seed upserts them by `key` from
+`api/prisma/starter-layouts.ts`. `GET /starter-layouts` (`content:write`) lists them for `TYP-04`.
+
+**Options:** a global table (chosen); a copy per site (each tenant could tweak its own, but that
+means tenant scoping and seeding per site for a read-only list nobody edits yet); or a JSON file in
+`api` (simplest, but invariant 8 asks for "data, not code-defined blocks", and a table is
+what makes that true).
+
+**Why no `siteId`:** this is platform data, like the block registry, not tenant content. Invariant 1
+("every content method takes `siteId`") is about tenant content, so `StarterLayoutRepository` is the
+one repository with unscoped reads, and its header comment says why. If tenants ever get their own
+layouts, that's a new `siteId`-scoped table, not a column added to this one.
+
+**Also:** the layouts use generic placeholder copy and no block that needs an image, so a page made
+from one passes `CNT-12`'s publish checks as-is. `starter-layouts.spec.ts` enforces that, along with
+"registry block types only".
+
+---
+
+## D-037 — 2026-10-07 — Preview links: one stored random token per page, no expiry, revocable
+
+**Decision (user's call):** `CNT-09`'s "signed, expiring token" became a stored, unguessable link.
+`preview_links` holds one row per page with a 32-byte random token (base64url, 43 chars). It has no
+expiry: it works until someone turns it off (`DELETE /content/:slug/preview-link`). Anyone with
+`content:write` can create, read or revoke it. It shows the page's latest saved blocks, draft or
+published, and keeps working after publish. Archived pages give 404, and the link can't be
+created for them. Archiving doesn't delete the link, so restoring the page brings the same link
+back. That's deliberate: archive is reversible, and the link goes with the page.
+
+**Why stored, not a signed JWT:** a JWT can't be revoked before it expires, and the user wanted no
+expiry and manual revocation. The token is stored as-is, not hashed, because the editor shows the
+same link again. Cost: someone with read access to the database could read live preview links.
+
+**How it stays tenant-safe:** the row carries `siteId`. The public lookup
+(`PreviewLinkRepository.findPageByToken(siteId, token)`) is scoped by the site of the host the link
+was opened on, so site A's token on site B's host matches nothing. `findLiveByPath` is untouched;
+previews are a separate door that needs the token.
+
+**How `web` serves it:** `src/proxy.ts` rewrites `<sub>.<root>/__preview/<token>` to
+`/preview/<sub>/<token>`. That's a `force-dynamic` route outside `/sites`, so it can never enter a
+page's ISR cache (`CNT-08`). No slug can start with `_`, so the path never shadows a page. The API
+sends `Cache-Control: private, no-store` and `X-Robots-Tag: noindex`, and the page sets
+`robots: noindex`. Bad, revoked, foreign and archived tokens all get the same 404.
+
+---
+
+## D-036 — 2026-10-07 — Publish checks live once, in `api`; they gate moves to `published`, not autosaves
+
+**Decision:** the rules that stop a page going live (`CNT-12`) are one module,
+`api/src/content/publish-checks.ts`. `ContentService.update` runs them on any `PATCH` that sets
+`status: published` (publish, restore to published, re-publish from the editor) and answers `422`
+with `{ errors, warnings }`, one entry per problem with block index, type, label, field and message.
+`GET /content/:slug/checks` returns the same for the saved page. `admin` never re-implements them:
+the editor calls `/checks` before publishing and both screens render the API's list.
+
+**Rules (chosen by Claude at the user's request):** errors for no blocks, blank required text,
+half-filled or missing required links, missing required images, empty lists, and an unknown block
+type; a warning only for an image with no alt text (user's choice).
+
+**Why one copy in `api`:** the API is the enforcement point (a client can `PATCH` directly), and a
+second copy in `admin` would drift. `api` can't import `cms-blocks` (D-012), so the block shapes are
+hand-written; `publish-checks.spec.ts` reads `cms-blocks/src/types.ts` and fails when a block type
+is added there without a rule here. Cost: adding a block (e.g. `BLK-02`'s embed) now also means adding
+its rule, or pages with it can't be published — fail-closed on purpose.
+
+**Why not autosaves:** a page has one `blocks` column, so the editor's autosave on an already-live
+page writes straight to the live page. Checking those saves would refuse an edit mid-typing (say,
+clearing a headline to retype it) and lose work. So a live page can still be autosaved into a broken
+state; the real fix is separate draft and live content (revisions, `GOV-01`), not a stricter check.
+
+---
+
 ## D-035 — 2026-10-06 — Subdomain lookup cached in `api`: id only, misses never cached
 
 **Decision:** `api` keeps an in-memory `subdomain → siteId` map (`api/src/sites/subdomain-cache.ts`,

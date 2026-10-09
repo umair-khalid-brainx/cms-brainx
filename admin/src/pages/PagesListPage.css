@@ -180,6 +180,75 @@
   padding: 0.25rem 0.5rem;
 }
 
+.pages-row-duplicate {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1.1rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #2271b1;
+  font-weight: 500;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pages-row-duplicate:hover {
+  text-decoration: underline;
+}
+
+.pages-row-duplicate:disabled {
+  color: #b0b0b0;
+  cursor: default;
+  text-decoration: none;
+}
+
+.pages-row-actions a:focus-visible,
+.pages-row-duplicate:focus-visible,
+.pages-row-delete:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.pages-checks {
+  margin: 0 0 1rem;
+}
+
+/* Reserves its line so the table doesn't jump when the message appears. */
+.pages-notice {
+  min-height: 1.2em;
+  margin: -0.5rem 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #3c434a;
+}
+
+.pages-notice a {
+  color: #2271b1;
+  font-weight: 500;
+}
+
+/* One fade on the row a Duplicate just created, so the eye finds it. */
+.pages-row-new td {
+  animation: pages-row-new 2.4s ease-out;
+}
+
+@keyframes pages-row-new {
+  from {
+    background: #f0f6fc;
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pages-row-new td {
+    animation: none;
+  }
+}
+
 .pages-row-delete {
   display: inline-flex;
   align-items: center;
@@ -254,4 +323,23 @@
     background: #2c3338;
     color: #b0b0b0;
   }
+
+  .pages-row-duplicate,
+  .pages-notice a {
+    color: #6ab6f2;
+  }
+
+  .pages-notice {
+    color: #b0b0b0;
+  }
+
+  @keyframes pages-row-new {
+    from {
+      background: #12304a;
+    }
+    to {
+      background: transparent;
+    }
+  }
 }
+

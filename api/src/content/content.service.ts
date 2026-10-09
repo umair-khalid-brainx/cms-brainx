@@ -1,15 +1,27 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { hasPermission } from '../auth/permission.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
+import { PreviewLinkRepository } from './preview-link.repository.js';
+import { checkPublishable } from './publish-checks.js';
 
 @Injectable()
 export class ContentService {
   constructor(
     private readonly content: ContentRepository,
     private readonly users: UserRepository,
+    private readonly previewLinks: PreviewLinkRepository,
+    private readonly revalidation: RevalidationService,
   ) {}
 
   async list(userId: string) {
@@ -27,6 +39,11 @@ export class ContentService {
     const page = await this.content.findBySlug(siteId, slug);
     if (!page) throw new NotFoundException('Page not found');
     return page;
+  }
+
+  /** What would stop this page being published, as saved now (CNT-12). */
+  async checks(userId: string, slug: string) {
+    return checkPublishable((await this.get(userId, slug)).blocks);
   }
 
   async create(userId: string, dto: CreateContentDto) {
@@ -63,13 +80,78 @@ export class ContentService {
       throw new ForbiddenException('Missing permission: content:delete');
     }
 
+    // Any move to `published` — publish, restore, or re-publishing from the
+    // editor — must pass the publish checks, against the blocks it would go
+    // live with. Draft saves (no status, or `draft`) never are (CNT-12). An
+    // autosave of an already-live page isn't either: blocking it mid-edit
+    // would lose work, and the editor checks before its Publish (D-036).
+    if (dto.status === 'published') {
+      const checks = checkPublishable(dto.blocks ?? existing.blocks);
+      if (checks.errors.length > 0) {
+        throw new UnprocessableEntityException({ statusCode: 422, message: 'Fix these before publishing', ...checks });
+      }
+    }
+
     await this.content.update(membership.siteId, slug, {
       ...dto,
       blocks: dto.blocks as Prisma.InputJsonValue | undefined,
       ...(entering && { archivedAt: new Date() }),
       ...(leaving && { archivedAt: null }),
     });
-    return this.content.findBySlug(membership.siteId, slug);
+    const updated = await this.content.findBySlug(membership.siteId, slug);
+
+    // Live before or after this write → the public page changed: publish,
+    // unpublish, archive, or a save to a live page. Refresh exactly that
+    // site + path in `web`'s cache (CNT-08). Draft-only edits aren't public.
+    if (existing.status === 'published' || updated?.status === 'published') {
+      await this.revalidation.page(membership.site.subdomain, existing.path);
+    }
+    return updated;
+  }
+
+  // A copy is always a fresh draft (CNT-10): duplicating a live page must
+  // never put a second copy of it live. An archived page can't be copied —
+  // that would bring it back into play, which needs content:delete (D-032).
+  // `<slug>-copy`, then `-copy-2`, ... via uniqueSlug, next to the original —
+  // same parent path, so this stays right once hierarchy (CNT-05) exists.
+  async duplicate(userId: string, slug: string) {
+    const siteId = await this.resolveSiteId(userId);
+    const source = await this.content.findBySlug(siteId, slug);
+    if (!source) throw new NotFoundException('Page not found');
+    if (source.status === 'archived') throw new ConflictException('Restore this page before duplicating it');
+
+    const copySlug = await this.uniqueSlug(siteId, `${source.slug}-copy`);
+    const parentPath = source.path.slice(0, source.path.lastIndexOf('/'));
+
+    return this.content.create(siteId, {
+      title: `${source.title} (copy)`,
+      slug: copySlug,
+      path: `${parentPath}/${copySlug}`,
+      blocks: source.blocks as Prisma.InputJsonValue,
+    });
+  }
+
+  // A page's preview link (CNT-09): one per page, no expiry, until revoked.
+  // Only the token goes back; admin knows where `web` serves it.
+  async getPreviewLink(userId: string, slug: string) {
+    const page = await this.get(userId, slug);
+    const link = await this.previewLinks.findByContent(page.siteId, page.id);
+    if (!link) throw new NotFoundException('This page has no preview link');
+    return { token: link.token, createdAt: link.createdAt };
+  }
+
+  async createPreviewLink(userId: string, slug: string) {
+    const page = await this.get(userId, slug);
+    if (page.status === 'archived') throw new ConflictException('Restore this page before sharing a preview');
+    // 32 random bytes: the token is the only thing standing between a draft
+    // and anyone who has the URL, so it must be unguessable.
+    const link = await this.previewLinks.findOrCreate(page.siteId, page.id, randomBytes(32).toString('base64url'));
+    return { token: link.token, createdAt: link.createdAt };
+  }
+
+  async revokePreviewLink(userId: string, slug: string): Promise<void> {
+    const page = await this.get(userId, slug);
+    await this.previewLinks.deleteByContent(page.siteId, page.id);
   }
 
   // Only archived pages can be hard-deleted — the pages list offers Delete

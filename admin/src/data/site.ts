@@ -25,3 +25,8 @@ export function siteUrl(path: string = '/', subdomain: string | undefined = curr
   const origin = SITE_URL_TEMPLATE.replace('{subdomain}', subdomain ?? '');
   return path === '/' ? origin : `${origin}${path}`;
 }
+
+/** Where `web` serves a preview link (CNT-09); `/__preview/` can't clash with a page slug. */
+export function previewUrl(token: string, subdomain: string | undefined = currentSubdomain()): string {
+  return `${siteUrl('/', subdomain)}/__preview/${token}`;
+}

@@ -73,6 +73,15 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 - **Public sites live on subdomains: `http://corrick.lvh.me:3000`**, not `127.0.0.1:3000`. `lvh.me`
   is a public DNS wildcard that resolves to `127.0.0.1`, so it needs a network connection. Any host
   that isn't `<subdomain>.lvh.me` gets the "no site at this address" 404 (D-030).
+- **Public pages are cached (ISR), but only in a production build** (D-039). `next dev` renders every
+  request fresh, so caching and on-demand refresh can only be tested with `next build && next start`.
+  Look for the `x-nextjs-cache: HIT|MISS` header. `api` needs `WEB_REVALIDATE_URL` and
+  `REVALIDATE_SECRET`, and `web` needs the same `REVALIDATE_SECRET`. Without them, edits show up
+  only after the 60 s timer.
+- **`/__revalidate` is reserved on every host** (D-039), the same way as `/__preview`.
+- **`/__preview/<token>` is reserved on every tenant host** (D-037). `web/src/proxy.ts` sends it to an
+  uncached preview route instead of `/sites/...`. No slug can start with `_`, so it can't clash
+  with a page. Keep it that way if slug rules change.
 - **Claude's built-in browser pane blocks `*.lvh.me` sub-requests** (CSS/JS fail with
   `ERR_BLOCKED_BY_CLIENT`), so public pages look unstyled there. The server is fine; check with
   `curl` or a headless Chrome screenshot instead.

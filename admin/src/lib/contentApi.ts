@@ -23,6 +23,18 @@ export type PageSummary = {
   archivedAt: string | null;
 };
 
+// What `GET /content/:slug/checks` and a refused publish (422) return —
+// the rules themselves live only in the API (CNT-12, D-036).
+export type PublishProblem = {
+  blockIndex: number | null;
+  blockType: string | null;
+  blockLabel: string | null;
+  field: string | null;
+  message: string;
+};
+
+export type PublishChecks = { errors: PublishProblem[]; warnings: PublishProblem[] };
+
 export type Page = PageSummary & {
   data: Data<EditorComponents>;
 };
@@ -136,6 +148,19 @@ export async function publishPage(slug: string, data: Data<EditorComponents>): P
   await apiSend('PATCH', `/content/${slug}`, { blocks: puckDataToBlocks(data), status: 'published' }, session.accessToken);
 }
 
+export async function getPublishChecks(slug: string): Promise<PublishChecks> {
+  const session = requireSession();
+  return apiGet<PublishChecks>(`/content/${slug}/checks`, session.accessToken);
+}
+
+/** The problem list from a publish the API refused (422), or `null` for any other error. */
+export function publishChecksFromError(error: unknown): PublishChecks | null {
+  if (!(error instanceof ApiError) || error.status !== 422) return null;
+  const body = error.body as Partial<PublishChecks> | null;
+  if (!Array.isArray(body?.errors)) return null;
+  return { errors: body.errors, warnings: Array.isArray(body.warnings) ? body.warnings : [] };
+}
+
 function escapeHtml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
@@ -161,6 +186,39 @@ export async function setPageStatus(slug: string, status: PageStatus): Promise<P
   const session = requireSession();
   const record = await apiSend<ContentRecord>('PATCH', `/content/${slug}`, { status }, session.accessToken);
   return toSummary(record);
+}
+
+// The API decides the copy's slug (`<slug>-copy`, `-copy-2`, ...) and always
+// makes it a draft (CNT-10).
+export async function duplicatePage(slug: string): Promise<PageSummary> {
+  const session = requireSession();
+  const record = await apiSend<ContentRecord>('POST', `/content/${slug}/duplicate`, {}, session.accessToken);
+  return toSummary(record);
+}
+
+// One preview link per page, no expiry, until revoked (CNT-09). The API
+// returns only the token; where `web` serves it is admin's to know.
+export type PreviewLink = { token: string; createdAt: string };
+
+export async function getPreviewLink(slug: string): Promise<PreviewLink | null> {
+  const session = requireSession();
+  try {
+    return await apiGet<PreviewLink>(`/content/${slug}/preview-link`, session.accessToken);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/** Creates the page's link, or returns the one it already has. */
+export async function createPreviewLink(slug: string): Promise<PreviewLink> {
+  const session = requireSession();
+  return apiSend<PreviewLink>('POST', `/content/${slug}/preview-link`, {}, session.accessToken);
+}
+
+export async function revokePreviewLink(slug: string): Promise<void> {
+  const session = requireSession();
+  await apiDelete(`/content/${slug}/preview-link`, session.accessToken);
 }
 
 export async function deletePage(slug: string): Promise<void> {

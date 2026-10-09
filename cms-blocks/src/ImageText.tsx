@@ -1,5 +1,5 @@
 import type { ImageTextBlock } from './types';
-import { ActionLink, Heading, Prose, Section } from './ui';
+import { ActionLink, Heading, Prose, Section, hasLink } from './ui';
 
 export function ImageText({ block }: { block: ImageTextBlock }) {
   const { heading, body, image, imagePosition, action } = block;
@@ -24,7 +24,7 @@ export function ImageText({ block }: { block: ImageTextBlock }) {
         <div className="flex flex-col gap-5">
           <Heading>{heading}</Heading>
           <Prose>{body}</Prose>
-          {action ? (
+          {hasLink(action) ? (
             <div className="mt-1">
               <ActionLink action={action} variant="secondary" />
             </div>

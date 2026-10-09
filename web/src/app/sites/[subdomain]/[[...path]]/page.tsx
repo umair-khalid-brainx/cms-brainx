@@ -3,6 +3,17 @@ import { notFound } from 'next/navigation';
 import { BlockRenderer } from 'cms-blocks';
 import { getPage, getSite } from '@/lib/publicApi';
 
+// ISR (CNT-08): every page is rendered on its first visit, cached, and
+// refreshed on demand by `api` or after 60 s at the latest. An empty list
+// means nothing is prerendered at build — pages exist only in the database.
+// The cache key is the rewritten path, `/sites/<subdomain>/...`, so it always
+// includes the tenant (invariant 6). Must be a literal: Next reads it at build.
+export const revalidate = 60;
+
+export function generateStaticParams() {
+  return [];
+}
+
 function toPath(segments: string[] | undefined): string {
   return segments?.length ? `/${segments.join('/')}` : '/';
 }

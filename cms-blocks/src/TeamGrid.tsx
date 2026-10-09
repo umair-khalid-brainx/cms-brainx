@@ -1,5 +1,5 @@
 import type { TeamGridBlock } from './types';
-import { Heading, Prose, Section } from './ui';
+import { Heading, Prose, Section, hasImage } from './ui';
 
 export function TeamGrid({ block }: { block: TeamGridBlock }) {
   const { heading, intro, members } = block;
@@ -15,7 +15,7 @@ export function TeamGrid({ block }: { block: TeamGridBlock }) {
       <div className="grid gap-[var(--site-gap)] sm:grid-cols-2 lg:grid-cols-4">
         {members.map((member, index) => (
           <div key={`${member.name}-${index}`} className="flex flex-col gap-3">
-            {member.photo ? (
+            {hasImage(member.photo) ? (
               <figure className="overflow-hidden rounded-[var(--site-radius-md)] border border-[var(--site-line)]">
                 {/* eslint-disable-next-line @next/next/no-img-element -- fixture SVGs; next/image lands with the media library */}
                 <img

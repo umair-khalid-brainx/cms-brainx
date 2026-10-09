@@ -5,6 +5,109 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-07 — Public pages cached with ISR, refreshed on publish (`CNT-08` done)
+
+`web`'s tenant route is now ISR, and `api` tells `web` exactly which site and path to refresh when a
+live page changes: publish, unpublish, archive, or saving a live page (D-039). The 60 s timer is the
+backstop for theme and subdomain changes (the user's call) and for a refresh that never arrived.
+
+- `api`: `src/revalidation/` (`RevalidationService`: 2 s timeout, never throws, logs on failure),
+  called from `ContentService.update` when the page was live before or after the write. Needs
+  `WEB_REVALIDATE_URL` + `REVALIDATE_SECRET`.
+- `web`: `revalidate = 60` + empty `generateStaticParams` on the page route, with fetches cached. The
+  proxy maps `/__revalidate` to `app/internal/revalidate/route.ts` (timing-safe secret check). The
+  proxy's branches were tidied in the same pass.
+- Verified on `next build && next start` (dev mode has no ISR). Pages go MISS then HIT. A direct DB
+  edit stays hidden while an API save shows on the next request. Publish, unpublish and archive show
+  at once. Same path on both tenants gives separate entries, and refreshing one leaves the other HIT.
+  With web down, a publish still returns 200 and the page catches up within 60 s.
+
+**Not done:** anyone can fill the cache with 404s (`B-17`), and `/__revalidate` should be blocked
+in nginx (`B-18`). Both are for deploy.
+
+---
+
+## 2026-10-07 — Four starter layouts as data (`TYP-05` done)
+
+`starter_layouts`, one global table with no `siteId` (D-038), is seeded from `api/prisma/starter-layouts.ts`:
+Landing, About, Contact, Article, all with generic placeholder copy and no images. `GET /starter-layouts`
+(`content:write`) is ready for `TYP-04`.
+
+- Verified on `cms_week2`: re-seeding keeps 4 rows. A page made from each layout publishes (200) and
+  renders on `kestrel.lvh.me`. Tests hold every layout to registry block types and to passing the
+  publish checks with no warnings.
+- Review follow-ups: grids filled to 4 items, and placeholder figures set to `00`.
+
+**Not done:** the create-page picker (`TYP-04`). The Contact layout's form has no submit endpoint (`BLK-06`).
+
+---
+
+## 2026-10-07 — Shareable preview links (`CNT-09` done)
+
+One unguessable link per page, with no expiry, until someone turns it off (D-037, the user's choice
+over a signed expiring token).
+
+- `api`: `preview_links` (unique per page; cascades from both content and site),
+  `PreviewLinkRepository` (all lookups site-scoped), `GET/POST/DELETE /content/:slug/preview-link`,
+  and the public `GET /public/sites/:sub/preview/:token` (`no-store`, `noindex`).
+- `web`: `src/proxy.ts` sends `/__preview/<token>` to a `force-dynamic` route. It renders the site's
+  own chrome with a "Private preview" strip (new `banner` slot on `SiteChrome`), plus `noindex` and
+  `no-referrer`.
+- `admin`: a "Share preview" popover in the editor top bar to create, copy, open and turn off the link.
+- Verified: a token only works on its own host; drafts stay 404 at their real path; a link still
+  works after publish; archived pages give 404 (and a link can't be created for them, 409); the link
+  dies once revoked. Popover checked in light and dark mode.
+
+**Gotcha found:** `cms_week2` (copied from `cms`) already had MED-01's `add_media_thumbnail` migration
+applied, which this branch lacks, so `prisma migrate dev` wanted to reset the DB. Both migrations here
+were hand-written, checked with `prisma migrate diff` against a throwaway shadow DB (empty diff), and
+applied with `migrate deploy`.
+
+---
+
+## 2026-10-07 — Pre-publish checks (`CNT-12` done)
+
+Any `PATCH` to `published` is refused with 422 and a list of problems per block (D-036). The rules
+live once, in `api/src/content/publish-checks.ts`. Errors: no blocks, blank required text, a
+half-filled or missing required link, a missing required image, an empty list, a blank pricing
+feature, duplicate form-field names, an unknown block type. Missing alt text only warns.
+
+- `GET /content/:slug/checks`. The editor now saves, then checks, then publishes, with "Publish
+  anyway" for warnings only. The Pages-list status dropdown shows a refused publish with
+  "Fix in editor". Both use `PublishChecksPanel`.
+- A drift test reads `cms-blocks/src/types.ts` and fails if a block type has no rule.
+- The review found `cms-blocks` drew blank optional links/images (TeamGrid's default photo) as an
+  empty button or a broken frame. `hasLink`/`hasImage` now treat blank as absent.
+- Also fixed in passing: the editor top bar hard-coded "Corrick Oyster Co.".
+
+**Not done:** autosaves of a live page are deliberately not checked (D-036). Clicking a problem
+doesn't select its block. The editor canvas still uses Corrick's theme for every site (`B-16`).
+
+---
+
+## 2026-10-07 — Duplicate a page (`CNT-10` done)
+
+`POST /content/:slug/duplicate` makes `<slug>-copy` (`-copy-2`, …) under the same parent, always as
+a draft, with ` (copy)` added to the title. Archived pages can't be copied (409), because that would
+restore them without `content:delete`. The Pages list's Duplicate row action adds the copy to the top
+with a highlight and an "Open in editor" notice. Checked in the browser in light and dark mode.
+
+---
+
+## 2026-10-07 — Second tenant: Kestrel Rigging (`GOV-08a` done)
+
+`api/prisma/seed.ts` now seeds two sites through one `seedSite(spec)`. Kestrel (`kestrel`, owner
+`owner@kestrel.test`, the dark technical theme from `f161fd8`) gets Home and Capability (published)
+and Method statements (draft). Verified: re-running the seed changes nothing. Each host serves only
+its own pages and theme. Cross-tenant `GET`/`PATCH /content/:slug` gives 404 both ways.
+
+**How week 2 was run:** in worktree `week-2-tickets-review-936c71`, against a DB copy `cms_week2`
+(API :4021, web :3020, admin :5183), so the shared `cms` DB and the other sessions' servers were never
+touched. Every ticket had a reviewer and a verifier agent. The kit's own `reviewer`/`verifier` agent
+types refuse to run without `docs/plan.md`, so general-purpose agents did both roles.
+
+---
+
 ## 2026-10-06 — In-memory subdomain → site cache in `api` (`FND-04` done)
 
 Public page views no longer look the site up in Postgres every time. Decision in D-035.

@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 14, IN-PROGRESS 6, TODO 33 (54 tickets). Updated 2026-10-06.
+**Totals:** BACKLOG 1, DONE 20, IN-PROGRESS 6, TODO 27 (54 tickets). Updated 2026-10-07.
 
 ## M1 (week 1)
 
@@ -32,16 +32,16 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
 | Ticket | Title | Status | Tries | Note |
 |---|---|---|---|---|
-| GOV-08a | Minimal second tenant and host mapping | TODO | 0 |  |
+| GOV-08a | Minimal second tenant and host mapping | DONE | 0 |  |
 | CNT-07 | Next catch-all route, host resolution, render | DONE | 0 | Built before CNT-06; nested paths untested |
-| CNT-08 | ISR revalidation on publish, host-inclusive cache key | TODO | 0 |  |
-| CNT-09 | Signed-token preview URLs | TODO | 0 |  |
-| CNT-10 | Duplicate page | TODO | 0 |  |
+| CNT-08 | ISR revalidation on publish, host-inclusive cache key | DONE | 0 |  |
+| CNT-09 | Preview links (stored token, revocable) | DONE | 0 |  |
+| CNT-10 | Duplicate page | DONE | 0 |  |
 | CNT-11 | Trash, restore, permanent delete | DONE | 0 |  |
-| CNT-12 | Pre-publish validation | TODO | 0 |  |
+| CNT-12 | Pre-publish validation | DONE | 0 |  |
 | BLK-02 | Remaining render blocks: gallery, embed, FAQ | IN-PROGRESS | 0 | Embed not built |
 | BLK-03 | Editor canvas (Puck): add, delete, reorder, duplicate | IN-PROGRESS | 0 |  |
-| TYP-05 | Four seeded starter block arrangements | TODO | 0 |  |
+| TYP-05 | Four seeded starter block arrangements | DONE | 0 |  |
 
 ## M3 (week 3)
 

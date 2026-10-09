@@ -9,6 +9,7 @@ import { MediaModule } from './media/media.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PublicModule } from './public/public.module.js';
 import { SitesModule } from './sites/sites.module.js';
+import { StarterLayoutsModule } from './starter-layouts/starter-layouts.module.js';
 import { TeamModule } from './team/team.module.js';
 import { UsersModule } from './users/users.module.js';
 
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module.js';
     TeamModule,
     MediaModule,
     SitesModule,
+    StarterLayoutsModule,
     PublicModule,
   ],
   controllers: [AppController],

@@ -52,6 +52,12 @@ export class ContentController {
     return this.content.get(request.user.sub, slug);
   }
 
+  @Get(':slug/checks')
+  @RequirePermission('content:read')
+  checks(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.checks(request.user.sub, slug);
+  }
+
   @Post()
   @RequirePermission('content:write')
   create(
@@ -59,6 +65,33 @@ export class ContentController {
     @Body(new ZodValidationPipe(createContentSchema)) body: CreateContentDto,
   ) {
     return this.content.create(request.user.sub, body);
+  }
+
+  @Post(':slug/duplicate')
+  @RequirePermission('content:write')
+  duplicate(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.duplicate(request.user.sub, slug);
+  }
+
+  // Preview links (CNT-09): sharing a draft is an editing act, so all three
+  // need content:write — reading the link included, since it is the share.
+  @Get(':slug/preview-link')
+  @RequirePermission('content:write')
+  getPreviewLink(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.getPreviewLink(request.user.sub, slug);
+  }
+
+  @Post(':slug/preview-link')
+  @RequirePermission('content:write')
+  createPreviewLink(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
+    return this.content.createPreviewLink(request.user.sub, slug);
+  }
+
+  @Delete(':slug/preview-link')
+  @RequirePermission('content:write')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async revokePreviewLink(@Req() request: AuthenticatedRequest, @Param('slug') slug: string): Promise<void> {
+    await this.content.revokePreviewLink(request.user.sub, slug);
   }
 
   @Patch(':slug')
