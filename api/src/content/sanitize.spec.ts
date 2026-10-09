@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { sanitizeBlocks, sanitizeRichText } from './sanitize.js';
 
 describe('sanitizeRichText', () => {
@@ -52,6 +53,10 @@ describe('sanitizeRichText', () => {
     expect(out).not.toContain('</span>');
   });
 
+  it.each(['//evil.com', '\\\\evil.com', '/\\evil.com'])('drops a link to %s, which would leave the site', (href) => {
+    expect(sanitizeRichText(`<p><a href="${href}">x</a></p>`)).toBe('<p>x</p>');
+  });
+
   it('keeps web, email and same-site links', () => {
     for (const href of ['https://a.com', 'http://a.com', 'mailto:a@b.com', '/about', '#pricing']) {
       expect(sanitizeRichText(`<a href="${href}">x</a>`)).toBe(`<a href="${href}">x</a>`);
@@ -101,6 +106,10 @@ describe('sanitizeBlocks', () => {
     const blocks = [{ type: 'richText', html: '<script>1</script><p>a</p>' }];
     sanitizeBlocks(blocks);
     expect(blocks[0].html).toBe('<script>1</script><p>a</p>');
+  });
+
+  it.each([{ a: 1 }, ['<p>x</p>'], 42, null])('refuses rich text html that is not a string: %j', (html) => {
+    expect(() => sanitizeBlocks([{ type: 'richText', html }])).toThrow(BadRequestException);
   });
 
   it('leaves a rich text block with no html alone', () => {

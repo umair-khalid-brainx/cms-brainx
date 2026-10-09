@@ -43,7 +43,10 @@ for the same result.
 **Costs and limits:**
 
 - Rows saved before this are not rewritten: they are sanitised the next time they are saved or
-  duplicated. Existing seed content only uses `p` and `h2`, so nothing visible changes.
+  duplicated, and a publish that sends no `blocks` publishes them as stored (B-22). Existing seed
+  content only uses `p` and `h2`, so nothing visible changes.
+- Unsupported tags are dropped to bare text rather than converted, and `tel:` links are not kept
+  (B-23). A rich-text `html` that is not a string is refused with 400.
 - In the canvas Puck passes the field as a rendered node, not a string, so `RichText` accepts either
   (string on the public site, node in the editor).
 - Only `richText.html` holds HTML. FAQ answers are plain text and stay so; a new block with an HTML

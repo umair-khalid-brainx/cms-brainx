@@ -23,6 +23,8 @@ Status: **open** / **done** (with date) / **accepted** (deliberately not acting)
 | B-18 | **Block `/__revalidate` at nginx** so only `api` (over localhost) can reach it; today the shared secret is its only guard and it answers on every public host. | 2026-10-07 | Part of `DEP-01b`'s nginx config (D-039) |
 | B-20 | **Puck's default page-level `title` field shows in the sidebar** when no block is selected, but `contentApi.ts` never saves `root.props`, so typing in it does nothing. | 2026-10-06 | Hide it (`root.fields: {}`) or wire it to the page title |
 | B-21 | **Contact form submissions: delete, email alerts, CSV export.** Deliberately left out of `BLK-06`/`BLK-08` (D-042). | 2026-10-06 | Email alerts need a mail provider |
+| B-22 | **Rich text saved before `BLK-05` is not sanitised until it is saved again.** Sanitising runs on write (D-045), so older rows stay as stored, and a `PATCH` that sends only `status: published` (no `blocks`) publishes them untouched. Harmless today (seed content is clean), but needs a one-off script that re-saves every `richText` block, or sanitising `existing.blocks` on publish, before real tenants exist. | 2026-10-09 | Found by the `BLK-05` review |
+| B-23 | **The rich-text sanitiser drops what the toolbar can't make, without converting it.** Pasting through the editor is already normalised by TipTap, but HTML sent straight to the API has `<h1>`, `<h4>`–`<h6>` and `<div>` flattened to bare text, and `tel:` links turned into plain text. Map `h1`→`h2`, `h4`–`h6`→`h3`, `div`→`p`, and decide whether `tel:` is wanted (not in the requirements). | 2026-10-09 | Low: only reachable by sending HTML directly to the API |
 
 ## Accepted — deliberately not acting
 

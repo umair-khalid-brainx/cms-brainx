@@ -5,6 +5,35 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Rich text: editor, toolbar, sanitising on write, shared typography (`BLK-05` done)
+
+Decision and costs in D-045.
+
+- **Editor:** Puck's built-in `richtext` field on the RichText block, storing the same HTML in the same
+  `html` prop. Custom toolbar (`admin/src/components/RichTextToolbar.tsx`): paragraph / heading /
+  subheading, bold, italic, bulleted and numbered lists, quote, link. Links are plain (no `target`,
+  no `nofollow`). `admin/src/lib/richTextLink.ts` validates link addresses.
+- **API:** `api/src/content/sanitize.ts` (`sanitize-html`) on create, update and duplicate; a
+  non-string `html` is refused with 400. Runs before the publish checks.
+- **Typography:** headings, lists, quotes and links styled in `cms-blocks/src/RichText.tsx` from
+  `--site-*` variables only, so the canvas matches the public site. The old rules in `web`'s
+  `globals.css` are gone.
+- **Verified:** `api` 105 tests, `admin` 47, typecheck and lint clean; `cms-blocks` and `web` build. In a
+  real browser: toolbar buttons, the link box (hint with nothing selected, refusal of `javascript:` and
+  `//host`, Apply, Remove, Escape returning focus), autosave, no page reload. Against the live API a
+  malicious payload (script, `onclick`, `javascript:` link, `<img onerror>`, `target`) came back clean;
+  `web` served the stored HTML as-is (checked with `curl` and a headless Chrome screenshot).
+- **Review:** the verifier found that after a refused link the next closing tag became `</span>`
+  (a sanitize-html 2.18 quirk with function-form `transformTags`); fixed with a text unwrap and 6
+  regression tests. The review found no XSS and no write path that skips the sanitiser.
+
+**Not done:** B-22 (older rows aren't re-sanitised) and B-23 (unsupported tags and `tel:` links are
+dropped, not converted). Inline editing on the canvas is `BLK-07`; the floating menu there still uses
+Puck's default. The built-in `reviewer` agent refused to run without the `/build` kit's
+`docs/plan.md` and `docs/use-cases.md`, so a general-purpose agent reviewed instead.
+
+---
+
 ## 2026-10-09 — Week-3 merge: seven finished branches brought onto one base
 
 Merged into `claude/week-3-tickets-review-b9d261`, in this order: week-2 tickets, `BLK-02`, `BLK-03`

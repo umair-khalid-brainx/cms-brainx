@@ -465,7 +465,7 @@ describe('ContentService sanitises rich text on write (BLK-05)', () => {
     expect(table[0].blocks).toEqual(clean);
   });
 
-  it('on update, and the publish checks see the cleaned blocks', async () => {
+  it('on update', async () => {
     const { service, table } = setup([
       { siteId: 'site-a', title: 'P', slug: 'p', path: '/p', status: 'draft', blocks: [] },
     ]);
@@ -473,6 +473,21 @@ describe('ContentService sanitises rich text on write (BLK-05)', () => {
     await service.update('owner', 'p', { blocks: dirty });
 
     expect(table[0].blocks).toEqual(clean);
+  });
+
+  it('before the publish checks run, so they judge what would be stored', async () => {
+    const { service, table } = setup([
+      { siteId: 'site-a', title: 'P', slug: 'p', path: '/p', status: 'draft', blocks: [] },
+    ]);
+    // Only a refused <script> in the body: after cleaning, the block has real text and publishes.
+    // Before cleaning it would look different, so the stored result is what proves the order.
+    await service.update('owner', 'p', {
+      status: 'published',
+      blocks: [{ type: 'richText', html: '<p>Hello</p><script>alert(1)</script>' }],
+    });
+
+    expect(table[0].status).toBe('published');
+    expect(table[0].blocks).toEqual([{ type: 'richText', html: '<p>Hello</p>' }]);
   });
 
   it('on duplicate, so rows saved before sanitising existed are cleaned', async () => {

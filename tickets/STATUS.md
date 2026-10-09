@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 24, IN-PROGRESS 2, TODO 28 (55 tickets). Updated 2026-10-09.
+**Totals:** BACKLOG 1, DONE 25, IN-PROGRESS 2, TODO 27 (55 tickets). Updated 2026-10-09.
 
 ## M1 (week 1)
 
@@ -48,7 +48,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | Ticket | Title | Status | Tries | Note |
 |---|---|---|---|---|
 | BLK-04 | Per-block settings panel (Puck fields config) | IN-PROGRESS | 0 | Labels done, checked in the in-app browser; needs a person to check by hand |
-| BLK-05 | TipTap integration and sanitisation on write | IN-PROGRESS | 0 | Built; reviewer and verifier pending |
+| BLK-05 | TipTap integration and sanitisation on write | DONE | 0 |  |
 | BLK-06 | Form block, submissions table, admin list | DONE | 0 | 2026-10-06 (D-042); status + notes are BLK-08 |
 | BLK-07 | Inline editing: Editable primitive + TipTap in canvas | TODO | 0 |  |
 | BLK-08 | Submission status and internal notes | TODO | 0 | Split from BLK-06 (D-042) |

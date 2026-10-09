@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react'
 import type { RichtextField } from '@puckeditor/core'
 import { normaliseHref } from '../lib/richTextLink'
 import './RichTextToolbar.css'
@@ -15,6 +15,12 @@ export function RichTextToolbar({ editor, readOnly }: MenuProps) {
   const [linkOpen, setLinkOpen] = useState(false)
   const [href, setHref] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
+  const linkButton = useRef<HTMLButtonElement>(null)
+  // Puck mounts each field twice, so ids must be unique per instance.
+  const uid = useId()
+  const linkBoxId = `${uid}-link`
+  const linkInputId = `${uid}-link-input`
+  const linkErrorId = `${uid}-link-error`
 
   if (!editor) return null
 
@@ -41,23 +47,34 @@ export function RichTextToolbar({ editor, readOnly }: MenuProps) {
   // Not a <form>: Puck wraps its whole field panel in one, so a nested form would
   // submit the outer one (and reload the editor) on Enter or Apply.
   function applyLink() {
+    // With nothing selected and no link under the cursor, setLink would only
+    // store a mark and the box would close as if it had worked.
+    if (editor!.state.selection.empty && !editor!.isActive('link')) {
+      setLinkError('Select the text you want to turn into a link first.')
+      return
+    }
     const next = normaliseHref(href)
     if (!next) {
       setLinkError('Enter a web address, like https://example.com, or an email address starting with mailto:')
       return
     }
     editor!.chain().focus().extendMarkRange('link').setLink({ href: next }).run()
+    closeLink()
+  }
+
+  function closeLink() {
     setLinkOpen(false)
+    linkButton.current?.focus()
   }
 
   function removeLink() {
     editor!.chain().focus().extendMarkRange('link').unsetLink().run()
-    setLinkOpen(false)
+    closeLink()
   }
 
   return (
     <div className="rt-toolbar-wrap">
-      <div className="rt-toolbar" role="toolbar" aria-label="Text formatting">
+      <div className="rt-toolbar" role="group" aria-label="Text formatting">
         <select
           className="rt-block"
           aria-label="Text style"
@@ -112,25 +129,33 @@ export function RichTextToolbar({ editor, readOnly }: MenuProps) {
           <path d="M6 17c0-4 1-7 4-9M14 17c0-4 1-7 4-9M6 13h4v4H6zM14 13h4v4h-4z" />
         </ToolButton>
         <span className="rt-divider" aria-hidden="true" />
-        <ToolButton label="Link" active={editor.isActive('link') || linkOpen} disabled={disabled} onClick={openLink}>
+        <ToolButton
+          label="Link"
+          active={editor.isActive('link')}
+          expanded={linkOpen}
+          controls={linkBoxId}
+          buttonRef={linkButton}
+          disabled={disabled}
+          onClick={openLink}
+        >
           <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
         </ToolButton>
       </div>
       {linkOpen && (
-        <div className="rt-link">
-          <label className="rt-link-label" htmlFor="rt-link-input">
+        <div className="rt-link" id={linkBoxId}>
+          <label className="rt-link-label" htmlFor={linkInputId}>
             Link address
           </label>
           <div className="rt-link-row">
             <input
-              id="rt-link-input"
+              id={linkInputId}
               className="rt-link-input"
               type="text"
               value={href}
               placeholder="https://example.com"
               autoFocus
               aria-invalid={linkError ? true : undefined}
-              aria-describedby={linkError ? 'rt-link-error' : undefined}
+              aria-describedby={linkError ? linkErrorId : undefined}
               onChange={(event) => {
                 setHref(event.target.value)
                 setLinkError(null)
@@ -140,7 +165,7 @@ export function RichTextToolbar({ editor, readOnly }: MenuProps) {
                   event.preventDefault()
                   applyLink()
                 } else if (event.key === 'Escape') {
-                  setLinkOpen(false)
+                  closeLink()
                 }
               }}
             />
@@ -154,7 +179,7 @@ export function RichTextToolbar({ editor, readOnly }: MenuProps) {
             )}
           </div>
           {linkError && (
-            <p id="rt-link-error" className="rt-link-error" role="alert">
+            <p id={linkErrorId} className="rt-link-error" role="alert">
               {linkError}
             </p>
           )}
@@ -167,12 +192,18 @@ export function RichTextToolbar({ editor, readOnly }: MenuProps) {
 function ToolButton({
   label,
   active,
+  expanded,
+  controls,
+  buttonRef,
   disabled,
   onClick,
   children,
 }: {
   label: string
   active: boolean
+  expanded?: boolean
+  controls?: string
+  buttonRef?: Ref<HTMLButtonElement>
   disabled?: boolean
   onClick: () => void
   children: ReactNode
@@ -183,7 +214,10 @@ function ToolButton({
       className="rt-button"
       aria-label={label}
       title={label}
+      ref={buttonRef}
       aria-pressed={active}
+      aria-expanded={expanded}
+      aria-controls={expanded ? controls : undefined}
       disabled={disabled}
       // Keep the text selection: a button press would otherwise blur the editor first.
       onMouseDown={(event) => event.preventDefault()}

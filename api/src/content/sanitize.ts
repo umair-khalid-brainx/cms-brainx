@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import sanitizeHtml from 'sanitize-html';
 
 // Sanitise on write, never on read (root invariant 5): this runs when content
@@ -60,7 +61,12 @@ type Block = { type: string } & Record<string, unknown>;
  * renderer escapes. A new block with an HTML prop must be added here.
  */
 export function sanitizeBlocks<T extends Block>(blocks: T[]): T[] {
-  return blocks.map((block) =>
-    block.type === 'richText' && typeof block.html === 'string' ? { ...block, html: sanitizeRichText(block.html) } : block,
-  );
+  return blocks.map((block) => {
+    if (block.type !== 'richText') return block;
+    if (block.html === undefined) return block;
+    // Anything but a string would skip the sanitiser and then crash the public
+    // page when it is rendered, so it is refused rather than stored.
+    if (typeof block.html !== 'string') throw new BadRequestException('A rich text block\'s html must be a string');
+    return { ...block, html: sanitizeRichText(block.html) };
+  });
 }

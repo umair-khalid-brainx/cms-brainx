@@ -6,7 +6,11 @@
 export function normaliseHref(raw: string): string | null {
   const value = raw.trim();
   if (!value || /\s/.test(value)) return null;
-  if (/^(https?:\/\/|mailto:|\/|#)/i.test(value)) return value;
+  // `//host` and `/\host` look relative but point at another site, and the API
+  // drops them; a backslash is never part of an address the editor should keep.
+  if (/^\/[\\/]/.test(value) || value.includes('\\')) return null;
+  // Something must follow the scheme: a bare "https://" is not an address.
+  if (/^(https?:\/\/|mailto:)./i.test(value) || /^\/[^/\\]/.test(value) || /^#./.test(value) || value === '/') return value;
   // "example.com/about" typed without a scheme: assume https.
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(value)) return `https://${value}`;
   return null;
