@@ -8,6 +8,27 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-041 — 2026-10-06 — `admin` gets vitest; canvas actions are tested at the save/load boundary
+
+**Decision:** `admin` now has `vitest` as a dev dependency (`npm test`), the same runner `api` uses.
+BLK-03's add/delete/reorder/duplicate are tested through the real `saveDraft` / `publishPage` /
+`getPage` in `src/lib/contentApi.ts`, with `fetch` replaced by an in-memory stand-in for the
+`/content/:slug` endpoints. Each test builds the `data.content` array a canvas action would produce,
+saves it, reloads, and compares.
+
+**Why:** drag and click on Puck's iframe canvas can't be driven headlessly here, but every canvas
+action ends as a new `data.content` array, and the only code of ours between that array and
+Postgres is the Puck ↔ `cms-blocks` translation (D-015). That translation is where a reorder or a
+duplicate could be silently lost, so that's what the tests cover. The interactive half stays a
+manual check in a real browser, done by the user (BLK-03's DoD).
+
+**Options considered:** API e2e tests only (no new dependency, but leaves the translation, which is
+the riskier half, untested); a browser-automation runner like Playwright (much heavier, and still
+fights Puck's iframe drag-and-drop). The user chose vitest in `admin`.
+
+**Cost accepted:** one more dev dependency in `admin`; the test file is inside `src/`, so `tsc -b`
+typechecks it as part of `npm run build`. The tests check our translation, not Puck's own
+drag-and-drop code.
 ## D-040 — 2026-10-06 — Video embed: YouTube/Vimeo by pasted link, rendered from a parsed ID (`BLK-02`)
 
 **The ask.** `BLK-02`'s last line item, "embed". Left unbuilt on 2026-09-25 because a general embed

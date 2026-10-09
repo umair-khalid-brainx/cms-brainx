@@ -119,6 +119,12 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
   CDP/test script using `document.querySelector`/`querySelectorAll` against a custom field's class
   name will match both — filter to `getBoundingClientRect().width > 0` to get the one a person could
   actually click. Found verifying `ImageUploadField`'s "Browse" button (D-027).
+- **Puck's drag-and-drop only responds to trusted, stepped mouse input.** JS-dispatched
+  `PointerEvent`s and the built-in browser pane's one-jump drag both do nothing. Real Chrome driven
+  over the DevTools protocol (`Input.dispatchMouseEvent`: press, ~40 small `mouseMoved` steps with
+  `buttons: 1`, release) works, including drags inside the scaled canvas iframe — map iframe rects
+  through `iframeRect.width / iframe.clientWidth`. The action bar's `Duplicate`/`Delete` buttons are
+  inside the iframe, found by `aria-label`.
 - **`@puckeditor/core@0.23.0`'s own Publish button does render** (D-019's original "it doesn't" was
   wrong — corrected in D-028) as a `<span>`, not a `<button>`, inside its header's `_PuckHeader-tools`.
   `EditorPage.tsx` keeps its own `.editor-publish` button as the one source of truth and suppresses

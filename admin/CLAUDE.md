@@ -38,4 +38,5 @@ npm run build      # tsc -b && vite build → dist/
 npm run preview    # serve the build
 npm run typecheck
 npm run lint       # oxlint
+npm test           # vitest (D-041)
 ```
