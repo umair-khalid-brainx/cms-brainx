@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -34,16 +35,16 @@ export class ContentController {
 
   @Get()
   @RequirePermission('content:read')
-  list(@Req() request: AuthenticatedRequest) {
-    return this.content.list(request.user.sub);
+  list(@Req() request: AuthenticatedRequest, @Query('type') type?: string) {
+    return this.content.list(request.user.sub, type);
   }
 
   // Must be registered before ':slug' — otherwise that param route would
   // match the literal path '/content/archived' first.
   @Get('archived')
   @RequirePermission('content:read')
-  listArchived(@Req() request: AuthenticatedRequest) {
-    return this.content.listArchived(request.user.sub);
+  listArchived(@Req() request: AuthenticatedRequest, @Query('type') type?: string) {
+    return this.content.listArchived(request.user.sub, type);
   }
 
   @Get(':slug')

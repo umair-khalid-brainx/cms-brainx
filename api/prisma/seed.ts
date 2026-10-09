@@ -229,6 +229,14 @@ async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
     });
   }
 
+  // The built-in Posts type at /blog on every site (TYP-01). Never overwritten, so a
+  // rename done in the admin survives a re-run.
+  await prisma.contentType.upsert({
+    where: { siteId_prefix: { siteId: site.id, prefix: 'blog' } },
+    update: {},
+    create: { siteId: site.id, name: 'Posts', singularName: 'Post', prefix: 'blog', isBuiltIn: true },
+  });
+
   console.log(
     `Ensured ${user.email} owns ${site.name} (${site.subdomain}, ${spec.pages.length} seed pages)`,
   );

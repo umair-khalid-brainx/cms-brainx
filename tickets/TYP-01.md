@@ -6,10 +6,15 @@
 ## Goal
 Admins create a new content type (e.g. Events) live, with no deploy.
 ## Definition of Done
-_Items marked Draft were written from the plan, decisions and code, not from use cases. Confirm them before `/build`._
-- [ ] Draft: a Types screen lists and creates content types with a name and URL prefix
-- [ ] Draft: types belong to one site
-- [ ] Draft: a new type appears in the admin navigation immediately
+_Confirmed with the user 2026-10-09 (week 3 plan, `docs/WEEK3_PLAN.md`; requirement: "custom page types", req. 3 blog, and "future extension through custom content types")._
+- [ ] A `content_types` table, read and written only through a repository that requires `siteId`; each type has a plural name, a singular name and a URL prefix, unique per site
+- [ ] Every site has a built-in "Posts" type at `/blog` (existing sites through the migration, seeded sites through the seed); it can't be deleted or have its address changed
+- [ ] A Types screen (owners and administrators) lists the types with their address and number of entries, and creates, renames and deletes them; the address can only change while the type has no entries, and a type with entries can't be deleted
+- [ ] Prefix rules: lowercase letters, digits and hyphens, 2 to 40 characters, one segment; refused when reserved, when it matches an existing page's address, or when another type uses it. A new page whose slug equals a type's prefix gets a suffix instead
+- [ ] A new, renamed or deleted type shows in (or leaves) the sidebar immediately, with no reload
+- [ ] A type's screen lists its entries with the same controls as Pages (status, archive tab, duplicate); "Add <name>" creates an entry at `/<prefix>/<slug>` that opens in the same editor; entries never appear in the Pages list
+- [ ] Entries record their author
+- [ ] Other sites' types and entries are never visible or changeable
 - [ ] All tests pass. Reviewer approved. Verifier passed.
 ## Technical notes
-Content `type` discriminator (ARCHITECTURE.md "Content model").
+Content `type` discriminator (ARCHITECTURE.md "Content model"). Fields on a type are `TYP-02`; the public listing and entry header are `TYP-03`; categories and tags are `TAX-01`.

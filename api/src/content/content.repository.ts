@@ -8,12 +8,20 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class ContentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findMany(siteId: string) {
-    return this.prisma.content.findMany({ where: { siteId, status: { not: 'archived' } }, orderBy: { updatedAt: 'desc' } });
+  // `typeId` null lists ordinary pages; an id lists that type's entries (TYP-01).
+  // Entries never appear among the pages, and the reverse.
+  findMany(siteId: string, typeId: string | null) {
+    return this.prisma.content.findMany({
+      where: { siteId, typeId, status: { not: 'archived' } },
+      orderBy: { updatedAt: 'desc' },
+    });
   }
 
-  findManyArchived(siteId: string) {
-    return this.prisma.content.findMany({ where: { siteId, status: 'archived' }, orderBy: { archivedAt: 'desc' } });
+  findManyArchived(siteId: string, typeId: string | null) {
+    return this.prisma.content.findMany({
+      where: { siteId, typeId, status: 'archived' },
+      orderBy: { archivedAt: 'desc' },
+    });
   }
 
   findBySlug(siteId: string, slug: string) {

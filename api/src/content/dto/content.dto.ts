@@ -10,6 +10,8 @@ const blockSchema = z.object({ type: z.string().min(1) }).catchall(z.unknown());
 export const createContentSchema = z.object({
   title: z.string().min(1),
   slug: z.string().min(1).optional(),
+  // The address prefix of a content type (`events`): makes this an entry of that type (TYP-01).
+  type: z.string().min(1).optional(),
   blocks: z.array(blockSchema).default([]),
 });
 

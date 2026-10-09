@@ -37,6 +37,7 @@ model Site {
   media        Media[]
   previewLinks PreviewLink[]
   submissions  Submission[]
+  contentTypes ContentType[]
 
   @@map("sites")
 }
@@ -49,9 +50,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  memberships   SiteMembership[]
-  sentInvites   Invite[]
-  uploadedMedia Media[]
+  memberships     SiteMembership[]
+  sentInvites     Invite[]
+  uploadedMedia   Media[]
+  authoredContent Content[]
 
   @@map("users")
 }
@@ -139,7 +141,14 @@ model Content {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
+  // Set for entries of a custom type (events, posts...); null for ordinary pages (TYP-01).
+  typeId   String? @map("type_id")
+  // Who created it; the public entry header shows it (TYP-03). Null if that user is later removed.
+  authorId String? @map("author_id")
+
   site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  type        ContentType? @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  author      User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
   previewLink PreviewLink?
   submissions Submission[]
 
@@ -147,6 +156,29 @@ model Content {
   // (site_id, path)"). path === slug for now since hierarchy is deferred.
   @@unique([siteId, path])
   @@map("content")
+}
+
+// A kind of content a client defines in the admin without a deploy (TYP-01):
+// "Events", "Team", "Case studies". Pages are the typeless default. `prefix`
+// is the first segment of every entry's address (`/events/summer-fair`), so it
+// is unique per site and locked once the type has entries. The built-in "Posts"
+// type (`/blog`) can't be deleted or moved. Fields come with TYP-02.
+model ContentType {
+  id           String   @id @default(cuid())
+  siteId       String   @map("site_id")
+  // Plural, shown in the sidebar ("Events"); singular for buttons ("Add Event").
+  name         String
+  singularName String   @map("singular_name")
+  prefix       String
+  isBuiltIn    Boolean  @default(false) @map("is_built_in")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  site    Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  content Content[]
+
+  @@unique([siteId, prefix])
+  @@map("content_types")
 }
 
 // A row per uploaded file (media.service.ts writes both the file to disk and

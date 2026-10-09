@@ -12,6 +12,7 @@ import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
+import { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
@@ -23,16 +24,18 @@ export class ContentService {
     private readonly users: UserRepository,
     private readonly previewLinks: PreviewLinkRepository,
     private readonly revalidation: RevalidationService,
+    private readonly types: ContentTypeRepository,
   ) {}
 
-  async list(userId: string) {
+  /** Pages, or with `typePrefix` the entries of that content type (TYP-01). */
+  async list(userId: string, typePrefix?: string) {
     const siteId = await this.resolveSiteId(userId);
-    return this.content.findMany(siteId);
+    return this.content.findMany(siteId, (await this.resolveType(siteId, typePrefix))?.id ?? null);
   }
 
-  async listArchived(userId: string) {
+  async listArchived(userId: string, typePrefix?: string) {
     const siteId = await this.resolveSiteId(userId);
-    return this.content.findManyArchived(siteId);
+    return this.content.findManyArchived(siteId, (await this.resolveType(siteId, typePrefix))?.id ?? null);
   }
 
   async get(userId: string, slug: string) {
@@ -49,13 +52,17 @@ export class ContentService {
 
   async create(userId: string, dto: CreateContentDto) {
     const siteId = await this.resolveSiteId(userId);
-    const slug = await this.uniqueSlug(siteId, dto.slug ?? dto.title);
-    const path = slug === 'home' ? '/' : `/${slug}`;
+    const type = await this.resolveType(siteId, dto.type);
+    const slug = await this.uniqueSlug(siteId, dto.slug ?? dto.title, !type);
+    // An entry lives under its type's address; a page at the top (TYP-01).
+    const path = type ? `/${type.prefix}/${slug}` : slug === 'home' ? '/' : `/${slug}`;
 
     return this.content.create(siteId, {
       title: dto.title,
       slug,
       path,
+      typeId: type?.id ?? null,
+      authorId: userId,
       // Sanitise on write (BLK-05, invariant 5): what is stored is already safe.
       blocks: sanitizeBlocks(dto.blocks) as Prisma.InputJsonValue,
     });
@@ -126,13 +133,16 @@ export class ContentService {
     if (!source) throw new NotFoundException('Page not found');
     if (source.status === 'archived') throw new ConflictException('Restore this page before duplicating it');
 
-    const copySlug = await this.uniqueSlug(siteId, `${source.slug}-copy`);
+    const copySlug = await this.uniqueSlug(siteId, `${source.slug}-copy`, source.typeId === null);
     const parentPath = source.path.slice(0, source.path.lastIndexOf('/'));
 
     return this.content.create(siteId, {
       title: `${source.title} (copy)`,
       slug: copySlug,
       path: `${parentPath}/${copySlug}`,
+      // Same type as the original; the copy's author is whoever made the copy.
+      typeId: source.typeId,
+      authorId: userId,
       // A write like any other, so rows saved before sanitising existed are cleaned here too.
       blocks: (Array.isArray(source.blocks)
         ? sanitizeBlocks(source.blocks as Parameters<typeof sanitizeBlocks>[0])
@@ -191,11 +201,22 @@ export class ContentService {
     return membership;
   }
 
-  private async uniqueSlug(siteId: string, base: string): Promise<string> {
+  private async resolveType(siteId: string, prefix: string | undefined) {
+    if (!prefix) return null;
+    const type = await this.types.findByPrefix(siteId, prefix);
+    if (!type) throw new NotFoundException('Content type not found');
+    return type;
+  }
+
+  // Slugs are unique across the whole site, because admin routes by slug alone.
+  // A page also can't take a content type's address (`/events` is the type's
+  // listing), so it gets a suffix instead (TYP-01).
+  private async uniqueSlug(siteId: string, base: string, page: boolean): Promise<string> {
     const slugified = slugify(base);
+    const taken = page ? new Set(await this.types.prefixes(siteId)) : new Set<string>();
     let candidate = slugified;
     let suffix = 2;
-    while (await this.content.findBySlug(siteId, candidate)) {
+    while (taken.has(candidate) || (await this.content.findBySlug(siteId, candidate))) {
       candidate = `${slugified}-${suffix}`;
       suffix += 1;
     }

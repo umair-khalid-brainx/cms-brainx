@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module.js';
 import { ContentController } from './content.controller.js';
 import { ContentRepository } from './content.repository.js';
 import { ContentService } from './content.service.js';
+import { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
 
 @Module({
@@ -16,8 +17,8 @@ import { PreviewLinkRepository } from './preview-link.repository.js';
   // providers.
   imports: [UsersModule, AuthModule, RevalidationModule],
   controllers: [ContentController],
-  providers: [ContentRepository, PreviewLinkRepository, ContentService, JwtAuthGuard, PermissionsGuard],
+  providers: [ContentRepository, ContentTypeRepository, PreviewLinkRepository, ContentService, JwtAuthGuard, PermissionsGuard],
   // For PublicModule's live-page and preview reads.
-  exports: [ContentRepository, PreviewLinkRepository],
+  exports: [ContentRepository, ContentTypeRepository, PreviewLinkRepository],
 })
 export class ContentModule {}

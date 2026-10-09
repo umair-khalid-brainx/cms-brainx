@@ -7,6 +7,7 @@ import {
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
 import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
+import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { PreviewLinkRepository } from './preview-link.repository.js';
 import { ContentService } from './content.service.js';
 
@@ -18,6 +19,8 @@ type Row = {
   path: string;
   status: string;
   blocks: unknown;
+  typeId?: string | null;
+  authorId?: string | null;
 };
 
 /**
@@ -29,6 +32,7 @@ function fakeContent(
   rows: Row[],
   members: Record<string, { siteId: string; role: string }>,
   previewLinks: Partial<PreviewLinkRepository> = {},
+  typeTable: { id: string; siteId: string; prefix: string }[] = [],
 ) {
   const table = rows.map((row) => ({ ...row }));
   const content = {
@@ -44,6 +48,9 @@ function fakeContent(
         table.push(row);
         return row;
       },
+    ),
+    findMany: vi.fn(async (siteId: string, typeId: string | null) =>
+      table.filter((r) => r.siteId === siteId && (r.typeId ?? null) === typeId && r.status !== 'archived'),
     ),
     update: vi.fn(async (siteId: string, slug: string, data: Partial<Row>) => {
       const row = table.find((r) => r.siteId === siteId && r.slug === slug);
@@ -68,13 +75,21 @@ function fakeContent(
     ),
   };
   const revalidation = { page: vi.fn(async () => {}) };
+  // Scoped like the real repository: a site only finds its own types.
+  const types = {
+    findByPrefix: vi.fn(async (siteId: string, prefix: string) =>
+      typeTable.find((type) => type.siteId === siteId && type.prefix === prefix) ?? null,
+    ),
+    prefixes: vi.fn(async (siteId: string) => typeTable.filter((type) => type.siteId === siteId).map((type) => type.prefix)),
+  };
   const service = new ContentService(
     content as unknown as ContentRepository,
     users as unknown as UserRepository,
     previewLinks as PreviewLinkRepository,
     revalidation as unknown as RevalidationService,
+    types as unknown as ContentTypeRepository,
   );
-  return { service, table, content, revalidation };
+  return { service, table, content, revalidation, types };
 }
 
 const blocks = [{ type: 'hero', headline: 'Hello' }];
@@ -506,5 +521,95 @@ describe('ContentService sanitises rich text on write (BLK-05)', () => {
     await service.create('owner', { title: 'Page', blocks: [{ type: 'hero', headline: 'Hello' }] });
 
     expect(table[0].blocks).toEqual([{ type: 'hero', headline: 'Hello' }]);
+  });
+});
+
+describe('ContentService with content types (TYP-01)', () => {
+  const TYPES = [
+    { id: 'type-events', siteId: 'site-a', prefix: 'events' },
+    { id: 'type-events-b', siteId: 'site-b', prefix: 'events' },
+    { id: 'type-blog', siteId: 'site-a', prefix: 'blog' },
+  ];
+
+  function setup(rows: Row[] = []) {
+    return fakeContent(
+      rows,
+      { alice: { siteId: 'site-a', role: 'owner' }, bob: { siteId: 'site-b', role: 'owner' } },
+      {},
+      TYPES,
+    );
+  }
+
+  const page = (slug: string, extra: Partial<Row> = {}): Row => ({
+    siteId: 'site-a', title: slug, slug, path: `/${slug}`, status: 'draft', blocks: [], ...extra,
+  });
+
+  it('creates an entry under its type, with its author', async () => {
+    const { service, table } = setup();
+
+    await service.create('alice', { title: 'Summer Fair', type: 'events', blocks: [] });
+
+    expect(table[0]).toMatchObject({
+      siteId: 'site-a', slug: 'summer-fair', path: '/events/summer-fair', typeId: 'type-events', authorId: 'alice',
+    });
+  });
+
+  it('refuses a type that does not exist, or that belongs to another site', async () => {
+    const { service, table } = setup();
+
+    await expect(service.create('alice', { title: 'x', type: 'nope', blocks: [] })).rejects.toBeInstanceOf(NotFoundException);
+    // site-b has 'events' but not 'blog': alice's blog must not resolve for bob.
+    await expect(service.create('bob', { title: 'x', type: 'blog', blocks: [] })).rejects.toBeInstanceOf(NotFoundException);
+    expect(table).toHaveLength(0);
+  });
+
+  it('records the author of an ordinary page too, and leaves its type empty', async () => {
+    const { service, table } = setup();
+
+    await service.create('alice', { title: 'About', blocks: [] });
+
+    expect(table[0]).toMatchObject({ path: '/about', typeId: null, authorId: 'alice' });
+  });
+
+  it('gives a page a suffix instead of a content type\'s address', async () => {
+    const { service, table } = setup();
+
+    await service.create('alice', { title: 'Events', blocks: [] });
+    await service.create('alice', { title: 'Blog', blocks: [] });
+
+    expect(table.map((r) => r.slug)).toEqual(['events-2', 'blog-2']);
+  });
+
+  it('lets another site use that name freely, and an entry use it too', async () => {
+    const { service, table } = setup();
+
+    await service.create('alice', { title: 'Events', type: 'events', blocks: [] });
+
+    expect(table[0].path).toBe('/events/events');
+  });
+
+  it('lists pages and entries apart', async () => {
+    const { service } = setup([
+      page('about'),
+      page('summer-fair', { path: '/events/summer-fair', typeId: 'type-events' }),
+      page('hello', { path: '/blog/hello', typeId: 'type-blog' }),
+      page('secret', { siteId: 'site-b', typeId: null }),
+    ]);
+
+    expect((await service.list('alice')).map((r) => r.slug)).toEqual(['about']);
+    expect((await service.list('alice', 'events')).map((r) => r.slug)).toEqual(['summer-fair']);
+    expect((await service.list('alice', 'blog')).map((r) => r.slug)).toEqual(['hello']);
+    await expect(service.list('alice', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('copies an entry into the same type, under the same address, by the person copying', async () => {
+    const { service, table } = setup([
+      page('summer-fair', { path: '/events/summer-fair', typeId: 'type-events', authorId: 'someone-else' }),
+    ]);
+
+    const copy = await service.duplicate('alice', 'summer-fair');
+
+    expect(copy).toMatchObject({ path: '/events/summer-fair-copy', typeId: 'type-events', authorId: 'alice' });
+    expect(table).toHaveLength(2);
   });
 });
