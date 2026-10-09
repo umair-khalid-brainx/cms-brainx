@@ -11,6 +11,7 @@ type Type = {
   singularName: string;
   prefix: string;
   isBuiltIn: boolean;
+  fields?: unknown;
 };
 
 // An in-memory stand-in for the repository, honestly scoped by siteId like the
@@ -108,7 +109,7 @@ describe('ContentTypesService.create', () => {
 
     await service.create('alice', dto);
 
-    expect(repo.create).toHaveBeenCalledWith('site-a', dto);
+    expect(repo.create).toHaveBeenCalledWith('site-a', { ...dto, fields: [] });
   });
 
   it.each([
@@ -268,5 +269,78 @@ describe('races that used to be a 500 (TYP-01 review)', () => {
     repo.delete.mockRejectedValueOnce(new Error('connection lost'));
 
     await expect(service.remove('alice', 'events-a')).rejects.toThrow('connection lost');
+  });
+});
+
+describe('fields on a type (TYP-02)', () => {
+  const dto = { name: 'Talks', singularName: 'Talk', prefix: 'talks' };
+
+  it('creates a type with fields, giving each a key from its name', async () => {
+    const { service, repo } = setup();
+
+    await service.create('alice', {
+      ...dto,
+      fields: [
+        { label: 'Speaker', kind: 'text', required: true },
+        { label: 'Room type', kind: 'select', required: false, options: ['Hall', 'Studio'] },
+      ],
+    });
+
+    expect(repo.create).toHaveBeenCalledWith('site-a', {
+      ...dto,
+      fields: [
+        { key: 'speaker', label: 'Speaker', kind: 'text', required: true },
+        { key: 'room_type', label: 'Room type', kind: 'select', required: false, options: ['Hall', 'Studio'] },
+      ],
+    });
+  });
+
+  it('refuses bad fields with a 400 that says what is wrong, and creates nothing', async () => {
+    const { service, repo } = setup();
+
+    await expect(
+      service.create('alice', { ...dto, fields: [{ label: 'Kind', kind: 'select', required: false }] }),
+    ).rejects.toMatchObject({ response: { message: [expect.stringContaining('at least one option')] } });
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it('adds a field to a type that already has entries, keeping the existing field’s key', async () => {
+    const { service, repo, types } = setup({ entries: [{ siteId: 'site-a', typeId: 'events-a', status: 'published' }] });
+    types.find((x) => x.id === 'events-a')!.fields = [{ key: 'venue', label: 'Venue', kind: 'text', required: false }];
+
+    await service.update('alice', 'events-a', {
+      fields: [
+        { key: 'venue', label: 'Where', kind: 'text', required: true },
+        { label: 'Date', kind: 'date', required: false },
+      ],
+    });
+
+    expect(repo.update).toHaveBeenCalledWith('site-a', 'events-a', {
+      fields: [
+        { key: 'venue', label: 'Where', kind: 'text', required: true },
+        { key: 'date', label: 'Date', kind: 'date', required: false },
+      ],
+    });
+  });
+
+  it('refuses to change an existing field’s kind, and changes nothing', async () => {
+    const { service, repo, types } = setup();
+    types.find((x) => x.id === 'events-a')!.fields = [{ key: 'venue', label: 'Venue', kind: 'text', required: false }];
+
+    await expect(
+      service.update('alice', 'events-a', { fields: [{ key: 'venue', label: 'Venue', kind: 'date', required: false }] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it('lists each type’s fields, and a damaged stored list as none', async () => {
+    const { service, types } = setup();
+    types.find((x) => x.id === 'events-a')!.fields = [{ key: 'venue', label: 'Venue', kind: 'text', required: false }];
+    types.find((x) => x.id === 'blog-a')!.fields = 'garbage';
+
+    const list = await service.list('alice');
+
+    expect(list.find((x) => x.prefix === 'events')?.fields).toHaveLength(1);
+    expect(list.find((x) => x.prefix === 'blog')?.fields).toEqual([]);
   });
 });

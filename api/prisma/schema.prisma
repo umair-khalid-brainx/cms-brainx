@@ -135,6 +135,8 @@ model Content {
   path       String
   status     ContentStatus @default(draft)
   blocks     Json          @default("[]")
+  // Values of the type's custom fields, by field key (TYP-02). Empty for pages.
+  data       Json          @default("{}")
   // When it was archived, for display only — set on entering `archived`,
   // cleared on leaving it. `status` is the source of truth, not this.
   archivedAt DateTime?     @map("archived_at")
@@ -171,6 +173,10 @@ model ContentType {
   singularName String   @map("singular_name")
   prefix       String
   isBuiltIn    Boolean  @default(false) @map("is_built_in")
+  // The fields entries of this type carry (TYP-02): an array of { key, label, kind,
+  // required, options? } over six fixed kinds. Removing one hides it; the values
+  // stay in each entry's `data`. See content-types/field-definitions.ts.
+  fields       Json     @default("[]")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

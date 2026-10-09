@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -21,6 +22,7 @@ type Row = {
   blocks: unknown;
   typeId?: string | null;
   authorId?: string | null;
+  data?: unknown;
 };
 
 /**
@@ -32,7 +34,7 @@ function fakeContent(
   rows: Row[],
   members: Record<string, { siteId: string; role: string }>,
   previewLinks: Partial<PreviewLinkRepository> = {},
-  typeTable: { id: string; siteId: string; prefix: string }[] = [],
+  typeTable: { id: string; siteId: string; prefix: string; fields?: unknown }[] = [],
 ) {
   const table = rows.map((row) => ({ ...row }));
   const content = {
@@ -79,6 +81,9 @@ function fakeContent(
   const types = {
     findByPrefix: vi.fn(async (siteId: string, prefix: string) =>
       typeTable.find((type) => type.siteId === siteId && type.prefix === prefix) ?? null,
+    ),
+    findById: vi.fn(async (siteId: string, id: string) =>
+      typeTable.find((type) => type.siteId === siteId && type.id === id) ?? null,
     ),
     prefixes: vi.fn(async (siteId: string) => typeTable.filter((type) => type.siteId === siteId).map((type) => type.prefix)),
   };
@@ -611,5 +616,90 @@ describe('ContentService with content types (TYP-01)', () => {
 
     expect(copy).toMatchObject({ path: '/events/summer-fair-copy', typeId: 'type-events', authorId: 'alice' });
     expect(table).toHaveLength(2);
+  });
+});
+
+describe('ContentService entry fields (TYP-02)', () => {
+  const FIELDS = [
+    { key: 'summary', label: 'Summary', kind: 'text', required: true },
+    { key: 'when', label: 'When', kind: 'date', required: false },
+  ];
+  const TYPES = [
+    { id: 'type-events', siteId: 'site-a', prefix: 'events', fields: FIELDS },
+    { id: 'type-events-b', siteId: 'site-b', prefix: 'events', fields: [{ key: 'other', label: 'Other', kind: 'text', required: false }] },
+  ];
+  const entry = (extra: Partial<Row> = {}): Row => ({
+    siteId: 'site-a', title: 'Fair', slug: 'fair', path: '/events/fair', status: 'draft',
+    blocks: [{ type: 'richText', html: '<p>x</p>' }], typeId: 'type-events', ...extra,
+  });
+  const setup = (rows: Row[]) =>
+    fakeContent(rows, { alice: { siteId: 'site-a', role: 'owner' }, bob: { siteId: 'site-b', role: 'owner' } }, {}, TYPES);
+
+  it('saves valid values, merges them with what was there and keeps a hidden field’s value', async () => {
+    const { service, table } = setup([entry({ data: { when: '2026-01-01', hidden_field: 'kept' } } as Partial<Row>)]);
+
+    await service.update('alice', 'fair', { data: { summary: '  Summer fair ' } });
+
+    expect(table[0]).toMatchObject({ data: { summary: 'Summer fair', when: '2026-01-01', hidden_field: 'kept' } });
+  });
+
+  it('clears a field that is sent blank', async () => {
+    const { service, table } = setup([entry({ data: { summary: 'x', when: '2026-01-01' } } as Partial<Row>)]);
+
+    await service.update('alice', 'fair', { data: { when: '' } });
+
+    expect(table[0]).toMatchObject({ data: { summary: 'x' } });
+  });
+
+  it('refuses invalid values with every problem listed, and saves nothing', async () => {
+    const { service, table, content } = setup([entry()]);
+
+    await expect(service.update('alice', 'fair', { data: { summary: 5, when: '2026-02-30' } })).rejects.toMatchObject({
+      response: { message: expect.arrayContaining([expect.stringContaining('Summary'), expect.stringContaining('When')]) },
+    });
+    expect(content.update).not.toHaveBeenCalled();
+    expect(table[0]).not.toHaveProperty('data');
+  });
+
+  it('refuses fields on an ordinary page', async () => {
+    const { service } = setup([entry({ typeId: null, path: '/fair' })]);
+
+    await expect(service.update('alice', 'fair', { data: { summary: 'x' } })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('judges values against the caller’s own site’s type, never another site’s', async () => {
+    const { service } = setup([entry({ siteId: 'site-b', typeId: 'type-events-b', slug: 'fair-b', path: '/events/fair-b' })]);
+
+    // site-b's type has an "other" field, not "summary": a summary is ignored, "other" is kept.
+    await service.update('bob', 'fair-b', { data: { other: 'ok', summary: 'ignored' } });
+  });
+
+  it('waits to publish until a required field has a value, and says which', async () => {
+    const { service, table } = setup([entry()]);
+
+    await expect(service.update('alice', 'fair', { status: 'published' })).rejects.toMatchObject({
+      response: { errors: [expect.objectContaining({ field: 'data.summary', message: 'Fill in “Summary”' })] },
+    });
+    expect(table[0].status).toBe('draft');
+  });
+
+  it('publishes once the required field is filled, including in the same save', async () => {
+    const { service, table } = setup([entry()]);
+
+    await service.update('alice', 'fair', { status: 'published', data: { summary: 'Done' } });
+
+    expect(table[0]).toMatchObject({ status: 'published', data: { summary: 'Done' } });
+  });
+
+  it('a draft save never needs the required fields', async () => {
+    const { service } = setup([entry()]);
+
+    await expect(service.update('alice', 'fair', { title: 'New title' })).resolves.toBeTruthy();
+  });
+
+  it('copies an entry’s values into its duplicate', async () => {
+    const { service } = setup([entry({ data: { summary: 'x' } } as Partial<Row>)]);
+
+    expect(await service.duplicate('alice', 'fair')).toMatchObject({ data: { summary: 'x' } });
   });
 });

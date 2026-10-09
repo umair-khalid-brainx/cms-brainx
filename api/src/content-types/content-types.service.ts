@@ -9,6 +9,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentTypeRepository } from './content-type.repository.js';
 import type { CreateContentTypeDto, UpdateContentTypeDto } from './dto/content-type.dto.js';
+import { normaliseFields, parseStoredFields, type FieldDefinition, type FieldInput } from './field-definitions.js';
 import { prefixProblem } from './prefix.js';
 
 @Injectable()
@@ -24,7 +25,7 @@ export class ContentTypesService {
     const [types, counts] = await Promise.all([this.types.findMany(siteId), this.types.countEntries(siteId)]);
     return types.map((type) => {
       const count = counts.get(type.id) ?? { active: 0, total: 0 };
-      return { ...type, entryCount: count.active, locked: type.isBuiltIn || count.total > 0 };
+      return { ...type, fields: parseStoredFields(type.fields), entryCount: count.active, locked: type.isBuiltIn || count.total > 0 };
     });
   }
 
@@ -33,7 +34,9 @@ export class ContentTypesService {
     await this.assertPrefixFree(siteId, dto.prefix);
     await this.assertNameFree(siteId, dto.name);
     try {
-      return await this.types.create(siteId, dto);
+      const { fields } = this.checkedFields(dto.fields ?? [], []);
+      const { fields: _ignored, ...rest } = dto;
+      return await this.types.create(siteId, { ...rest, fields });
     } catch (error) {
       // Two people claiming the same address at once: both checks pass, the unique index stops the second.
       throw this.asConflict(error, `Another content type already uses /${dto.prefix}.`);
@@ -56,7 +59,9 @@ export class ContentTypesService {
     }
     if (dto.name !== undefined && dto.name !== type.name) await this.assertNameFree(siteId, dto.name, id);
 
-    const { prefix, ...rest } = dto;
+    const { prefix, fields: incoming, ...others } = dto;
+    const rest: { name?: string; singularName?: string; fields?: FieldDefinition[] } = { ...others };
+    if (incoming) rest.fields = this.checkedFields(incoming, parseStoredFields(type.fields)).fields;
     try {
       if (Object.keys(rest).length > 0) await this.types.update(siteId, id, rest);
       if (prefix !== undefined && prefix !== type.prefix) {
@@ -89,6 +94,13 @@ export class ContentTypesService {
       // An entry added after the check above: the database refuses to orphan it.
       throw this.asConflict(error, `${type.name} just got an entry, so it can't be deleted now.`, 'P2003');
     }
+  }
+
+  /** The stored field list for what the admin sent, or a 400 saying what to fix. */
+  private checkedFields(incoming: FieldInput[], existing: readonly FieldDefinition[]) {
+    const result = normaliseFields(incoming, existing);
+    if (result.problems.length > 0) throw new BadRequestException(result.problems);
+    return result;
   }
 
   /** A unique or foreign-key violation from a race becomes the 409 it should have been, not a 500. */

@@ -22,6 +22,8 @@ export const updateContentSchema = z
     title: z.string().min(1).optional(),
     status: z.enum(['draft', 'published', 'archived']).optional(),
     blocks: z.array(blockSchema).optional(),
+    // Values of a content type's custom fields, by field key (TYP-02). Entries only.
+    data: z.record(z.string(), z.unknown()).optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'Provide at least one field to update' });
 

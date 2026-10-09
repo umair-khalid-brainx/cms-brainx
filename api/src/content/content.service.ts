@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -13,6 +14,8 @@ import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
+import { parseStoredFields, type FieldDefinition } from '../content-types/field-definitions.js';
+import { mergeEntryData, missingRequired, parseEntryData } from '../content-types/field-values.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
@@ -47,7 +50,8 @@ export class ContentService {
 
   /** What would stop this page being published, as saved now (CNT-12). */
   async checks(userId: string, slug: string) {
-    return checkPublishable((await this.get(userId, slug)).blocks);
+    const page = await this.get(userId, slug);
+    return this.withRequiredFields(checkPublishable(page.blocks), await this.fieldsOf(page.siteId, page.typeId), page.data);
   }
 
   async create(userId: string, dto: CreateContentDto) {
@@ -93,13 +97,26 @@ export class ContentService {
     // judge what would actually be stored.
     const blocks = dto.blocks ? sanitizeBlocks(dto.blocks) : undefined;
 
+    // An entry's custom fields (TYP-02): checked against its type on every write.
+    // The saved values keep any field the type has since hidden.
+    // Looked up only when needed: a plain autosave of blocks never touches the type.
+    const needsFields = dto.data !== undefined || dto.status === 'published';
+    const fields = needsFields ? await this.fieldsOf(membership.siteId, existing.typeId) : [];
+    let data: Record<string, unknown> | undefined;
+    if (dto.data !== undefined) {
+      if (!existing.typeId) throw new BadRequestException('Only entries of a content type have fields');
+      const parsed = parseEntryData(fields, dto.data, membership.siteId);
+      if (!parsed.ok) throw new BadRequestException(parsed.problems);
+      data = mergeEntryData(existing.data, parsed);
+    }
+
     // Any move to `published` — publish, restore, or re-publishing from the
     // editor — must pass the publish checks, against the blocks it would go
     // live with. Draft saves (no status, or `draft`) never are (CNT-12). An
     // autosave of an already-live page isn't either: blocking it mid-edit
     // would lose work, and the editor checks before its Publish (D-036).
     if (dto.status === 'published') {
-      const checks = checkPublishable(blocks ?? existing.blocks);
+      const checks = this.withRequiredFields(checkPublishable(blocks ?? existing.blocks), fields, data ?? existing.data);
       if (checks.errors.length > 0) {
         throw new UnprocessableEntityException({ statusCode: 422, message: 'Fix these before publishing', ...checks });
       }
@@ -108,6 +125,7 @@ export class ContentService {
     await this.content.update(membership.siteId, slug, {
       ...dto,
       blocks: blocks as Prisma.InputJsonValue | undefined,
+      data: data as Prisma.InputJsonValue | undefined,
       ...(entering && { archivedAt: new Date() }),
       ...(leaving && { archivedAt: null }),
     });
@@ -143,6 +161,7 @@ export class ContentService {
       // Same type as the original; the copy's author is whoever made the copy.
       typeId: source.typeId,
       authorId: userId,
+      data: source.data as Prisma.InputJsonValue,
       // A write like any other, so rows saved before sanitising existed are cleaned here too.
       blocks: (Array.isArray(source.blocks)
         ? sanitizeBlocks(source.blocks as Parameters<typeof sanitizeBlocks>[0])
@@ -199,6 +218,30 @@ export class ContentService {
     const membership = user?.memberships[0];
     if (!membership) throw new ForbiddenException('No site membership');
     return membership;
+  }
+
+  /** The custom fields of an entry's type; none for a page. */
+  private async fieldsOf(siteId: string, typeId: string | null): Promise<FieldDefinition[]> {
+    if (!typeId) return [];
+    return parseStoredFields((await this.types.findById(siteId, typeId))?.fields);
+  }
+
+  /** Adds "fill this in" errors for required fields with no value, so publishing waits for them. */
+  private withRequiredFields<T extends { errors: { blockIndex: number | null; blockType: string | null; blockLabel: string | null; field: string | null; message: string }[] }>(
+    checks: T,
+    fields: readonly FieldDefinition[],
+    data: unknown,
+  ): T {
+    for (const field of missingRequired(fields, data)) {
+      checks.errors.push({
+        blockIndex: null,
+        blockType: null,
+        blockLabel: null,
+        field: `data.${field.key}`,
+        message: `Fill in “${field.label}”`,
+      });
+    }
+    return checks;
   }
 
   private async resolveType(siteId: string, prefix: string | undefined) {

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 // Every method takes `siteId` (invariant 1): a site only ever sees and changes
@@ -24,11 +25,18 @@ export class ContentTypeRepository {
     return this.prisma.contentType.findFirst({ where: { siteId, prefix } });
   }
 
-  create(siteId: string, data: { name: string; singularName: string; prefix: string; isBuiltIn?: boolean }) {
+  create(
+    siteId: string,
+    data: { name: string; singularName: string; prefix: string; isBuiltIn?: boolean; fields?: Prisma.InputJsonValue },
+  ) {
     return this.prisma.contentType.create({ data: { ...data, siteId } });
   }
 
-  update(siteId: string, id: string, data: { name?: string; singularName?: string; prefix?: string }) {
+  update(
+    siteId: string,
+    id: string,
+    data: { name?: string; singularName?: string; fields?: Prisma.InputJsonValue },
+  ) {
     return this.prisma.contentType.updateMany({ where: { id, siteId }, data });
   }
 

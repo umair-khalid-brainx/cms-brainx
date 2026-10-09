@@ -234,7 +234,18 @@ async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
   await prisma.contentType.upsert({
     where: { siteId_prefix: { siteId: site.id, prefix: 'blog' } },
     update: {},
-    create: { siteId: site.id, name: 'Posts', singularName: 'Post', prefix: 'blog', isBuiltIn: true },
+    create: {
+      siteId: site.id,
+      name: 'Posts',
+      singularName: 'Post',
+      prefix: 'blog',
+      isBuiltIn: true,
+      // Req. 3: a summary and a featured image.
+      fields: [
+        { key: 'excerpt', label: 'Excerpt', kind: 'text', required: false },
+        { key: 'featured_image', label: 'Featured image', kind: 'media', required: false },
+      ],
+    },
   });
 
   console.log(

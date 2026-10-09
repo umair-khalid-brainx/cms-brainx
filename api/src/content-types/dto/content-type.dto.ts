@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { fieldInputSchema, MAX_FIELDS } from '../field-definitions.js';
 
 const name = (label: string) =>
   z
@@ -18,6 +19,7 @@ export const createContentTypeSchema = z.object({
   name: name('a name'),
   singularName: name('a singular name'),
   prefix,
+  fields: z.array(fieldInputSchema).max(MAX_FIELDS).optional(),
 });
 
 export type CreateContentTypeDto = z.infer<typeof createContentTypeSchema>;
@@ -27,6 +29,7 @@ export const updateContentTypeSchema = z
     name: name('a name').optional(),
     singularName: name('a singular name').optional(),
     prefix: prefix.optional(),
+    fields: z.array(fieldInputSchema).max(MAX_FIELDS).optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'Provide at least one field to update' });
 
