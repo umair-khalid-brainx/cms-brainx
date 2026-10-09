@@ -12,7 +12,7 @@ const name = (label: string) =>
 
 // The prefix's own rules (format, reserved words) are checked in the service so
 // the message can be written for the person typing it (prefix.ts).
-const prefix = z.string().trim().toLowerCase();
+const prefix = z.string().trim();
 
 export const createContentTypeSchema = z.object({
   name: name('a name'),

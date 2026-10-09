@@ -5,7 +5,7 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
-## 2026-10-09 — Content types and typed entries (`TYP-01`, built; review pending)
+## 2026-10-09 — Content types and typed entries (`TYP-01` done)
 
 Decision in D-048.
 
@@ -22,8 +22,15 @@ Decision in D-048.
   `/case-studies/harbour-restoration`; it is absent from Pages. A type with entries has its address locked and
   Delete disabled; an empty type deletes and leaves the menu at once; a reserved address shows the API's message.
 
-**Not done:** reviewer and verifier pending; visual check of the new screens (the browser pane could not render
-screenshots this time).
+- **Review follow-ups:** an address change is one atomic statement (an entry created in between used to be
+  stranded under the old address); unique and foreign-key violations from races answer 409 instead of 500;
+  `?type=a&type=b` is a 400; more reserved words; an uppercase address is refused, not silently lowercased;
+  a failed sidebar reload keeps the old list; `/types` shows a message to people who can't manage types.
+  `api` 241 tests, `admin` 89. The verifier passed every item with two tenants and every role.
+
+**Not done:** B-26. The new screens haven't been looked at visually (the browser pane would not render
+screenshots, so they were checked by scripted interaction and page text). The built-in `reviewer`/`verifier`
+agents were again replaced by general-purpose ones.
 
 ---
 

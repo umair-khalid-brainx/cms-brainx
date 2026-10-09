@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client.js';
 import type { UserRepository } from '../users/user.repository.js';
 import type { ContentTypeRepository } from './content-type.repository.js';
 import { ContentTypesService } from './content-types.service.js';
@@ -39,6 +40,12 @@ function setup(extra: { entries?: { siteId: string; typeId: string; status: stri
       const row = types.find((t) => t.siteId === siteId && t.id === id);
       if (row) Object.assign(row, data);
       return { count: row ? 1 : 0 };
+    }),
+    updatePrefixIfEmpty: vi.fn(async (siteId: string, id: string, prefix: string) => {
+      const row = types.find((t) => t.siteId === siteId && t.id === id);
+      const empty = !entries.some((e) => e.siteId === siteId && e.typeId === id);
+      if (row && empty) row.prefix = prefix;
+      return { count: row && empty ? 1 : 0 };
     }),
     delete: vi.fn(async (siteId: string, id: string) => {
       const at = types.findIndex((t) => t.siteId === siteId && t.id === id);
@@ -224,5 +231,42 @@ describe('ContentTypesService.remove', () => {
 
     await expect(service.remove('alice', 'blog-b')).rejects.toBeInstanceOf(NotFoundException);
     expect(types.some((t) => t.id === 'blog-b')).toBe(true);
+  });
+});
+
+describe('races that used to be a 500 (TYP-01 review)', () => {
+  const known = (code: string) => new Prisma.PrismaClientKnownRequestError('x', { code, clientVersion: 'test' });
+
+  it('answers 409 when two creates claim one address at the same moment', async () => {
+    const { service, repo } = setup();
+    repo.create.mockRejectedValueOnce(known('P2002'));
+
+    await expect(service.create('alice', { name: 'Things', singularName: 'Thing', prefix: 'things' })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it('answers 409 when an entry appears between the check and the address change, and moves nothing', async () => {
+    const { service, repo, types } = setup();
+    // The up-front check saw no entries; one is created before the write.
+    repo.hasEntries.mockResolvedValueOnce(false);
+    repo.updatePrefixIfEmpty.mockResolvedValueOnce({ count: 0 });
+
+    await expect(service.update('alice', 'events-a', { prefix: 'happenings' })).rejects.toBeInstanceOf(ConflictException);
+    expect(types.find((t) => t.id === 'events-a')?.prefix).toBe('events');
+  });
+
+  it('answers 409 when an entry appears between the check and the delete', async () => {
+    const { service, repo } = setup();
+    repo.delete.mockRejectedValueOnce(known('P2003'));
+
+    await expect(service.remove('alice', 'events-a')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('lets any other database error through unchanged', async () => {
+    const { service, repo } = setup();
+    repo.delete.mockRejectedValueOnce(new Error('connection lost'));
+
+    await expect(service.remove('alice', 'events-a')).rejects.toThrow('connection lost');
   });
 });

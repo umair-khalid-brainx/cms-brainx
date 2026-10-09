@@ -32,6 +32,14 @@ export const RESERVED_PREFIXES: ReadonlySet<string> = new Set([
   'robots',
   'login',
   'home', // the home page's own slug
+  'media',
+  'sites', // web's internal rewrite targets
+  'no-site',
+  'favicon',
+  'wp-admin',
+  'files',
+  'images',
+  'new',
 ]);
 
 /** Why a prefix can't be used, in words for the person typing it; null when it is fine. */

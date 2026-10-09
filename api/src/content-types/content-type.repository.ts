@@ -32,6 +32,15 @@ export class ContentTypeRepository {
     return this.prisma.contentType.updateMany({ where: { id, siteId }, data });
   }
 
+  /**
+   * Changes the address only if the type has no entries at that moment, in one
+   * statement: checking first and writing after would let an entry slip in between
+   * and be left under an address no type owns. Count 0 means "had entries".
+   */
+  updatePrefixIfEmpty(siteId: string, id: string, prefix: string) {
+    return this.prisma.contentType.updateMany({ where: { id, siteId, content: { none: {} } }, data: { prefix } });
+  }
+
   delete(siteId: string, id: string) {
     return this.prisma.contentType.deleteMany({ where: { id, siteId } });
   }

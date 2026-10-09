@@ -12,7 +12,12 @@ export function ContentTypesProvider({ children }: { children: ReactNode }) {
     try {
       setState({ status: 'ready', types: await listContentTypes() })
     } catch (error) {
-      setState({ status: 'error', message: error instanceof Error ? error.message : 'Could not load content types' })
+      // A failed reload keeps what the sidebar already shows; only a first load that fails is an error.
+      setState((current) =>
+        current.status === 'ready'
+          ? current
+          : { status: 'error', message: error instanceof Error ? error.message : 'Could not load content types' },
+      )
     }
   }, [])
 

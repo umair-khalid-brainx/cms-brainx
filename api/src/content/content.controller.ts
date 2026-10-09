@@ -1,5 +1,5 @@
 import {
-  Body,
+  BadRequestException,  Body,
   Controller,
   Delete,
   Get,
@@ -28,6 +28,12 @@ import {
 // handles draft-saves and every status transition (publish, archive, restore)
 // through one route (dto.status), so those checks live in
 // ContentService.update instead, where the body is already parsed.
+// `?type=a&type=b` arrives as an array; refuse it rather than let it reach the database.
+function singleType(type: string | string[] | undefined): string | undefined {
+  if (Array.isArray(type)) throw new BadRequestException('Give one content type');
+  return type;
+}
+
 @Controller('content')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ContentController {
@@ -35,16 +41,16 @@ export class ContentController {
 
   @Get()
   @RequirePermission('content:read')
-  list(@Req() request: AuthenticatedRequest, @Query('type') type?: string) {
-    return this.content.list(request.user.sub, type);
+  list(@Req() request: AuthenticatedRequest, @Query('type') type?: string | string[]) {
+    return this.content.list(request.user.sub, singleType(type));
   }
 
   // Must be registered before ':slug' — otherwise that param route would
   // match the literal path '/content/archived' first.
   @Get('archived')
   @RequirePermission('content:read')
-  listArchived(@Req() request: AuthenticatedRequest, @Query('type') type?: string) {
-    return this.content.listArchived(request.user.sub, type);
+  listArchived(@Req() request: AuthenticatedRequest, @Query('type') type?: string | string[]) {
+    return this.content.listArchived(request.user.sub, singleType(type));
   }
 
   @Get(':slug')

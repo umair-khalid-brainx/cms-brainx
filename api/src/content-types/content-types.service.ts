@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentTypeRepository } from './content-type.repository.js';
 import type { CreateContentTypeDto, UpdateContentTypeDto } from './dto/content-type.dto.js';
@@ -31,7 +32,12 @@ export class ContentTypesService {
     const siteId = await this.resolveSiteId(userId);
     await this.assertPrefixFree(siteId, dto.prefix);
     await this.assertNameFree(siteId, dto.name);
-    return this.types.create(siteId, dto);
+    try {
+      return await this.types.create(siteId, dto);
+    } catch (error) {
+      // Two people claiming the same address at once: both checks pass, the unique index stops the second.
+      throw this.asConflict(error, `Another content type already uses /${dto.prefix}.`);
+    }
   }
 
   async update(userId: string, id: string, dto: UpdateContentTypeDto) {
@@ -43,15 +49,27 @@ export class ContentTypesService {
       if (type.isBuiltIn) throw new ConflictException(`The address of ${type.name} can't be changed.`);
       if (await this.types.hasEntries(siteId, id)) {
         throw new ConflictException(
-          `${type.name} already has entries, and changing the address would break their links. Delete or move them first.`,
+          `${type.name} already has entries, and changing the address would break their links. Delete them first.`,
         );
       }
       await this.assertPrefixFree(siteId, dto.prefix);
     }
     if (dto.name !== undefined && dto.name !== type.name) await this.assertNameFree(siteId, dto.name, id);
 
-    const { count } = await this.types.update(siteId, id, dto);
-    if (count === 0) throw new NotFoundException('Content type not found');
+    const { prefix, ...rest } = dto;
+    try {
+      if (Object.keys(rest).length > 0) await this.types.update(siteId, id, rest);
+      if (prefix !== undefined && prefix !== type.prefix) {
+        // Checked above, and again here atomically: an entry created in between would
+        // otherwise stay under the old address.
+        const moved = await this.types.updatePrefixIfEmpty(siteId, id, prefix);
+        if (moved.count === 0) {
+          throw new ConflictException(`${type.name} just got an entry, so its address can't change now.`);
+        }
+      }
+    } catch (error) {
+      throw this.asConflict(error, `Another content type already uses /${prefix}.`);
+    }
     return this.types.findById(siteId, id);
   }
 
@@ -65,7 +83,19 @@ export class ContentTypesService {
         `${type.name} still has entries (archived ones count). Delete them permanently first.`,
       );
     }
-    await this.types.delete(siteId, id);
+    try {
+      await this.types.delete(siteId, id);
+    } catch (error) {
+      // An entry added after the check above: the database refuses to orphan it.
+      throw this.asConflict(error, `${type.name} just got an entry, so it can't be deleted now.`, 'P2003');
+    }
+  }
+
+  /** A unique or foreign-key violation from a race becomes the 409 it should have been, not a 500. */
+  private asConflict(error: unknown, message: string, code: 'P2002' | 'P2003' = 'P2002'): unknown {
+    if (error instanceof ConflictException) return error;
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === code) return new ConflictException(message);
+    return error;
   }
 
   private async assertPrefixFree(siteId: string, prefix: string): Promise<void> {
