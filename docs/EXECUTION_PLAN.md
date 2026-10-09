@@ -20,6 +20,9 @@ Last re-baselined: 2026-08-31 (`DECISIONS.md` D-009).
 
 ## Totals
 
+_Week 4's tickets were re-estimated on 2026-10-09 (`docs/WEEK4_PLAN.md`, D-052); those numbers and the
+ticket files' headers supersede the week-4 rows in the tables below._
+
 | | Days |
 | - | ---- |
 | Delivered (scaffold 0.25 + BLK-01 0.60) | 0.85 |
@@ -202,7 +205,7 @@ is re-estimated, not absorbed.
 - **Plugin architecture / marketplace** — extensibility comes from the content-type builder and the
   block registry.
 - **Cross-type references** — cascade rules, picker UI, orphan handling.
-- **Per-page layout picker, related posts** — neither is on the demo path.
+- **Per-page layout picker** — not on the demo path. (Related posts moved into `TAX-02`, D-052.)
 - **S3 / CDN** — one box, one volume, local disk.
 - **Custom-domain TLS automation** — certbot, DNS verification, nginx regeneration. The Domains
   screen is present; the automation is deferred.

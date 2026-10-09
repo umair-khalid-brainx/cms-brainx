@@ -8,6 +8,36 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-052 — 2026-10-09 — Week 4 scope: URL tickets pulled in, menus include the footer
+
+**Decision (week 4 ticket review with the user; full list in `docs/WEEK4_PLAN.md`):**
+
+- **`CNT-04`, `CNT-05`, `CNT-06` are built first in week 4.** Nothing could change a slug yet, so
+  req. 5's "editable URL slug" and `GOV-05`'s auto-redirect had nothing to hang on; and req. 10 asks
+  for parent pages. Doing hierarchy before redirects means slug changes handle child paths once.
+- **SEO-01 covers all of req. 5**: canonical, separate social title/description, and noindex, not just
+  title/description/image. A noindex page also leaves the sitemap.
+- **Categories and tags are site-wide and flat**, shared by every type that opts in.
+- **Related posts moves into `TAX-02`** (it was on the out-of-scope list): same type, shared category,
+  else shared tag, up to 3.
+- **Revisions:** always on publish, status change and restore; autosave (every 500 ms in the editor)
+  makes at most one per page per user per 10 minutes. **Restore keeps the page's status**: edits to a
+  live page already go live, so "restore as draft" would have taken it offline.
+- **Comparison is a block list with prop diffs**, matched by sequence, because saved blocks carry no
+  id and adding one would change the stored contract (invariant 7).
+- **Header nav and footer links are both menus**: one builder, two fixed locations. `GOV-04` keeps
+  tagline, footer note and a logo picked from the media library.
+- **Redirects answer with 308** (Next's `permanentRedirect`), not the ticket's 301. Search engines
+  treat them the same, and 301 would need a custom route handler for no gain.
+- **Slugs stay unique site-wide, even under different parents**, because admin routes by slug alone.
+
+**Costs and limits:** week 4 grows by about 1.3 days, from 3.1 to ~4.4 (0.7 for the three pulled-in tickets, the rest from
+related posts and wider SEO, taxonomy, branding and revision scope); if
+it runs late, `GOV-02`'s word-level highlights are cut first. Site-wide slugs mean `/about/team` and
+`/careers/team` can't both exist.
+
+---
+
 ## D-051 — 2026-10-09 — Starting a page from a layout: the server copies it (`TYP-04`)
 
 **Decision (the week 3 plan the user approved; the user declined a new "Campaign" layout):**

@@ -2,14 +2,16 @@
 - Milestone: M4 (week 4)
 - Depends on: TYP-01
 - Use cases: none yet (no docs/use-cases.md)
-- Estimate: 0.20 days, band A (see EXECUTION_PLAN.md "Bands")
+- Estimate: 0.30 days, band A (see EXECUTION_PLAN.md "Bands")
 ## Goal
 Categories and tags that a content type can opt into.
 ## Definition of Done
-_Items marked Draft were written from the plan, decisions and code, not from use cases. Confirm them before `/build`._
-- [ ] Draft: a type can enable categories and/or tags
-- [ ] Draft: entries of that type can be assigned terms in admin
-- [ ] Draft: terms are scoped to one site
+_Confirmed with the user 2026-10-09 (`docs/WEEK4_PLAN.md`, D-052)._
+- [ ] One flat list of categories and one of tags per site, shared by every type that opts in
+- [ ] A type can switch categories and/or tags on; the seeded Posts type has both on, new types start with both off
+- [ ] Entries of an opted-in type can be given categories (checkboxes) and tags (token input; a new tag can be created while tagging) in Page settings
+- [ ] A Categories & Tags screen adds, renames and deletes terms and shows entry counts; deleting a term unlinks it
+- [ ] Terms from another site, or on a type that hasn't opted in, are refused
 - [ ] All tests pass. Reviewer approved. Verifier passed.
 ## Technical notes
 Depends on content types (`TYP-01`).
