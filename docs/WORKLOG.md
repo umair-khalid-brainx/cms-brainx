@@ -5,7 +5,7 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
-## 2026-10-09 — Custom fields on content types (`TYP-02`, built; review pending)
+## 2026-10-09 — Custom fields on content types (`TYP-02` done)
 
 Decision in D-049.
 
@@ -24,8 +24,16 @@ Decision in D-049.
   panel showed every field with saved values; typing a name and a date autosaved; a `javascript:` link showed
   "Fields not saved: Register: A link must start with ..." and recovered when fixed.
 
-**Not done:** reviewer and verifier pending; the screens haven't been looked at visually (the browser pane
-would not render screenshots).
+- **Review and verifier follow-ups (all fixed, with tests):** media accepted any string containing the site's
+  upload path, including `javascript:` addresses; now only `/uploads/<site>/<file>` is accepted and stored in
+  that short form. A NUL character in formatted text, a link or a choice option gave a 500. A removed field's
+  name re-added as a different kind inherited its old values (removed fields are now kept hidden in the list so
+  a key is never reused across kinds). The form could overwrite another admin's new field with a stale list (it
+  sends fields only when changed). The address change runs first. A live entry can't have a needed field
+  emptied. Empty paragraphs and links with no address no longer count as filled. `api` 322 tests, `admin` 89.
+
+**Not done:** B-27. The screens haven't been looked at visually (the browser pane would not render
+screenshots). General-purpose agents again did the review and verification.
 
 ---
 

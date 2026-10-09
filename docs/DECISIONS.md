@@ -20,16 +20,21 @@ decisions themselves were made on the dates shown.
   `content.data` (JSONB, values by field key). No separate table per type.
 - **The key is made once, from the name, and never changes** (`event_date`), because values are stored under
   it. A saved field's kind can't change (its values would be misread); its name, "needed" flag, options and
-  position can. Removing a field only hides it: its values stay in each entry's `data`, and adding a field with
-  the same name brings them back (the documented limit in ARCHITECTURE.md).
+  position can. Removing a field only hides it: it stays in the type's list, marked hidden, and its values stay
+  in each entry's `data`. A field added later with the same name **and kind** gets the old key back (and so
+  its values); a different kind always gets a fresh key (`photo_2`), because the old values were checked as
+  another kind and would otherwise be read as the wrong one (plain text showing up as formatted text would
+  skip the sanitiser). Hidden fields are never validated, required or shown.
 - **Every write is checked in the API** (Zod, by kind): text up to 500 characters; formatted text cleaned with
-  the same sanitiser as page rich text (invariant 5); date as `YYYY-MM-DD` and a real date; media must be an
-  address in this site's own uploads; a choice must be one of the options; a link must start with `https://`,
+  the same sanitiser as page rich text (invariant 5); date as `YYYY-MM-DD` and a real date; media must be
+  `/uploads/<this site>/<file>`, with or without the API's address in front, and is stored in that short
+  form (any host is dropped; query strings, other paths and other sites' folders are refused; `web` adds the
+  API's address when it shows the file); a choice must be one of the options; a link must start with `https://`,
   `http://`, `mailto:`, `/` or `#` and have text. All problems are returned together, by field name. A blank
   value clears the field. Values for fields the type doesn't have are ignored, and a hidden field's value is
   left alone. A page (no type) can't take values.
-- **"Needed before publishing" is a publish check, not a draft rule:** a draft saves with it empty; publishing
-  returns 422 with `Fill in "Speaker"` in the same list as the block problems (CNT-12's shape).
+- **"Needed before publishing" is a publish check, not a draft rule:** a draft saves with it empty; a live entry
+  can't have a needed field emptied (the same 422); publishing returns 422 with `Fill in "Speaker"` in the same list as the block problems (CNT-12's shape).
 - **Where staff edit them:** the editor's side panel when no block is selected (Puck's "page" panel), built per
   type from its field list (`admin/src/puck/entryFields.tsx`), so there is one editor for every type. This also
   removes Puck's default "title" box, which saved nowhere (B-20). The blocks and the values are saved by two
@@ -43,6 +48,10 @@ decisions themselves were made on the dates shown.
 - A media field can hold a document, but nothing shows it publicly yet (`TYP-03`).
 - Keys are not shown to staff; two fields can't share a name (it would give the same key).
 - Hidden values stay in the database forever; there is no "purge hidden data" action.
+- A choice field's value is checked against its options when saved, not again at publish: removing an option
+  leaves entries that already chose it holding a value no longer listed (B-27).
+- The form sends the field list only when its own person changed it; two admins changing one type's fields at
+  the same moment is still last write wins.
 
 ---
 
