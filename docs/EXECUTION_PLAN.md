@@ -140,7 +140,7 @@ Local disk, sharp thumbnails. No S3, no CDN — one box, one volume is sufficien
 | `MED-01` | Upload, thumbnails, local disk | B | 0.30 | 3 | FND-02 |
 | `MED-02` | Library grid, reuse, replace, delete, metadata | B | 0.25 | 3 | MED-01 |
 | `MED-03` | Media picker in block settings | B | 0.15 | 3 | MED-02, BLK-04 |
-
+| `MED-04` | Media documents, alt text, title and description | B | 0.30 | 3 | MED-02 |
 ### SEO — SEO surface  ·  0.40d  ·  web + api
 
 The reason the public site is server-rendered at all. Page source will be inspected during the pitch.

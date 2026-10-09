@@ -3,10 +3,12 @@ import { z } from 'zod';
 import { ContentRepository } from '../content/content.repository.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PreviewLinkRepository } from '../content/preview-link.repository.js';
+import { MediaRepository } from '../media/media.repository.js';
 import { SiteRepository } from '../sites/site.repository.js';
 import { SubdomainCache } from '../sites/subdomain-cache.js';
 import type { CreateSubmissionDto, SubmissionAnswer } from '../submissions/dto/submission.dto.js';
 import { SubmissionRepository } from '../submissions/submission.repository.js';
+import { filenamesNeedingAlt, withLibraryAlt } from './image-alt.js';
 
 export type PublicSite = { name: string; subdomain: string; theme: unknown };
 export type PublicPage = { title: string; path: string; blocks: unknown; updatedAt: Date };
@@ -29,6 +31,7 @@ export class PublicService {
     private readonly previewLinks: PreviewLinkRepository,
     private readonly subdomainCache: SubdomainCache,
     private readonly submissions: SubmissionRepository,
+    private readonly media: MediaRepository,
   ) {}
 
   async getSite(subdomain: string): Promise<PublicSite> {
@@ -42,7 +45,7 @@ export class PublicService {
     const siteId = await this.findSiteId(subdomain);
     const page = await this.content.findLiveByPath(siteId, normalisePath(rawPath));
     if (!page) throw new NotFoundException('Page not found');
-    return { title: page.title, path: page.path, blocks: page.blocks, updatedAt: page.updatedAt };
+    return { title: page.title, path: page.path, blocks: await this.withLibraryAlt(siteId, page.blocks), updatedAt: page.updatedAt };
   }
 
   /**
@@ -56,7 +59,23 @@ export class PublicService {
     const siteId = await this.findSiteId(subdomain);
     const page = await this.previewLinks.findPageByToken(siteId, token);
     if (!page || page.status === 'archived') throw new NotFoundException('Preview not found');
-    return { title: page.title, path: page.path, blocks: page.blocks, updatedAt: page.updatedAt, status: page.status };
+    return {
+      title: page.title,
+      path: page.path,
+      blocks: await this.withLibraryAlt(siteId, page.blocks),
+      updatedAt: page.updatedAt,
+      status: page.status,
+    };
+  }
+
+  // Images with no alt text of their own use their library file's (MED-04, D-047):
+  // one scoped query per page view, and none when every image has its own.
+  private async withLibraryAlt(siteId: string, blocks: unknown): Promise<unknown> {
+    const filenames = filenamesNeedingAlt(blocks, siteId);
+    if (filenames.length === 0) return blocks;
+    const rows = await this.media.findAltsByFilenames(siteId, filenames);
+    const alts = new Map(rows.flatMap((row) => (row.alt?.trim() ? [[row.filename, row.alt] as const] : [])));
+    return withLibraryAlt(blocks, siteId, alts);
   }
 
   /**

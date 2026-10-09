@@ -4,7 +4,10 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ContentRepository } from '../content/content.repository.js';
+import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
+import type { UpdateMediaDto } from './dto/media.dto.js';
+import { isDocumentType, matchesDocumentSignature } from './file-signature.js';
 import { MediaRepository } from './media.repository.js';
 import { InvalidImageError, makeThumbnail } from './thumbnail.js';
 
@@ -21,7 +24,28 @@ const ALLOWED_TYPES: Record<string, string> = {
   'image/svg+xml': 'svg',
   'video/mp4': 'mp4',
   'video/webm': 'webm',
+  // Documents (MED-04, req. 4). Checked against their first bytes, not just the
+  // claimed type — see file-signature.ts.
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
 };
+
+/**
+ * A readable title from the name the file was uploaded with ("Price list 2026.docx"
+ * becomes "Price list 2026"), so the library isn't a wall of generated names. It is
+ * only a starting point the person can edit; the stored file name stays our own.
+ * Browsers send the name as UTF-8 bytes read as Latin-1, so it is decoded back.
+ */
+export function titleFromUploadName(originalName: string | undefined): string | null {
+  if (!originalName) return null;
+  const decoded = Buffer.from(originalName, 'latin1').toString('utf8');
+  const base = decoded.split(/[\\/]/).pop() ?? '';
+  const withoutExtension = base.replace(/\.[A-Za-z0-9]{1,5}$/, '');
+  // eslint-disable-next-line no-control-regex
+  const cleaned = withoutExtension.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+  return cleaned || null;
+}
 
 // Sits next to the original in the same site folder: <uuid>.png → <uuid>-thumb.webp.
 function thumbnailFilenameFor(filename: string): string {
@@ -34,6 +58,7 @@ export class MediaService {
     private readonly users: UserRepository,
     private readonly media: MediaRepository,
     private readonly content: ContentRepository,
+    private readonly revalidation: RevalidationService,
     private readonly config: ConfigService,
   ) {}
 
@@ -45,6 +70,7 @@ export class MediaService {
   async store(userId: string, file: Express.Multer.File) {
     const extension = ALLOWED_TYPES[file.mimetype];
     if (!extension) throw new BadRequestException(`Unsupported file type: ${file.mimetype}`);
+    this.assertGenuineDocument(file);
 
     // Same "caller's first membership" convention as ContentService — see its
     // resolveSiteId comment. Uploads happen from inside the editor, which
@@ -88,6 +114,7 @@ export class MediaService {
       filename,
       mimetype: file.mimetype,
       size: file.size,
+      title: titleFromUploadName(file.originalname),
       uploadedByUserId: userId,
     });
   }
@@ -104,6 +131,8 @@ export class MediaService {
     if (file.mimetype !== record.mimetype) {
       throw new BadRequestException(`Replacement must be the same type as the original (${record.mimetype})`);
     }
+
+    this.assertGenuineDocument(file);
 
     // Same rule as store(): decode first, so a bad file leaves the old one untouched.
     let thumbnail: Buffer | null;
@@ -151,6 +180,32 @@ export class MediaService {
     return { ...record, size: file.size, thumbnailUrl };
   }
 
+  /**
+   * Alternative text, title and description (MED-04). A page that leaves an
+   * image's own alt empty uses the library's on the live site, so changing it
+   * here refreshes the live pages that use the file.
+   */
+  async updateDetails(userId: string, id: string, dto: UpdateMediaDto) {
+    const membership = await this.resolveMembership(userId);
+    const { siteId } = membership;
+    const record = await this.media.findById(siteId, id);
+    if (!record) throw new NotFoundException('Media not found');
+    if (dto.alt !== undefined && dto.alt !== null && !record.mimetype.startsWith('image/')) {
+      throw new BadRequestException('Alternative text is for images');
+    }
+
+    const { count } = await this.media.updateDetails(siteId, id, dto);
+    if (count === 0) throw new NotFoundException('Media not found');
+
+    if (dto.alt !== undefined && dto.alt !== record.alt) {
+      const pages = await this.content.findReferencing(siteId, `/uploads/${siteId}/${record.filename}`);
+      for (const page of pages) {
+        if (page.status === 'published') await this.revalidation.page(membership.site.subdomain, page.path);
+      }
+    }
+    return this.media.findById(siteId, id);
+  }
+
   /** Pages whose blocks still reference this file — shown before Delete (B-12). */
   async usage(userId: string, id: string) {
     const siteId = await this.resolveSiteId(userId);
@@ -180,9 +235,19 @@ export class MediaService {
   }
 
   private async resolveSiteId(userId: string): Promise<string> {
+    return (await this.resolveMembership(userId)).siteId;
+  }
+
+  private async resolveMembership(userId: string) {
     const user = await this.users.findByIdWithMemberships(userId);
     const membership = user?.memberships[0];
     if (!membership) throw new ForbiddenException('No site membership');
-    return membership.siteId;
+    return membership;
+  }
+
+  private assertGenuineDocument(file: Express.Multer.File): void {
+    if (isDocumentType(file.mimetype) && !matchesDocumentSignature(file.buffer, file.mimetype)) {
+      throw new BadRequestException("This file doesn't look like the kind of document it says it is");
+    }
   }
 }

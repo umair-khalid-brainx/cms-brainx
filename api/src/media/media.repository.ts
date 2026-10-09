@@ -7,6 +7,9 @@ const MEDIA_SELECT = {
   siteId: true,
   url: true,
   thumbnailUrl: true,
+  alt: true,
+  title: true,
+  description: true,
   filename: true,
   mimetype: true,
   size: true,
@@ -33,6 +36,22 @@ export class MediaRepository {
 
   updateSize(siteId: string, id: string, size: number, thumbnailUrl: string | null) {
     return this.prisma.media.updateMany({ where: { id, siteId }, data: { size, thumbnailUrl } });
+  }
+
+  updateDetails(siteId: string, id: string, data: { alt?: string | null; title?: string | null; description?: string | null }) {
+    return this.prisma.media.updateMany({ where: { id, siteId }, data });
+  }
+
+  /**
+   * Library alt text for the files a page uses, by stored filename — the live
+   * site's fallback for images whose own alt is empty (MED-04, D-047). Only
+   * files with some text, and only this site's.
+   */
+  findAltsByFilenames(siteId: string, filenames: string[]) {
+    return this.prisma.media.findMany({
+      where: { siteId, filename: { in: filenames }, alt: { not: null } },
+      select: { filename: true, alt: true },
+    });
   }
 
   delete(siteId: string, id: string) {

@@ -1,0 +1,143 @@
+.media-details {
+  margin: 1rem 0 0;
+  padding: 1rem 0 0;
+  border-top: 1px solid #e2e4e7;
+}
+
+.media-details-heading {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.media-details-field {
+  margin-bottom: 0.85rem;
+}
+
+.media-details-field label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.media-details-field input,
+.media-details-field textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e1e1e;
+  resize: vertical;
+}
+
+.media-details-field input:focus-visible,
+.media-details-field textarea:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: -1px;
+  border-color: #2271b1;
+}
+
+.media-details-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #50575e;
+}
+
+.media-details-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.media-details-save {
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.45rem 0.95rem;
+  border: 1px solid #2271b1;
+  border-radius: 4px;
+  background: #2271b1;
+  color: #fff;
+  cursor: pointer;
+}
+
+.media-details-save:hover:not(:disabled) {
+  background: #135e96;
+}
+
+.media-details-save:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+.media-details-save:disabled {
+  border-color: #dcdcdc;
+  background: #f0f0f1;
+  color: #8c8f94;
+  cursor: default;
+}
+
+.media-details-status {
+  font-size: 0.8125rem;
+  color: #1a7a3a;
+}
+
+.media-details-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: #b32d2e;
+}
+
+/* Follows the OS dark preference like the rest of the media page (MediaPage.css). */
+@media (prefers-color-scheme: dark) {
+  .media-details {
+    border-top-color: #3c434a;
+  }
+
+  .media-details-heading,
+  .media-details-field label {
+    color: #ededed;
+  }
+
+  .media-details-hint {
+    color: #b0b0b0;
+  }
+
+  .media-details-field input,
+  .media-details-field textarea {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .media-details-field input:focus-visible,
+  .media-details-field textarea:focus-visible {
+    outline-color: #72aee6;
+    border-color: #72aee6;
+  }
+
+  .media-details-save:focus-visible {
+    outline-color: #72aee6;
+  }
+
+  .media-details-save:disabled {
+    border-color: #3c434a;
+    background: #2c3338;
+    color: #8c8f94;
+  }
+
+  .media-details-status {
+    color: #7bd88f;
+  }
+
+  .media-details-error {
+    color: #f28b82;
+  }
+}

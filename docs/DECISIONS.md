@@ -8,6 +8,43 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-047 — 2026-10-09 — Media documents and library text; alt text is a live-site fallback (`MED-04`)
+
+**Decision (user's call on the fallback):**
+
+- **Documents:** PDF, Word (`.docx`) and Excel (`.xlsx`) upload to the same library (req. 4). They get no
+  thumbnail; the library shows a labelled file tile. The browser's claimed type isn't trusted: the first
+  bytes must be `%PDF-` (within the first KiB) or a zip header, otherwise the upload is refused. Applies to
+  replacing a file too. Uploads are served with `X-Content-Type-Options: nosniff`.
+- **Library text:** `media` gets `alt`, `title` and `description` (nullable, per site, via
+  `PATCH /media/:id`, `content:write`). A new file's title starts as the name it was uploaded with
+  ("Price list 2026.docx" becomes "Price list 2026"), so the library isn't a wall of generated names; the
+  stored file name stays our own. Alt text is for images only (a PDF is refused with 400). Title and
+  description are for the library; they are not shown on the live site.
+- **Alt text reaches pages as a fallback, not a copy.** When the public page is read, an image of this
+  site's own uploads whose `alt` is empty gets the library's alt text (`api/src/public/image-alt.ts`, one
+  scoped query per page view, none when every image has its own). Text typed on the page always wins. The
+  stored page is never changed (invariant 7), so there are no stale copies and a change in the library
+  reaches every page. Changing a file's alt text refreshes the live pages that use it (CNT-08's
+  revalidation). This adds information on read; it doesn't clean anything, so it isn't the "sanitise on
+  read" invariant 5 forbids.
+
+**Options not taken:** copying the library text onto the page when the image is picked (each page gets its
+own copy to edit, but later library changes don't reach it and a hand-typed link gets nothing; also needs a
+way for one Puck field to set its sibling).
+
+**Costs and limits:**
+
+- Documents can't be picked into a page yet: the image picker and the editor's upload stay images only
+  (the editor upload now refuses a non-image). A document field is `TYP-02`'s media field.
+- The page alt fallback matches on the stored file name inside `/uploads/<siteId>/`; an image hosted
+  elsewhere, or a library file that is later deleted, gets no fallback.
+- PDFs are served inline from the API's address. A PDF reader runs in the browser's own sandbox, and
+  `nosniff` stops the browser treating other files as pages; if documents ever need to be forced to
+  download, that is a `Content-Disposition` header on `/uploads`.
+
+---
+
 ## D-046 — 2026-10-09 — Inline editing uses Puck's `contentEditable`, no `Editable` primitive (`BLK-07`)
 
 **Decision (follows D-045, the user's call):** a text field edits on the canvas when its Puck field has

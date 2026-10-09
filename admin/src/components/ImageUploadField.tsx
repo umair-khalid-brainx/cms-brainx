@@ -19,6 +19,11 @@ export const ImageUploadField: CustomFieldRender<string> = ({ value, onChange, r
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
+    // The file dialog's filter can be switched to "all files"; a PDF must never become an image.
+    if (!file.type.startsWith('image/')) {
+      setError('Choose an image file (PNG, JPEG, WebP, GIF or SVG).')
+      return
+    }
     setUploading(true)
     setError(null)
     try {

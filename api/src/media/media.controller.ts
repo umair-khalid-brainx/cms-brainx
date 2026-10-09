@@ -6,8 +6,10 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
+  Body,
   Req,
   UploadedFile,
   UseGuards,
@@ -17,6 +19,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../auth/jwt-auth.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RequirePermission } from '../auth/permission.decorator.js';
+import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
+import { updateMediaSchema, type UpdateMediaDto } from './dto/media.dto.js';
 import { MediaService } from './media.service.js';
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -40,6 +44,16 @@ export class MediaController {
   async upload(@Req() request: AuthenticatedRequest, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
     return this.media.store(request.user.sub, file);
+  }
+
+  @Patch(':id')
+  @RequirePermission('content:write')
+  update(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateMediaSchema)) body: UpdateMediaDto,
+  ) {
+    return this.media.updateDetails(request.user.sub, id, body);
   }
 
   @Put(':id')

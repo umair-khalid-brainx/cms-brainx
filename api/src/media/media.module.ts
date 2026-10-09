@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { ContentModule } from '../content/content.module.js';
+import { RevalidationModule } from '../revalidation/revalidation.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { MediaController } from './media.controller.js';
 import { MediaRepository } from './media.repository.js';
@@ -13,8 +14,10 @@ import { MediaService } from './media.service.js';
 // just exported by AuthModule.
 @Module({
   // ContentModule for ContentRepository — "which pages use this file" (MED-02).
-  imports: [UsersModule, AuthModule, ContentModule],
+  imports: [UsersModule, AuthModule, ContentModule, RevalidationModule],
   controllers: [MediaController],
   providers: [MediaRepository, MediaService, JwtAuthGuard, PermissionsGuard],
+  // The public site reads library alt text through this (MED-04, D-047).
+  exports: [MediaRepository],
 })
 export class MediaModule {}

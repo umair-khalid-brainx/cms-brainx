@@ -5,9 +5,10 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import sharp from 'sharp';
 import type { ContentRepository } from '../content/content.repository.js';
+import type { RevalidationService } from '../revalidation/revalidation.service.js';
 import type { UserRepository } from '../users/user.repository.js';
 import type { MediaRepository } from './media.repository.js';
-import { MediaService } from './media.service.js';
+import { MediaService, titleFromUploadName } from './media.service.js';
 
 const SITE = 'site-1';
 const THUMB = 'abc-thumb.webp';
@@ -42,7 +43,13 @@ function file(mimetype: string, contents: string) {
 describe('MediaService', () => {
   let uploadsRoot: string;
   let service: MediaService;
-  let media: { findById: ReturnType<typeof vi.fn>; updateSize: ReturnType<typeof vi.fn> };
+  let media: {
+    findById: ReturnType<typeof vi.fn>;
+    updateSize: ReturnType<typeof vi.fn>;
+    updateDetails: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+  };
+  let revalidation: { page: ReturnType<typeof vi.fn> };
   let content: { findReferencing: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
@@ -51,12 +58,17 @@ describe('MediaService', () => {
     await writeFile(join(uploadsRoot, SITE, RECORD.filename), 'old');
     await writeFile(join(uploadsRoot, SITE, THUMB), 'old thumb');
 
-    const users = { findByIdWithMemberships: vi.fn(async () => ({ memberships: [{ siteId: SITE }] })) };
+    const users = {
+      findByIdWithMemberships: vi.fn(async () => ({ memberships: [{ siteId: SITE, site: { subdomain: 'alpha' } }] })),
+    };
     media = {
       // Scoped like the real repository: another site's id finds nothing.
       findById: vi.fn(async (siteId: string, id: string) => (siteId === SITE && id === RECORD.id ? RECORD : null)),
       updateSize: vi.fn(async () => ({ count: 1 })),
+      updateDetails: vi.fn(async () => ({ count: 1 })),
+      create: vi.fn(async (data: Record<string, unknown>) => ({ id: 'new', ...data })),
     };
+    revalidation = { page: vi.fn(async () => {}) };
     content = { findReferencing: vi.fn(async () => [{ id: 'c1', title: 'Home', path: 'home', status: 'published' }]) };
     // MediaService joins UPLOADS_DIR onto cwd, so it has to be relative.
     const uploadsDir = relative(process.cwd(), uploadsRoot);
@@ -66,6 +78,7 @@ describe('MediaService', () => {
       users as unknown as UserRepository,
       media as unknown as MediaRepository,
       content as unknown as ContentRepository,
+      revalidation as unknown as RevalidationService,
       config as unknown as ConfigService,
     );
   });
@@ -137,5 +150,109 @@ describe('MediaService', () => {
     it('404s for a file that is not in the caller’s site', async () => {
       await expect(service.usage('user-1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
     });
+  });
+
+  describe('documents (MED-04)', () => {
+    const PDF = 'application/pdf';
+    const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    it('stores a PDF with no thumbnail, under a generated name, titled from the upload name', async () => {
+      const upload = { ...file(PDF, '%PDF-1.7 hello'), originalname: 'Brochure 2026.pdf' } as Express.Multer.File;
+      const result = await service.store('user-1', upload);
+
+      expect(result).toMatchObject({ mimetype: PDF, thumbnailUrl: null, title: 'Brochure 2026' });
+      expect(String(result.filename)).toMatch(/^[0-9a-f-]{36}\.pdf$/);
+      expect(await readFile(join(uploadsRoot, SITE, String(result.filename)), 'utf8')).toBe('%PDF-1.7 hello');
+    });
+
+    it('stores a Word file', async () => {
+      const upload = { mimetype: DOCX, buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 1, 2]), size: 6 } as Express.Multer.File;
+      expect(await service.store('user-1', upload)).toMatchObject({ mimetype: DOCX });
+    });
+
+    it('refuses a file that is not what its type claims, and writes nothing', async () => {
+      const before = await readdir(join(uploadsRoot, SITE));
+
+      await expect(service.store('user-1', file(PDF, '<html><script>alert(1)</script></html>'))).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(await readdir(join(uploadsRoot, SITE))).toEqual(before);
+      expect(media.create).not.toHaveBeenCalled();
+    });
+
+    it('still refuses types that are not allowed', async () => {
+      await expect(service.store('user-1', file('application/zip', 'PK'))).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.store('user-1', file('text/html', '<p>'))).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('updateDetails', () => {
+    it('saves alt, title and description for the caller’s site', async () => {
+      await service.updateDetails('user-1', RECORD.id, { alt: 'Oysters', title: 'Harvest', description: 'Morning haul' });
+
+      expect(media.updateDetails).toHaveBeenCalledWith(SITE, RECORD.id, {
+        alt: 'Oysters',
+        title: 'Harvest',
+        description: 'Morning haul',
+      });
+    });
+
+    it('404s for a file that is not in the caller’s site, and writes nothing', async () => {
+      await expect(service.updateDetails('user-1', 'other-site-media', { title: 'x' })).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(media.updateDetails).not.toHaveBeenCalled();
+    });
+
+    it('refuses alternative text on a document', async () => {
+      media.findById.mockResolvedValueOnce({ ...RECORD, mimetype: 'application/pdf', filename: 'x.pdf' });
+
+      await expect(service.updateDetails('user-1', RECORD.id, { alt: 'text' })).rejects.toBeInstanceOf(BadRequestException);
+      expect(media.updateDetails).not.toHaveBeenCalled();
+    });
+
+    it('refreshes the live pages that use the file when its alt text changes', async () => {
+      content.findReferencing.mockResolvedValueOnce([
+        { id: 'c1', title: 'Home', path: '/', status: 'published' },
+        { id: 'c2', title: 'Draft', path: '/draft', status: 'draft' },
+      ]);
+
+      await service.updateDetails('user-1', RECORD.id, { alt: 'New words' });
+
+      expect(revalidation.page).toHaveBeenCalledTimes(1);
+      expect(revalidation.page).toHaveBeenCalledWith('alpha', '/');
+    });
+
+    it('leaves the live pages alone when only the title or description changes', async () => {
+      await service.updateDetails('user-1', RECORD.id, { title: 'New title', description: 'New description' });
+
+      expect(content.findReferencing).not.toHaveBeenCalled();
+      expect(revalidation.page).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('titleFromUploadName', () => {
+  it.each([
+    ['Price list 2026.docx', 'Price list 2026'],
+    ['brochure.pdf', 'brochure'],
+    ['archive.tar.gz', 'archive.tar'],
+    ['C:\\Users\\ada\\Desktop\\menu.pdf', 'menu'],
+    ['/etc/passwd.pdf', 'passwd'],
+    ['  spaced   out  .xlsx', 'spaced out'],
+    ['no-extension', 'no-extension'],
+  ])('turns %j into %j', (input, expected) => {
+    expect(titleFromUploadName(input)).toBe(expected);
+  });
+
+  it('decodes a UTF-8 name the browser sent as Latin-1', () => {
+    expect(titleFromUploadName(Buffer.from('Café menu.pdf', 'utf8').toString('latin1'))).toBe('Café menu');
+  });
+
+  it('gives nothing for an empty, missing or control-only name, and caps the length', () => {
+    expect(titleFromUploadName(undefined)).toBeNull();
+    expect(titleFromUploadName('')).toBeNull();
+    expect(titleFromUploadName('\u0001\u0002.pdf')).toBeNull();
+    expect(titleFromUploadName(`${'a'.repeat(500)}.pdf`)).toHaveLength(200);
   });
 });

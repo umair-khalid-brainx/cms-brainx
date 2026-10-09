@@ -1,0 +1,88 @@
+.file-tile {
+  --tile-ink: #50575e;
+  --tile-wash: #f0f0f1;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tile-wash);
+  color: var(--tile-ink);
+}
+
+.file-tile--pdf {
+  --tile-ink: #b32d2e;
+  --tile-wash: #fcf0f1;
+}
+
+.file-tile--word {
+  --tile-ink: #135e96;
+  --tile-wash: #f0f6fc;
+}
+
+.file-tile--excel {
+  --tile-ink: #1a7a3a;
+  --tile-wash: #edf7ef;
+}
+
+.file-tile-page {
+  width: 38%;
+  max-width: 96px;
+  fill: #fff;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* The type sits on the lower part of the page, like a stamp. */
+.file-tile-ext {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translateX(-50%);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* The detail panel's preview is a block in the flow, not a square card frame. */
+.file-tile--large {
+  position: relative;
+  inset: auto;
+  height: 180px;
+  border-radius: 4px;
+}
+
+.file-tile--large .file-tile-page {
+  width: 90px;
+}
+
+.file-tile--large .file-tile-ext {
+  font-size: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .file-tile {
+    --tile-ink: #b0b0b0;
+    --tile-wash: #2c3338;
+  }
+
+  .file-tile--pdf {
+    --tile-ink: #f28b82;
+    --tile-wash: #2b1d1e;
+  }
+
+  .file-tile--word {
+    --tile-ink: #72aee6;
+    --tile-wash: #17232e;
+  }
+
+  .file-tile--excel {
+    --tile-ink: #7bd88f;
+    --tile-wash: #172619;
+  }
+
+  .file-tile-page {
+    fill: #1f2023;
+  }
+}

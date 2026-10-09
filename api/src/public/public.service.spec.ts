@@ -3,7 +3,9 @@ import type { ContentRepository } from '../content/content.repository.js';
 import type { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import type { SiteRepository } from '../sites/site.repository.js';
 import type { SubdomainCache } from '../sites/subdomain-cache.js';
-import type { SubmissionRepository } from '../submissions/submission.repository.js';import { PublicService } from './public.service.js';
+import type { MediaRepository } from '../media/media.repository.js';
+import type { SubmissionRepository } from '../submissions/submission.repository.js';
+import { PublicService } from './public.service.js';
 
 const TOKEN_A = 'a'.repeat(43);
 const TOKEN_B = 'b'.repeat(43);
@@ -55,6 +57,7 @@ function setup() {
     previewLinks as unknown as PreviewLinkRepository,
     subdomainCache as unknown as SubdomainCache,
     {} as SubmissionRepository,
+    {} as MediaRepository,
   );
   return { service, previewLinks };
 }
@@ -107,5 +110,54 @@ describe('PublicService.getPreview', () => {
     await expect(service.getPreview('nobody', TOKEN_A)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+});
+
+describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
+  const SITE = 'site-a';
+  const SRC = `http://localhost:4001/uploads/${SITE}/aaa-111.png`;
+
+  function setupPage(blocks: unknown[]) {
+    const content = { findLiveByPath: vi.fn(async () => ({ title: 'Home', path: '/', blocks, updatedAt: new Date() })) };
+    const media = {
+      findAltsByFilenames: vi.fn(async (siteId: string, names: string[]) =>
+        siteId === SITE ? names.filter((n) => n === 'aaa-111.png').map((filename) => ({ filename, alt: 'Library alt' })) : [],
+      ),
+    };
+    const subdomainCache = { resolve: vi.fn(async () => SITE) };
+    const service = new PublicService(
+      {} as SiteRepository,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      subdomainCache as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      media as unknown as MediaRepository,
+    );
+    return { service, media };
+  }
+
+  it('fills an empty alt from the library, for this site only', async () => {
+    const { service, media } = setupPage([{ type: 'hero', image: { src: SRC, alt: '' } }]);
+
+    const page = await service.getPage('alpha', '/');
+
+    expect(page.blocks).toEqual([{ type: 'hero', image: { src: SRC, alt: 'Library alt' } }]);
+    expect(media.findAltsByFilenames).toHaveBeenCalledWith(SITE, ['aaa-111.png']);
+  });
+
+  it('keeps alt text typed on the page, and does not even look it up', async () => {
+    const blocks = [{ type: 'hero', image: { src: SRC, alt: 'Mine' } }];
+    const { service, media } = setupPage(blocks);
+
+    expect((await service.getPage('alpha', '/')).blocks).toEqual(blocks);
+    expect(media.findAltsByFilenames).not.toHaveBeenCalled();
+  });
+
+  it('makes no lookup for a page with no images', async () => {
+    const { service, media } = setupPage([{ type: 'richText', html: '<p>x</p>' }]);
+
+    await service.getPage('alpha', '/');
+
+    expect(media.findAltsByFilenames).not.toHaveBeenCalled();
   });
 });

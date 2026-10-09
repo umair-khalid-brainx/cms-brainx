@@ -5,6 +5,30 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Media documents, alt text, title and description (`MED-04`, built; review pending)
+
+Decision in D-047.
+
+- **API:** PDF, Word and Excel upload (and replace) with a first-bytes check, `nosniff` on `/uploads`;
+  `alt`, `title`, `description` on `media` (migration `20261009120000_add_media_details`, no drift);
+  `PATCH /media/:id`; a new file's title starts as its upload name; changing alt text refreshes the live
+  pages that use the file. The live site fills an empty image alt from the library
+  (`api/src/public/image-alt.ts`), without touching the stored page.
+- **Admin:** document tiles in the grid (type spelled out, colour only groups), a large tile with "Open
+  file" in the panel, a Details form (alt for images only, title, description) with Save and status,
+  human type names. The editor's image upload and the picker stay images only. Light and dark mode.
+- **Verified:** `api` 149 tests, `admin` 69, builds clean. In a real browser: document tiles, the panel,
+  typing alt text and a title and saving (API has the values). Live site: the image with no alt of its own
+  rendered the library text, the one with typed text kept it, and the stored page still has the empty alt.
+  A "PDF" that is really a web page was refused; the three real documents were stored; files are served
+  with `nosniff`.
+- **Found by looking:** my first form was unreadable in dark mode, and the close button hid behind a
+  document tile; both fixed.
+
+**Not done:** picking a document into a page (`TYP-02`'s media field). Reviewer and verifier pending.
+
+---
+
 ## 2026-10-09 — Edit text in place on the canvas (`BLK-07` done)
 
 Decision in D-046; follows D-045.

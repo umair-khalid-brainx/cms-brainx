@@ -3,13 +3,18 @@ import {
   deleteMedia,
   formatBadge,
   getMediaUsage,
+  isDocument,
   listMedia,
   previewUrl,
   replaceMedia,
+  typeLabel,
   uploadMedia,
+  UPLOAD_ACCEPT,
   type MediaItem,
   type MediaUsage,
 } from '../lib/mediaApi';
+import { FileTile } from '../components/FileTile';
+import { MediaDetailsForm } from '../components/MediaDetailsForm';
 import './MediaPage.css';
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
@@ -140,6 +145,12 @@ function MediaPage() {
     }
   }
 
+  function handleDetailsSaved(updated: MediaItem) {
+    setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    // Only refresh the panel if it's still showing this file — never reopen it.
+    setSelected((current) => (current?.id === updated.id ? updated : current));
+  }
+
   function deleteConfirmMessage(item: MediaItem): string {
     const base = `Delete "${item.filename}"? This can't be undone.`;
     if (usage.status === 'error') return `${base}\n\nCouldn't check which pages use this file.`;
@@ -182,7 +193,7 @@ function MediaPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/*"
+          accept={UPLOAD_ACCEPT}
           className="media-hidden-input"
           onChange={handleFileSelected}
         />
@@ -199,7 +210,9 @@ function MediaPage() {
           {items.map((item) => (
             <button type="button" key={item.id} className="media-card" onClick={() => openDetail(item)}>
               <span className="media-thumb-frame">
-                {item.mimetype.startsWith('video/') ? (
+                {isDocument(item) ? (
+                  <FileTile mimetype={item.mimetype} />
+                ) : item.mimetype.startsWith('video/') ? (
                   <>
                     <video className="media-thumb" src={displayUrl(item)} muted preload="metadata" />
                     <span className="media-play" aria-hidden="true" />
@@ -214,7 +227,9 @@ function MediaPage() {
                 )}
                 {formatBadge(item) && <span className="media-format">{formatBadge(item)}</span>}
               </span>
-              <span className="media-card-name">{item.filename}</span>
+              <span className="media-card-name" title={item.filename}>
+                {item.title || item.filename}
+              </span>
               <span className="media-card-size">{formatBytes(item.size)}</span>
             </button>
           ))}
@@ -227,16 +242,24 @@ function MediaPage() {
             <button type="button" className="media-detail-close" onClick={() => setSelected(null)} aria-label="Close">
               &times;
             </button>
-            {selected.mimetype.startsWith('video/') ? (
+            {isDocument(selected) ? (
+              <>
+                <FileTile mimetype={selected.mimetype} size="large" />
+                <a className="media-detail-open" href={selected.url} target="_blank" rel="noopener noreferrer">
+                  Open file
+                </a>
+              </>
+            ) : selected.mimetype.startsWith('video/') ? (
               <video className="media-detail-preview" src={displayUrl(selected)} controls />
             ) : (
               <img className="media-detail-preview" src={displayUrl(selected)} alt={selected.filename} />
             )}
+            <MediaDetailsForm key={selected.id} item={selected} onSaved={handleDetailsSaved} />
             <dl className="media-detail-meta">
               <dt>File</dt>
               <dd>{selected.filename}</dd>
               <dt>Type</dt>
-              <dd>{selected.mimetype}</dd>
+              <dd>{typeLabel(selected.mimetype)}</dd>
               <dt>Size</dt>
               <dd>{formatBytes(selected.size)}</dd>
               <dt>Uploaded</dt>

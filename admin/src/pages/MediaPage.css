@@ -195,6 +195,7 @@
 
 .media-detail-close {
   position: absolute;
+  z-index: 2; /* above a document's tile, which is positioned and would paint over it */
   top: 0.75rem;
   right: 0.75rem;
   width: 28px;
@@ -409,5 +410,39 @@
 
   .media-detail-usage-status {
     color: #a0a0a0;
+  }
+}
+
+/* "Open file" under a document's tile: the one thing you do with a file you
+   can't see a picture of. */
+.media-detail-open {
+  display: inline-block;
+  margin-top: 0.6rem;
+  font-size: 0.8125rem;
+  color: #2271b1;
+  text-underline-offset: 2px;
+}
+
+.media-detail-open:hover {
+  color: #135e96;
+}
+
+.media-detail-open:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .media-detail-open {
+    color: #72aee6;
+  }
+
+  .media-detail-open:hover {
+    color: #9cc9f0;
+  }
+
+  .media-detail-open:focus-visible {
+    outline-color: #72aee6;
   }
 }
