@@ -23,13 +23,17 @@ function CreatePagePage({ contentType }: { contentType?: ContentType } = {}) {
   }, [])
   const [error, setError] = useState<string | null>(null)
 
+  // Only a layout the screen actually loaded is sent: if the list couldn't be fetched, a new Post must still
+  // be created blank, not ask the server for a layout the person never saw.
+  const startFrom = layouts.some((option) => option.key === layout) ? layout : undefined
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!title.trim()) return
     setCreating(true)
     setError(null)
     try {
-      const page = await createPage(title, '', contentType?.prefix, layout || undefined)
+      const page = await createPage(title, '', contentType?.prefix, startFrom)
       navigate(`/editor/${page.slug}`, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : `Could not create this ${noun.toLowerCase()} — check your connection`)
@@ -58,11 +62,11 @@ function CreatePagePage({ contentType }: { contentType?: ContentType } = {}) {
 
           {layouts.length > 0 && (
             <fieldset className="layout-picker" disabled={creating}>
-              <legend>Start from</legend>
-              <div className="layout-picker-grid" role="radiogroup" aria-label="Starting layout">
+              <legend id="layout-picker-label">Start from</legend>
+              <div className="layout-picker-grid" role="radiogroup" aria-labelledby="layout-picker-label">
                 <LayoutOption
                   value=""
-                  checked={layout === ''}
+                  checked={startFrom === undefined}
                   name="Blank"
                   description="An empty page. Add blocks yourself."
                   onSelect={setLayout}
@@ -71,7 +75,7 @@ function CreatePagePage({ contentType }: { contentType?: ContentType } = {}) {
                   <LayoutOption
                     key={option.key}
                     value={option.key}
-                    checked={layout === option.key}
+                    checked={startFrom === option.key}
                     name={option.name}
                     description={option.description}
                     includes={blockNames(option)}

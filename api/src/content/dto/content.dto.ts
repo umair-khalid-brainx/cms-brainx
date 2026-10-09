@@ -14,7 +14,7 @@ export const createContentSchema = z.object({
   type: z.string().min(1).optional(),
   blocks: z.array(blockSchema).default([]),
   // The key of a starter layout (`landing`): the new page starts with its blocks (TYP-04). Not with `blocks`.
-  layout: z.string().min(1).optional(),
+  layout: z.string().min(1).max(64).optional(),
 });
 
 export type CreateContentDto = z.infer<typeof createContentSchema>;

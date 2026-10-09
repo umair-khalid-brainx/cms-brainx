@@ -5,7 +5,7 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
-## 2026-10-09 — Start a page from a layout (`TYP-04`, built; review pending)
+## 2026-10-09 — Start a page from a layout (`TYP-04` done)
 
 Decision in D-051.
 
@@ -17,7 +17,11 @@ Decision in D-051.
   `hero, featureGrid, stats, testimonial, cta`; a new Post preselected Article and made `hero, richText, cta` at
   `/blog/harvest-diary`; an unknown layout is a 404 from the API.
 
-**Not done:** reviewer and verifier pending; the picker hasn't been looked at visually.
+- **Verifier and review follow-ups:** a new Post no longer asks for Article if the layouts didn't load; the hidden radio
+  no longer inherits form-input styles; one group name for screen readers; a length limit on the layout key.
+  `api` 354 tests.
+
+**Not done:** the picker hasn't been looked at visually (the browser pane would not render screenshots).
 
 ---
 
