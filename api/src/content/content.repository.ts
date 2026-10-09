@@ -30,6 +30,20 @@ export class ContentRepository {
     return this.prisma.content.findFirst({ where: { siteId, path, status: 'published' } });
   }
 
+  /**
+   * Pages (any status) whose blocks mention `needle` anywhere — used to warn
+   * before deleting a media file a page still uses (MED-02, B-12). A runtime
+   * scan of the JSONB as text rather than a usage table kept in sync on every
+   * save: always accurate, and cheap at one site's page count.
+   */
+  findReferencing(siteId: string, needle: string) {
+    return this.prisma.$queryRaw<{ id: string; title: string; path: string; status: string }[]>`
+      SELECT id, title, path, status::text AS status
+      FROM content
+      WHERE site_id = ${siteId} AND strpos(blocks::text, ${needle}) > 0
+      ORDER BY title`;
+  }
+
   create(siteId: string, data: Omit<Prisma.ContentUncheckedCreateInput, 'siteId'>) {
     return this.prisma.content.create({ data: { ...data, siteId } });
   }

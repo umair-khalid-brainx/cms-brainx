@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Put,
   Req,
   UploadedFile,
   UseGuards,
@@ -39,6 +40,24 @@ export class MediaController {
   async upload(@Req() request: AuthenticatedRequest, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
     return this.media.store(request.user.sub, file);
+  }
+
+  @Put(':id')
+  @RequirePermission('content:write')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_BYTES } }))
+  async replace(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.media.replace(request.user.sub, id, file);
+  }
+
+  @Get(':id/usage')
+  @RequirePermission('content:read')
+  usage(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.media.usage(request.user.sub, id);
   }
 
   @Delete(':id')

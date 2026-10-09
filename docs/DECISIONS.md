@@ -8,6 +8,31 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-044 — 2026-10-07 — Media replace keeps the URL, same type only; "used on" is a runtime scan (`MED-02`)
+
+**Decision:** three choices, all confirmed with the owner before building.
+
+1. **Replace in place** (`PUT /media/:id`) overwrites the file on disk and keeps its URL, so every
+   page using it shows the new file with no edits. **The new file must be the same mimetype.** The
+   URL ends in the original extension (`uuid.png`), and a `.png` URL serving JPEG bytes would be
+   misleading. The write goes to a temp file first and is then renamed over the original. Rename is
+   atomic, so a visitor gets either the old file or the new one, never half of one.
+2. **Deleting a file a page still uses warns, but is allowed.** The confirm lists the pages (any
+   status). Blocking the delete was the other option; it was rejected as too strict for a POC.
+3. **"Which pages use this file" is an on-demand scan** (`GET /media/:id/usage` →
+   `ContentRepository.findReferencing`), using `strpos(blocks::text, …)` scoped by `site_id`. It
+   matches the host-independent part, `/uploads/<siteId>/<filename>`. A usage table kept in sync on
+   every content save was the alternative. The scan is always accurate and needs no new table; its
+   cost grows with one site's page count, which is small here.
+
+**Caching:** `/uploads` is served with `Cache-Control: public, max-age=0` plus an ETag (checked with
+`curl`), so browsers revalidate and pick up a replaced file. The admin tab adds `?v=<timestamp>`
+to its own previews after a replace, for display only. The stored URL never changes.
+
+**Cost accepted:** the scan is a sequential read of that site's `content` rows on every detail-panel
+open. A text match can also count a URL that appears in a page's text rather than as an image,
+which errs towards warning. When `MED-01`'s thumbnails land (D-036 on that branch), replace must
+also regenerate the thumbnail.
 ## D-043 — 2026-10-07 — Media thumbnails: one 400px WebP, stored URL, no backfill (`MED-01`)
 
 **Decision:** every PNG, JPEG or WebP upload gets one thumbnail made with `sharp`

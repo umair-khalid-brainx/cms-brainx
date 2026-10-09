@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { deleteMedia, formatBadge, listMedia, previewUrl, uploadMedia, type MediaItem } from '../lib/mediaApi';
+import {
+  deleteMedia,
+  formatBadge,
+  getMediaUsage,
+  listMedia,
+  previewUrl,
+  replaceMedia,
+  uploadMedia,
+  type MediaItem,
+  type MediaUsage,
+} from '../lib/mediaApi';
 import './MediaPage.css';
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
@@ -10,6 +20,8 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+type UsageState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; pages: MediaUsage[] };
+
 function MediaPage() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
@@ -19,7 +31,22 @@ function MediaPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [usage, setUsage] = useState<UsageState>({ status: 'loading' });
+  const [replacing, setReplacing] = useState(false);
+  const [replaceError, setReplaceError] = useState<string | null>(null);
+  // Replace keeps the URL, so this tab's own image cache would keep showing
+  // the old bytes — a per-item counter appended as ?v= forces a refetch here.
+  // Only for display: the stored URL (and what Copy URL gives) never changes.
+  const [versions, setVersions] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  // Which item's panel is open right now. Async results (usage, replace) check
+  // it so a slow response for a panel the user has since closed or switched
+  // away from doesn't reopen it or land on the wrong one.
+  const openIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    openIdRef.current = selected?.id ?? null;
+  }, [selected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +73,11 @@ function MediaPage() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selected]);
+
+  function displayUrl(item: MediaItem, url: string = item.url): string {
+    const version = versions[item.id];
+    return version ? `${url}?v=${version}` : url;
+  }
 
   async function handleFileSelected(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -76,10 +108,49 @@ function MediaPage() {
     setSelected(item);
     setCopied(false);
     setDeleteError(null);
+    setReplaceError(null);
+    setUsage({ status: 'loading' });
+    openIdRef.current = item.id;
+    getMediaUsage(item.id)
+      .then((pages) => openIdRef.current === item.id && setUsage({ status: 'ready', pages }))
+      .catch(() => openIdRef.current === item.id && setUsage({ status: 'error' }));
+  }
+
+  async function handleReplaceSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !selected) return;
+    if (file.type !== selected.mimetype) {
+      setReplaceError(`The replacement must be the same type as the original (${selected.mimetype}), so its URL stays valid.`);
+      return;
+    }
+    const id = selected.id;
+    setReplacing(true);
+    setReplaceError(null);
+    try {
+      const updated = await replaceMedia(id, file);
+      setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+      setVersions((prev) => ({ ...prev, [updated.id]: Date.now() }));
+      // Only refresh the panel if it's still showing this file — never reopen it.
+      setSelected((current) => (current?.id === id ? updated : current));
+    } catch (error) {
+      if (openIdRef.current === id) setReplaceError(error instanceof Error ? error.message : 'Replace failed');
+    } finally {
+      setReplacing(false);
+    }
+  }
+
+  function deleteConfirmMessage(item: MediaItem): string {
+    const base = `Delete "${item.filename}"? This can't be undone.`;
+    if (usage.status === 'error') return `${base}\n\nCouldn't check which pages use this file.`;
+    if (usage.status !== 'ready' || usage.pages.length === 0) return base;
+    const list = usage.pages.map((page) => `• ${page.title} (${page.path}, ${page.status})`).join('\n');
+    const count = usage.pages.length === 1 ? '1 page uses' : `${usage.pages.length} pages use`;
+    return `${count} this file and will show a broken image:\n${list}\n\n${base}`;
   }
 
   async function handleDelete(item: MediaItem) {
-    if (!window.confirm(`Delete "${item.filename}"? This can't be undone.`)) return;
+    if (!window.confirm(deleteConfirmMessage(item))) return;
     setDeleting(true);
     setDeleteError(null);
     try {
@@ -130,13 +201,13 @@ function MediaPage() {
               <span className="media-thumb-frame">
                 {item.mimetype.startsWith('video/') ? (
                   <>
-                    <video className="media-thumb" src={item.url} muted preload="metadata" />
+                    <video className="media-thumb" src={displayUrl(item)} muted preload="metadata" />
                     <span className="media-play" aria-hidden="true" />
                   </>
                 ) : (
                   <img
                     className={`media-thumb${item.mimetype === 'image/svg+xml' ? ' media-thumb--contain' : ''}`}
-                    src={previewUrl(item)}
+                    src={displayUrl(item, previewUrl(item))}
                     alt={item.filename}
                     loading="lazy"
                   />
@@ -157,9 +228,9 @@ function MediaPage() {
               &times;
             </button>
             {selected.mimetype.startsWith('video/') ? (
-              <video className="media-detail-preview" src={selected.url} controls />
+              <video className="media-detail-preview" src={displayUrl(selected)} controls />
             ) : (
-              <img className="media-detail-preview" src={selected.url} alt={selected.filename} />
+              <img className="media-detail-preview" src={displayUrl(selected)} alt={selected.filename} />
             )}
             <dl className="media-detail-meta">
               <dt>File</dt>
@@ -172,6 +243,21 @@ function MediaPage() {
               <dd>
                 {new Date(selected.createdAt).toLocaleDateString()} by {selected.uploadedBy.name}
               </dd>
+              <dt>Used on</dt>
+              <dd>
+                {usage.status === 'loading' && 'Checking…'}
+                {usage.status === 'error' && "Couldn't check"}
+                {usage.status === 'ready' && usage.pages.length === 0 && 'No pages'}
+                {usage.status === 'ready' && usage.pages.length > 0 && (
+                  <ul className="media-detail-usage">
+                    {usage.pages.map((page) => (
+                      <li key={page.id}>
+                        {page.title} <span className="media-detail-usage-status">({page.status})</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </dd>
             </dl>
             <div className="media-detail-url-row">
               <input className="media-detail-url" readOnly value={selected.url} />
@@ -179,15 +265,33 @@ function MediaPage() {
                 {copied ? 'Copied' : 'Copy URL'}
               </button>
             </div>
+            {replaceError && <p className="media-error">{replaceError}</p>}
             {deleteError && <p className="media-error">{deleteError}</p>}
-            <button
-              type="button"
-              className="media-detail-delete"
-              disabled={deleting}
-              onClick={() => handleDelete(selected)}
-            >
-              {deleting ? 'Deleting…' : 'Delete'}
-            </button>
+            <div className="media-detail-actions">
+              <button
+                type="button"
+                className="media-detail-replace"
+                disabled={replacing || deleting}
+                onClick={() => replaceInputRef.current?.click()}
+              >
+                {replacing ? 'Replacing…' : 'Replace file'}
+              </button>
+              <input
+                ref={replaceInputRef}
+                type="file"
+                accept={selected.mimetype}
+                className="media-hidden-input"
+                onChange={handleReplaceSelected}
+              />
+              <button
+                type="button"
+                className="media-detail-delete"
+                disabled={deleting || replacing || usage.status === 'loading'}
+                onClick={() => handleDelete(selected)}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

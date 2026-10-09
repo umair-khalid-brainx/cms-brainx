@@ -1,8 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { ContentRepository } from '../content/content.repository.js';
 import { UserRepository } from '../users/user.repository.js';
 import { MediaRepository } from './media.repository.js';
 import { InvalidImageError, makeThumbnail } from './thumbnail.js';
@@ -32,6 +33,7 @@ export class MediaService {
   constructor(
     private readonly users: UserRepository,
     private readonly media: MediaRepository,
+    private readonly content: ContentRepository,
     private readonly config: ConfigService,
   ) {}
 
@@ -88,6 +90,75 @@ export class MediaService {
       size: file.size,
       uploadedByUserId: userId,
     });
+  }
+
+  /**
+   * Swaps a file's bytes while keeping its URL, so every page using it picks
+   * up the new file with no edits. Same mimetype only: the URL ends in the
+   * original extension, and a .png URL serving JPEG bytes is a lie (MED-02).
+   */
+  async replace(userId: string, id: string, file: Express.Multer.File) {
+    const siteId = await this.resolveSiteId(userId);
+    const record = await this.media.findById(siteId, id);
+    if (!record) throw new NotFoundException('Media not found');
+    if (file.mimetype !== record.mimetype) {
+      throw new BadRequestException(`Replacement must be the same type as the original (${record.mimetype})`);
+    }
+
+    // Same rule as store(): decode first, so a bad file leaves the old one untouched.
+    let thumbnail: Buffer | null;
+    try {
+      thumbnail = await makeThumbnail(file.buffer, file.mimetype);
+    } catch (error) {
+      if (error instanceof InvalidImageError) throw new BadRequestException(error.message);
+      throw error;
+    }
+
+    // Write beside the original, then rename over it: rename is atomic on one
+    // filesystem, so a visitor mid-request gets the old file or the new one,
+    // never a half-written one.
+    const siteDir = this.siteDir(siteId);
+    await mkdir(siteDir, { recursive: true });
+    const tempPath = join(siteDir, `${randomUUID()}.tmp`);
+    const finalPath = join(siteDir, record.filename);
+    try {
+      await writeFile(tempPath, file.buffer);
+      await rename(tempPath, finalPath);
+    } catch (error) {
+      // The uploads folder is served publicly — don't leave a stray .tmp in it.
+      await rm(tempPath, { force: true });
+      throw error;
+    }
+
+    // The thumbnail is a separate file, so a replaced image would keep showing
+    // the old picture in the library and picker without this (MED-01 x MED-02).
+    let thumbnailUrl = record.thumbnailUrl;
+    const thumbnailPath = join(siteDir, thumbnailFilenameFor(record.filename));
+    if (thumbnail) {
+      await writeFile(thumbnailPath, thumbnail);
+      const publicUrl = this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4001';
+      thumbnailUrl = `${publicUrl}/uploads/${siteId}/${thumbnailFilenameFor(record.filename)}`;
+    }
+
+    const { count } = await this.media.updateSize(siteId, id, file.size, thumbnailUrl);
+    if (count === 0) {
+      // A Delete landed between the lookup and the rename: the rename just
+      // put a file back on disk with no row behind it. Remove it again.
+      await rm(finalPath, { force: true });
+      await rm(thumbnailPath, { force: true });
+      throw new NotFoundException('Media not found');
+    }
+    return { ...record, size: file.size, thumbnailUrl };
+  }
+
+  /** Pages whose blocks still reference this file — shown before Delete (B-12). */
+  async usage(userId: string, id: string) {
+    const siteId = await this.resolveSiteId(userId);
+    const record = await this.media.findById(siteId, id);
+    if (!record) throw new NotFoundException('Media not found');
+    // Match on the host-independent part of the URL, so a page saved under a
+    // different API_PUBLIC_URL still counts as using the file.
+    return this.content.findReferencing(siteId, `/uploads/${siteId}/${record.filename}`);
   }
 
   async remove(userId: string, id: string): Promise<void> {

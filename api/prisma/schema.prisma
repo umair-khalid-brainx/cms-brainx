@@ -150,10 +150,9 @@ model Content {
 // A row per uploaded file (media.service.ts writes both the file to disk and
 // this row, in that order — see MediaService.store). `filename` is the
 // stored uuid.ext on disk, never the client's original name (media.service.ts
-// never trusts that string). No "used on these pages" tracking — see
-// DECISIONS.md D-026: that would need either a join table kept in sync on
-// every content save or a runtime scan of Content.blocks JSONB, both real
-// added scope, not built here.
+// never trusts that string). No "used on these pages" column or join table:
+// usage is a runtime scan of Content.blocks JSONB (D-044,
+// ContentRepository.findReferencing).
 model Media {
   id               String   @id @default(cuid())
   siteId           String   @map("site_id")
