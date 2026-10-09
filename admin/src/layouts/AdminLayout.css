@@ -175,3 +175,16 @@
     color: #f87171;
   }
 }
+
+/* A content type's entry list sits under Pages, its label lined up with "Pages"
+   rather than its icon, so the sidebar reads as Pages with its kinds beneath. */
+.admin-nav-item.is-nested {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 3rem;
+  font-weight: 400;
+}
+
+.admin-nav-item.is-nested .admin-nav-icon {
+  display: none;
+}

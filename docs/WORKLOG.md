@@ -5,6 +5,28 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Content types and typed entries (`TYP-01`, built; review pending)
+
+Decision in D-048.
+
+- **API:** migration `20261009130000_add_content_types` (no drift, tested on a copy of the dev database: the
+  existing site got Posts); `/content-types` (list for `content:read`, create, rename, delete for
+  `site:manage`); prefix rules in `api/src/content-types/prefix.ts`; `content` list/create/duplicate are
+  type-aware and record the author; pages can't take a type's address. `api` 234 tests.
+- **Admin:** a Types screen (list with address and entry count, add/edit form with suggested singular name and
+  address and a live example of the public address, delete with reasons when locked), a shared context so the
+  sidebar gets a new type at once, and `/content/:prefix` (+ `/new`) which are the Pages screens for a type.
+  `admin` 89 tests, light and dark styles.
+- **Checked in the browser (scripted, the pane was hidden):** adding "Case studies" filled in "Case study" and
+  `/case-studies`, joined the sidebar with no reload, and an entry made from its screen opened in the editor at
+  `/case-studies/harbour-restoration`; it is absent from Pages. A type with entries has its address locked and
+  Delete disabled; an empty type deletes and leaves the menu at once; a reserved address shows the API's message.
+
+**Not done:** reviewer and verifier pending; visual check of the new screens (the browser pane could not render
+screenshots this time).
+
+---
+
 ## 2026-10-09 — Media documents, alt text, title and description (`MED-04` done)
 
 Decision in D-047.

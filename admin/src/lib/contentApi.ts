@@ -134,15 +134,19 @@ function requireSession() {
   return session;
 }
 
-export async function listPages(): Promise<PageSummary[]> {
+// With a content type's address prefix, the entries of that type instead of the
+// pages (TYP-01): the two lists never overlap.
+const typeQuery = (type?: string) => (type ? `?type=${encodeURIComponent(type)}` : '');
+
+export async function listPages(type?: string): Promise<PageSummary[]> {
   const session = requireSession();
-  const records = await apiGet<ContentRecord[]>('/content', session.accessToken);
+  const records = await apiGet<ContentRecord[]>(`/content${typeQuery(type)}`, session.accessToken);
   return records.map(toSummary);
 }
 
-export async function listArchivedPages(): Promise<PageSummary[]> {
+export async function listArchivedPages(type?: string): Promise<PageSummary[]> {
   const session = requireSession();
-  const records = await apiGet<ContentRecord[]>('/content/archived', session.accessToken);
+  const records = await apiGet<ContentRecord[]>(`/content/archived${typeQuery(type)}`, session.accessToken);
   return records.map(toSummary);
 }
 
@@ -187,13 +191,13 @@ function escapeHtml(value: string): string {
 // Used by both Dashboard's Quick Draft (title + body text, wrapped as one
 // RichText block) and the "New Page" flow (title only, body '' -> no
 // blocks, straight into an empty page in the editor).
-export async function createPage(title: string, body = ''): Promise<PageSummary> {
+export async function createPage(title: string, body = '', type?: string): Promise<PageSummary> {
   const session = requireSession();
   const blocks: FlatBlock[] = body.trim() ? [{ type: 'richText', html: `<p>${escapeHtml(body.trim())}</p>` }] : [];
   const record = await apiSend<ContentRecord>(
     'POST',
     '/content',
-    { title: title.trim() || 'Untitled', blocks },
+    { title: title.trim() || 'Untitled', blocks, ...(type && { type }) },
     session.accessToken,
   );
   return toSummary(record);

@@ -9,6 +9,9 @@ import DashboardPage from './pages/DashboardPage.tsx'
 import PagesListPage from './pages/PagesListPage.tsx'
 import CreatePagePage from './pages/CreatePagePage.tsx'
 import MediaPage from './pages/MediaPage.tsx'
+import TypesPage from './pages/TypesPage.tsx'
+import { CreateEntryPage, TypeEntriesPage } from './pages/TypeEntriesPage.tsx'
+import { ContentTypesProvider } from './lib/ContentTypesContext.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import TeamPage from './pages/TeamPage.tsx'
 import SubmissionsPage from './pages/SubmissionsPage.tsx'
@@ -25,10 +28,19 @@ function App() {
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
       <Route element={<RequireAuth />}>
-        <Route element={<AdminLayout />}>
+        <Route
+          element={
+            <ContentTypesProvider>
+              <AdminLayout />
+            </ContentTypesProvider>
+          }
+        >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/pages" element={<PagesListPage />} />
           <Route path="/pages/new" element={<CreatePagePage />} />
+          <Route path="/content/:prefix" element={<TypeEntriesPage />} />
+          <Route path="/content/:prefix/new" element={<CreateEntryPage />} />
+          <Route path="/types" element={<TypesPage />} />
           <Route path="/media" element={<MediaPage />} />
           <Route path="/submissions" element={<SubmissionsPage />} />
           <Route path="/submissions/:id" element={<SubmissionDetailPage />} />

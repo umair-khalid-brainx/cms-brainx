@@ -8,6 +8,44 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-048 — 2026-10-09 — Content types: a table, a locked address, entries reuse the Pages screens (`TYP-01`)
+
+**Decision (the week 3 plan the user approved):**
+
+- **Data:** `content_types` (plural name, singular name, address prefix, built-in flag), unique per site by
+  prefix, read and written only through `ContentTypeRepository`, which requires `siteId`. `content` gains a
+  nullable `typeId` (null = an ordinary page) and `authorId` (who created it; the public entry header will show
+  it, TYP-03). Every site gets a built-in **Posts** type at `/blog`: existing sites through the migration
+  (skipped for a site that already has a page at `/blog`), seeded sites through the seed.
+- **Who:** anyone who can read content sees the types (they feed the sidebar); creating, renaming and deleting
+  need `site:manage` (owner, administrator), like WordPress's Administrator.
+- **The address is chosen carefully.** One segment of lowercase letters, digits and single hyphens, 2 to 40
+  characters; not a reserved word (`admin`, `api`, `preview`, `internal`, `category`, `tag`, `sitemap`, ...);
+  not another type's; not an address a page already uses (archived pages count). It can change only while the
+  type has no entries (archived ones count) and never for a built-in type, because moving it would break every
+  entry's link and redirects are `GOV-05`. A type can be deleted only when it has no entries and isn't built
+  in. The API's messages are written for staff and shown as they are.
+- **Entries live at `/<prefix>/<slug>`** and use the existing editor, statuses, archive and duplicate. The Pages
+  screens take an optional type (`GET /content?type=events`, `POST /content {type}`), so a type's list is the
+  Pages list pointed at it; the two lists never overlap. A copy of an entry stays in its type.
+- **Slugs stay unique across the whole site**, because admin routes by slug alone (`/content/:slug`), so an
+  entry and a page can't share one. A *page* also can't take a type's address: asking for `events` gives
+  `events-2`.
+- **Navigation:** types load once into a context shared by the whole admin; the sidebar lists each under Pages
+  and the Types screen reloads the context after every change, so the menu changes with no reload.
+
+**Not here:** custom fields on a type (`TYP-02`), the public listing and entry header (`TYP-03`), categories and
+tags (`TAX-01`). Entries are already reachable on the public site at their address through the existing
+catch-all route, rendered from their blocks.
+
+**Costs and limits:**
+
+- Slug uniqueness across types is a limit a client can notice (a page and an event can't both be "summer").
+- The signed-in user's first site is used for every content call, as everywhere else (D-023).
+- A type can't be moved once it has entries; staff would have to delete the entries first.
+
+---
+
 ## D-047 — 2026-10-09 — Media documents and library text; alt text is a live-site fallback (`MED-04`)
 
 **Decision (user's call on the fallback):**

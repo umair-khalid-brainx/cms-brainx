@@ -16,6 +16,7 @@ import {
 } from '../lib/contentApi';
 import { canArchiveContent, canPublishContent } from '../lib/roles';
 import { siteUrl } from '../data/site';
+import type { ContentType } from '../lib/typesApi';
 import './PagesListPage.css';
 
 type Tab = 'active' | 'archived';
@@ -37,7 +38,11 @@ function statusOptions(current: PageStatus): SelectOption<PageStatus>[] {
     .map((value) => ({ value, label: STATUS_LABELS[value] }));
 }
 
-function PagesListPage() {
+// The same screen lists a site's pages, or with `contentType` the entries of one
+// content type (TYP-01): the same statuses, archive tab, duplicate and editor.
+function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
+  const noun = contentType ? { plural: contentType.name, singular: contentType.singularName } : { plural: 'Pages', singular: 'Page' };
+  const prefix = contentType?.prefix;
   const [tab, setTab] = useState<Tab>('active');
   const [pages, setPages] = useState<PageSummary[]>([]);
   const [archived, setArchived] = useState<PageSummary[]>([]);
@@ -54,7 +59,7 @@ function PagesListPage() {
     setLoad({ status: 'loading' });
     setJustCopied(null);
     setRefused(null);
-    (tab === 'active' ? listPages() : listArchivedPages())
+    (tab === 'active' ? listPages(prefix) : listArchivedPages(prefix))
       .then((result) => {
         if (cancelled) return;
         if (tab === 'active') setPages(result);
@@ -63,12 +68,12 @@ function PagesListPage() {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setLoad({ status: 'error', message: error instanceof Error ? error.message : 'Failed to load pages' });
+        setLoad({ status: 'error', message: error instanceof Error ? error.message : `Failed to load ${noun.plural.toLowerCase()}` });
       });
     return () => {
       cancelled = true;
     };
-  }, [tab]);
+  }, [tab, prefix, noun.plural]);
 
   async function handleStatusChange(page: PageSummary, status: PageStatus) {
     if (status === 'archived' && !window.confirm(`Archive "${page.title}"? It will be hidden from the site and moved to the Archived tab.`)) return;
@@ -141,16 +146,18 @@ function PagesListPage() {
   return (
     <>
       <div className="pages-header">
-        <h1 className="pages-title">Pages</h1>
-        <span className="pages-count">{load.status === 'ready' ? `${rows.length} ${tab === 'active' ? 'pages' : 'archived'}` : ''}</span>
-        <Link to="/pages/new" className="pages-add">
-          Add Page
+        <h1 className="pages-title">{noun.plural}</h1>
+        <span className="pages-count">
+          {load.status === 'ready' ? `${rows.length} ${tab === 'active' ? noun.plural.toLowerCase() : 'archived'}` : ''}
+        </span>
+        <Link to={contentType ? `/content/${contentType.prefix}/new` : '/pages/new'} className="pages-add">
+          Add {noun.singular}
         </Link>
       </div>
 
       <div className="pages-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'active'} className={`pages-tab ${tab === 'active' ? 'pages-tab-active' : ''}`} onClick={() => setTab('active')}>
-          Pages
+          {noun.plural}
         </button>
         <button type="button" role="tab" aria-selected={tab === 'archived'} className={`pages-tab ${tab === 'archived' ? 'pages-tab-active' : ''}`} onClick={() => setTab('archived')}>
           Archived
@@ -181,7 +188,9 @@ function PagesListPage() {
       </p>
 
       {load.status === 'ready' && rows.length === 0 && (
-        <p className="pages-loading">{tab === 'active' ? 'No pages yet.' : 'No archived pages.'}</p>
+        <p className="pages-loading">
+          {tab === 'active' ? `No ${noun.plural.toLowerCase()} yet.` : `No archived ${noun.plural.toLowerCase()}.`}
+        </p>
       )}
 
       {load.status === 'ready' && rows.length > 0 && tab === 'active' && (

@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router'
 import { clearSession, getSession } from '../lib/auth'
-import { canManageTeam, canReadSubmissions } from '../lib/roles'
+import { useContentTypes } from '../lib/contentTypesContext'
+import { canManageSite, canManageTeam, canReadSubmissions } from '../lib/roles'
 import './AdminLayout.css'
 
 const navItems = [
@@ -52,6 +53,16 @@ const navItems = [
     requiresTeamManage: true,
   },
   {
+    to: '/types',
+    label: 'Content types',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M10 2 2 6l8 4 8-4-8-4Zm-6.4 7.2L2 10l8 4 8-4-1.6-.8L10 12.4 3.6 9.2Zm0 4L2 14l8 4 8-4-1.6-.8L10 16.4 3.6 13.2Z" />
+      </svg>
+    ),
+    requiresSiteManage: true,
+  },
+  {
     to: '/settings',
     label: 'Settings',
     icon: (
@@ -83,8 +94,24 @@ function AdminLayout() {
   const visibleNavItems = navItems.filter(
     (item) =>
       (!item.requiresTeamManage || canManageTeam(role)) &&
+      (!item.requiresSiteManage || canManageSite(role)) &&
       (!item.requiresSubmissionsRead || canReadSubmissions(role)),
   )
+  // Each content type the site has gets its own place in the navigation, right
+  // under Pages, the moment it exists (TYP-01).
+  const { types } = useContentTypes()
+  const navEntries = visibleNavItems.flatMap((item) => [
+    { key: item.to, to: item.to, label: item.label, icon: item.icon, nested: false },
+    ...(item.to === '/pages'
+      ? types.map((type) => ({
+          key: `type-${type.id}`,
+          to: `/content/${type.prefix}`,
+          label: type.name,
+          icon: item.icon,
+          nested: true,
+        }))
+      : []),
+  ])
 
   function handleLogout() {
     clearSession()
@@ -100,11 +127,11 @@ function AdminLayout() {
         </div>
 
         <nav className="admin-nav">
-          {visibleNavItems.map((item) => (
+          {navEntries.map((item) => (
             <NavLink
-              key={item.to}
+              key={item.key}
               to={item.to}
-              className={({ isActive }) => 'admin-nav-item' + (isActive ? ' is-active' : '')}
+              className={({ isActive }) => 'admin-nav-item' + (item.nested ? ' is-nested' : '') + (isActive ? ' is-active' : '')}
             >
               <span className="admin-nav-icon">{item.icon}</span>
               {item.label}
