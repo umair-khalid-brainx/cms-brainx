@@ -29,6 +29,29 @@ describe('sanitizeRichText', () => {
     expect(sanitizeRichText(`<p>see <a href="${href}">x</a></p>`)).toBe('<p>see x</p>');
   });
 
+  // Regression (BLK-05 verifier): after a refused link, the next closing tag used
+  // to be rewritten to </span>, leaving the following link or <strong> unclosed.
+  it.each([
+    ['<p><a href="javascript:x">bad</a> <a href="https://ok.com">ok</a></p>', '<p>bad <a href="https://ok.com">ok</a></p>'],
+    ['<p><a href="javascript:x">bad</a> <strong>b</strong></p>', '<p>bad <strong>b</strong></p>'],
+    [
+      '<p><a href="javascript:x">bad</a></p><p><a href="https://ok.com">ok</a></p>',
+      '<p>bad</p><p><a href="https://ok.com">ok</a></p>',
+    ],
+    ['<p><a href="javascript:x">a</a> and <a href="data:x">b</a> then <em>c</em></p>', '<p>a and b then <em>c</em></p>'],
+    ['<p><a href="javascript:x">a <strong>b</strong></a> <em>c</em></p>', '<p>a <strong>b</strong> <em>c</em></p>'],
+  ])('keeps the rest of the document well formed after a refused link: %s', (input, expected) => {
+    expect(sanitizeRichText(input)).toBe(expected);
+  });
+
+  it('never leaves a stray closing tag, whatever the nesting', () => {
+    const out = sanitizeRichText('<p><a href="javascript:x">a<a href="https://ok.com">b</a>c</a><strong>d</strong></p>');
+    const opens = (out.match(/<(p|a|strong)[ >]/g) ?? []).length;
+    const closes = (out.match(/<\/(p|a|strong)>/g) ?? []).length;
+    expect(closes).toBe(opens);
+    expect(out).not.toContain('</span>');
+  });
+
   it('keeps web, email and same-site links', () => {
     for (const href of ['https://a.com', 'http://a.com', 'mailto:a@b.com', '/about', '#pricing']) {
       expect(sanitizeRichText(`<a href="${href}">x</a>`)).toBe(`<a href="${href}">x</a>`);

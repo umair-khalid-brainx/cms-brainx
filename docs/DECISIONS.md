@@ -29,6 +29,9 @@ decisions themselves were made on the dates shown.
   address. Everything else is dropped (scripts, handlers, styles, images, iframes). `<b>`/`<i>` become
   `<strong>`/`<em>`. A link whose address was refused becomes plain text. It runs before the publish
   checks, so they judge what would be stored. `web` renders stored HTML as-is (invariant 5).
+  (The unlinking is a plain text unwrap of bare `<a>` tags on the already-clean output, not a second
+  `sanitize-html` pass: a function-form `transformTags` leaks state in sanitize-html 2.18 and turned
+  the next unrelated closing tag into `</span>`. Found by the verifier, covered by regression tests.)
 - **Typography:** headings, lists, quotes and links are styled in `cms-blocks/src/RichText.tsx`, using
   only `--site-*` variables, so the editor canvas matches the public site (before, only `web` had a
   few rules, and the canvas showed plain text). The old rules in `web/src/app/globals.css` are gone.

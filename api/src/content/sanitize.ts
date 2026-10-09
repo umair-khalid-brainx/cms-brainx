@@ -19,19 +19,37 @@ const OPTIONS: sanitizeHtml.IOptions = {
   transformTags: { b: 'strong', i: 'em' },
 };
 
-// A link whose address was refused above is left as a bare `<a>`, which the
-// site would still style as a link. Second pass: an `<a>` with no `href` becomes
-// plain text (its tag is not allowed as `span`, so only the text survives).
-const UNLINK_OPTIONS: sanitizeHtml.IOptions = {
+// A link whose address was refused is left by the pass above as a bare `<a>`
+// (no attributes), which the site would still style as a link. It should become
+// plain text. This is done on the already-clean output with a plain text
+// unwrap, not with a second `sanitize-html` pass using a function-form
+// `transformTags`: that leaks state in sanitize-html 2.18 and rewrote the next
+// unrelated closing tag to `</span>` (found by BLK-05's verifier).
+//
+// Safe to do with a pattern because the first pass has normalised the markup:
+// tags are balanced, and a literal "<a>" in text is already `&lt;a&gt;`. Real
+// links always carry `href`, so only bare anchors match.
+const BARE_ANCHOR = /<a>((?:(?!<a[\s>]).)*?)<\/a>/gs;
+const WITHOUT_LINKS: sanitizeHtml.IOptions = {
   ...OPTIONS,
-  transformTags: {
-    ...OPTIONS.transformTags,
-    a: (tagName, attribs) => (attribs.href ? { tagName, attribs } : { tagName: 'span', attribs: {} }),
-  },
+  allowedTags: OPTIONS.allowedTags && OPTIONS.allowedTags.filter((tag) => tag !== 'a'),
 };
 
+function unlinkBareAnchors(html: string): string {
+  let out = html;
+  let previous: string;
+  do {
+    previous = out;
+    out = out.replace(BARE_ANCHOR, '$1'); // innermost first, so nesting unwinds
+  } while (out !== previous);
+  // A bare anchor still standing is wrapped around a real link (invalid HTML no
+  // editor produces). Drop every link in that one document rather than leave a
+  // dangling tag.
+  return /<a>/.test(out) ? sanitizeHtml(out, WITHOUT_LINKS) : out;
+}
+
 export function sanitizeRichText(html: string): string {
-  return sanitizeHtml(sanitizeHtml(html, OPTIONS), UNLINK_OPTIONS);
+  return unlinkBareAnchors(sanitizeHtml(html, OPTIONS));
 }
 
 type Block = { type: string } & Record<string, unknown>;
