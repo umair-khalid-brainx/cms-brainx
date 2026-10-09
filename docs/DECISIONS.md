@@ -8,6 +8,44 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-049 — 2026-10-09 — Custom fields: six fixed kinds, validated on write, edited in the editor's side panel (`TYP-02`)
+
+**Decision (the week 3 plan the user approved; the six kinds were the user's choice):**
+
+- **The six kinds:** short text, formatted text, date, media (an image or any library file), choice from a list,
+  link. The list is fixed (root invariant 8): `FIELD_KINDS` in `api/src/content-types/field-definitions.ts`, and
+  the value rules are a record keyed by it, so a seventh kind without its rule doesn't compile. The API refuses
+  an unknown kind; adding one is a re-estimated change.
+- **Storage:** `content_types.fields` (JSONB list of `{ key, label, kind, required, options? }`) and
+  `content.data` (JSONB, values by field key). No separate table per type.
+- **The key is made once, from the name, and never changes** (`event_date`), because values are stored under
+  it. A saved field's kind can't change (its values would be misread); its name, "needed" flag, options and
+  position can. Removing a field only hides it: its values stay in each entry's `data`, and adding a field with
+  the same name brings them back (the documented limit in ARCHITECTURE.md).
+- **Every write is checked in the API** (Zod, by kind): text up to 500 characters; formatted text cleaned with
+  the same sanitiser as page rich text (invariant 5); date as `YYYY-MM-DD` and a real date; media must be an
+  address in this site's own uploads; a choice must be one of the options; a link must start with `https://`,
+  `http://`, `mailto:`, `/` or `#` and have text. All problems are returned together, by field name. A blank
+  value clears the field. Values for fields the type doesn't have are ignored, and a hidden field's value is
+  left alone. A page (no type) can't take values.
+- **"Needed before publishing" is a publish check, not a draft rule:** a draft saves with it empty; publishing
+  returns 422 with `Fill in "Speaker"` in the same list as the block problems (CNT-12's shape).
+- **Where staff edit them:** the editor's side panel when no block is selected (Puck's "page" panel), built per
+  type from its field list (`admin/src/puck/entryFields.tsx`), so there is one editor for every type. This also
+  removes Puck's default "title" box, which saved nowhere (B-20). The blocks and the values are saved by two
+  requests, so a value the API refuses never costs the blocks; the editor says "Fields not saved: ..." with
+  the API's words.
+- **Built-in Posts** carries an excerpt and a featured image (migration and seed).
+
+**Costs and limits:**
+
+- A formatted-text field in the side panel has the toolbar but no on-canvas editing (the root panel has no canvas).
+- A media field can hold a document, but nothing shows it publicly yet (`TYP-03`).
+- Keys are not shown to staff; two fields can't share a name (it would give the same key).
+- Hidden values stay in the database forever; there is no "purge hidden data" action.
+
+---
+
 ## D-048 — 2026-10-09 — Content types: a table, a locked address, entries reuse the Pages screens (`TYP-01`)
 
 **Decision (the week 3 plan the user approved):**

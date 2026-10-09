@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { formatBadge, listMedia, previewUrl, type MediaItem } from '../lib/mediaApi'
+import { formatBadge, isDocument, listMedia, previewUrl, type MediaItem } from '../lib/mediaApi'
+import { FileTile } from './FileTile'
 import './MediaLibraryModal.css'
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' }
@@ -10,13 +11,15 @@ type MediaLibraryModalProps = {
   /** Mimetype prefix to filter the grid to — only images exist as pickable
       fields today, but a future video field can reuse this component. */
   accept?: string
+  /** Words for the heading, "image" or "file". */
+  noun?: string
 }
 
 // A picker over what's already been uploaded (MED-03) — separate from
 // MediaPage.tsx's own grid (that one's a full page with a detail panel and
 // Delete; this one's just "click a thumbnail to use it here" and closes
 // itself). Both read the same GET /media list, no new endpoint needed.
-function MediaLibraryModal({ onSelect, onClose, accept = 'image/' }: MediaLibraryModalProps) {
+function MediaLibraryModal({ onSelect, onClose, accept = 'image/', noun = 'image' }: MediaLibraryModalProps) {
   const [items, setItems] = useState<MediaItem[]>([])
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
 
@@ -49,7 +52,7 @@ function MediaLibraryModal({ onSelect, onClose, accept = 'image/' }: MediaLibrar
     <div className="media-library-backdrop" onClick={onClose}>
       <div className="media-library-modal" onClick={(event) => event.stopPropagation()}>
         <div className="media-library-header">
-          <h2 className="media-library-title">Choose an image</h2>
+          <h2 className="media-library-title">Choose {noun === 'image' ? 'an' : 'a'} {noun}</h2>
           <button type="button" className="media-library-close" onClick={onClose} aria-label="Close">
             &times;
           </button>
@@ -68,15 +71,21 @@ function MediaLibraryModal({ onSelect, onClose, accept = 'image/' }: MediaLibrar
                 type="button"
                 key={item.id}
                 className="media-library-card"
-                title={item.filename}
+                title={item.title || item.filename}
                 onClick={() => onSelect(item.url)}
               >
-                <img
-                  className={`media-library-thumb${item.mimetype === 'image/svg+xml' ? ' media-library-thumb--contain' : ''}`}
-                  src={previewUrl(item)}
-                  alt={item.filename}
-                  loading="lazy"
-                />
+                {isDocument(item) ? (
+                  <span className="media-library-doc">
+                    <FileTile mimetype={item.mimetype} />
+                  </span>
+                ) : (
+                  <img
+                    className={`media-library-thumb${item.mimetype === 'image/svg+xml' ? ' media-library-thumb--contain' : ''}`}
+                    src={previewUrl(item)}
+                    alt={item.alt || item.title || ''}
+                    loading="lazy"
+                  />
+                )}
                 {formatBadge(item) && <span className="media-library-format">{formatBadge(item)}</span>}
               </button>
             ))}

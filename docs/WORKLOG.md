@@ -5,6 +5,30 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Custom fields on content types (`TYP-02`, built; review pending)
+
+Decision in D-049.
+
+- **API:** migration `20261009140000_add_type_fields` (fields on the type, values on the entry; built-in Posts
+  gets excerpt and featured image); `field-definitions.ts` (six kinds, keys, normalising a field list) and
+  `field-values.ts` (a Zod rule per kind, merge that keeps hidden values, required-field check); types accept a
+  `fields` list; `PATCH /content/:slug` accepts `data`; publishing needs the required fields; duplicates copy
+  values. `api` 294 tests.
+- **Admin:** a field builder in the type form (name, kind, needed, choices, up/down, remove; kind locked once
+  saved), the entry's fields in the editor's side panel built per type, media and date fields, the picker shows
+  documents, blocks and values saved by separate requests with a named error, Back goes to the entry's type.
+  `admin` 89 tests.
+- **Checked on the live API and in the browser (scripted):** a type created with all six kinds; a seventh kind
+  refused; bad values listed together; rich text cleaned; a required field blocking publish with 422. In the
+  editor: the builder loaded the six saved fields with kinds locked and saved a new "Level" choice; the entry's
+  panel showed every field with saved values; typing a name and a date autosaved; a `javascript:` link showed
+  "Fields not saved: Register: A link must start with ..." and recovered when fixed.
+
+**Not done:** reviewer and verifier pending; the screens haven't been looked at visually (the browser pane
+would not render screenshots).
+
+---
+
 ## 2026-10-09 — Content types and typed entries (`TYP-01` done)
 
 Decision in D-048.

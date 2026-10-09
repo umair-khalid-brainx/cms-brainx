@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Puck, type Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
 import { Link, Navigate, useParams } from 'react-router';
-import { config, type EditorComponents } from '../puck/config';
+import type { EditorComponents } from '../puck/config';
+import { configFor } from '../puck/entryFields';
+import { listContentTypes, type ContentType } from '../lib/typesApi';
 import PublishChecksPanel from '../components/PublishChecksPanel';
 import SharePreview from '../components/SharePreview';
+import { ApiError } from '../lib/api';
 import { getSession } from '../lib/auth';
 import {
+  FieldValuesError,
   getPage,
   getPublishChecks,
   publishChecksFromError,
@@ -25,6 +29,10 @@ function EditorPage() {
   const { slug } = useParams<{ slug: string }>();
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
   const [page, setPage] = useState<Page | null>(null);
+  // The content type, when this is an entry: its fields fill the side panel (TYP-02).
+  const [type, setType] = useState<ContentType | null>(null);
+  const fieldKeys = useMemo(() => (type?.fields ?? []).map((field) => field.key), [type]);
+  const puckConfig = useMemo(() => configFor(type?.fields ?? []), [type]);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [published, setPublished] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -53,6 +61,7 @@ function EditorPage() {
     // page's data before the new one loads, not render it under a new title.
     setLoad({ status: 'loading' });
     setPage(null);
+    setType(null);
     setChecks(null);
 
     if (!slug) {
@@ -68,8 +77,13 @@ function EditorPage() {
           return;
         }
         latestDataRef.current = result.data;
-        setPage(result);
-        setLoad({ status: 'ready' });
+        // An entry also needs its type before the editor opens, for the fields panel and the Back link.
+        return (result.typeId ? listContentTypes() : Promise.resolve<ContentType[]>([])).then((types) => {
+          if (cancelled) return;
+          setType(types.find((candidate) => candidate.id === result.typeId) ?? null);
+          setPage(result);
+          setLoad({ status: 'ready' });
+        });
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -90,12 +104,19 @@ function EditorPage() {
     latestDataRef.current = data;
     window.clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => {
-      saveDraft(page!.slug, data)
+      saveDraft(page!.slug, data, fieldKeys)
         .then(() => {
           setSavedAt(new Date());
           setSaveError(null);
         })
-        .catch(() => setSaveError('Could not save — check your connection'));
+        // A value the API refused is named; the blocks beside it were saved all the same.
+        .catch((error: unknown) =>
+          setSaveError(
+            error instanceof FieldValuesError
+              ? `Fields not saved: ${error.message}`
+              : 'Could not save — check your connection',
+          ),
+        );
     }, AUTOSAVE_DELAY_MS);
   }
 
@@ -112,7 +133,7 @@ function EditorPage() {
     setPublishing(true);
     try {
       if (!skipWarnings) {
-        await saveDraft(page!.slug, latestDataRef.current);
+        await saveDraft(page!.slug, latestDataRef.current, fieldKeys);
         const result = await getPublishChecks(page!.slug);
         if (result.errors.length > 0 || result.warnings.length > 0) {
           setChecks(result);
@@ -120,7 +141,7 @@ function EditorPage() {
         }
       }
       window.clearTimeout(timeoutRef.current);
-      await publishPage(page!.slug, latestDataRef.current);
+      await publishPage(page!.slug, latestDataRef.current, fieldKeys);
       if (checks) refocusPublishRef.current = true;
       setChecks(null);
       setSavedAt(new Date());
@@ -130,6 +151,8 @@ function EditorPage() {
     } catch (error) {
       const refused = publishChecksFromError(error);
       if (refused) setChecks(refused);
+      else if (error instanceof ApiError && error.status === 400) setSaveError(`Not published: ${error.message}`);
+      else if (error instanceof FieldValuesError) setSaveError(`Fields not saved: ${error.message}`);
       else setSaveError('Could not publish — check your connection');
     } finally {
       setPublishing(false);
@@ -139,8 +162,8 @@ function EditorPage() {
   return (
     <div className="editor-page">
       <header className="editor-topbar">
-        <Link to="/pages" className="editor-back">
-          &larr; Pages
+        <Link to={type ? `/content/${type.prefix}` : '/pages'} className="editor-back">
+          &larr; {type?.name ?? 'Pages'}
         </Link>
         <span className="editor-title">Editing: {page.title}</span>
         <span className="editor-status" role="status">
@@ -171,7 +194,7 @@ function EditorPage() {
             its own internal state and won't otherwise notice a new page. */}
         <Puck
           key={page.slug}
-          config={config}
+          config={puckConfig}
           data={page.data}
           iframe={{ waitForStyles: true }}
           onChange={handleChange}

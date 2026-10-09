@@ -84,7 +84,7 @@ export type EditorComponents = {
 // What the editor toolbar may produce (req. 2: headings, paragraphs, lists,
 // links, quotations, plus bold and italic). Everything else is switched off so
 // the editor can't create markup the API's sanitiser would then strip (BLK-05).
-const richTextOptions: RichtextField['options'] = {
+export const richTextOptions: RichtextField['options'] = {
   heading: { levels: [2, 3] },
   bold: {},
   italic: {},
@@ -162,6 +162,10 @@ const summary = (text: string | undefined, fallback: string, index?: number) =>
 // team members, pricing plans) and button labels stay sidebar-only.
 export const config: Config<EditorComponents> = {
   root: {
+    // No fields on the page itself: its title lives in the page list and the new-page form,
+    // so Puck's default "title" box (which saved nowhere) is gone. An entry's own fields
+    // are added per type in puck/entryFields.tsx (TYP-02).
+    fields: {},
     // `min-h-screen` as in web's SiteChrome: the site's paper fills the canvas
     // below the last block, instead of admin's own (dark-mode) page background.
     render: ({ children }) => (

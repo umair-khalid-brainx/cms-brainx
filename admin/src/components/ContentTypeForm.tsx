@@ -1,10 +1,38 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { siteUrl } from '../data/site'
 import { singularize, suggestPrefix } from '../lib/contentTypes'
-import { createContentType, updateContentType, type ContentType } from '../lib/typesApi'
+import {
+  createContentType,
+  updateContentType,
+  type ContentFieldInput,
+  type ContentType,
+  type FieldKind,
+} from '../lib/typesApi'
 import './ContentTypeForm.css'
 
-// Create or edit a content type (TYP-01). The name suggests the singular name and
+// The six kinds, in the words a person would use. The list is fixed (root invariant 8).
+const KIND_OPTIONS: { value: FieldKind; label: string }[] = [
+  { value: 'text', label: 'Short text' },
+  { value: 'richText', label: 'Formatted text' },
+  { value: 'date', label: 'Date' },
+  { value: 'media', label: 'Image or file' },
+  { value: 'select', label: 'Choice from a list' },
+  { value: 'link', label: 'Link' },
+]
+
+type Row = ContentFieldInput & { rowId: string }
+
+const toRows = (fields: ContentFieldInput[] | undefined): Row[] =>
+  (fields ?? []).map((field) => ({ ...field, rowId: crypto.randomUUID() }))
+
+const stripRows = (rows: Row[]): ContentFieldInput[] =>
+  rows.map(({ rowId: _rowId, options, ...field }) => ({
+    ...field,
+    label: field.label.trim(),
+    ...(field.kind === 'select' && { options: (options ?? []).map((option) => option.trim()).filter(Boolean) }),
+  }))
+
+// Create or edit a content type (TYP-01, TYP-02). The name suggests the singular name and
 // the web address until the person types their own, so "Case studies" gives
 // "Case study" and /case-studies without any typing; every rule is enforced by
 // the API and its message is shown as written.
@@ -26,14 +54,16 @@ export function ContentTypeForm({
   // Once someone types in a field themselves, it stops following the name.
   const [singularTouched, setSingularTouched] = useState(editing)
   const [prefixTouched, setPrefixTouched] = useState(editing)
+  const [rows, setRows] = useState<Row[]>(() => toRows(type?.fields))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const firstField = useRef<HTMLInputElement>(null)
 
   const addressLocked = Boolean(type?.locked)
+  const fieldsChanged = JSON.stringify(stripRows(rows)) !== JSON.stringify(stripRows(toRows(type?.fields)).map((f) => f))
   const dirty = !type
-    ? name !== '' || singularName !== '' || prefix !== ''
-    : name !== type.name || singularName !== type.singularName || prefix !== type.prefix
+    ? name !== '' || singularName !== '' || prefix !== '' || rows.length > 0
+    : name !== type.name || singularName !== type.singularName || prefix !== type.prefix || fieldsChanged
 
   useEffect(() => {
     firstField.current?.focus()
@@ -55,6 +85,20 @@ export function ContentTypeForm({
     if (!prefixTouched && !addressLocked) setPrefix(suggestPrefix(value))
   }
 
+  function updateRow(rowId: string, change: Partial<Row>) {
+    setRows((current) => current.map((row) => (row.rowId === rowId ? { ...row, ...change } : row)))
+  }
+
+  function moveRow(index: number, by: -1 | 1) {
+    setRows((current) => {
+      const next = [...current]
+      const target = index + by
+      if (target < 0 || target >= next.length) return current
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
   function requestClose() {
     if (dirty && !window.confirm('Discard your unsaved changes?')) return
     onClose()
@@ -66,7 +110,7 @@ export function ContentTypeForm({
     setSaving(true)
     setError(null)
     try {
-      const input = { name, singularName, prefix }
+      const input = { name, singularName, prefix, fields: stripRows(rows) }
       const saved = type ? await updateContentType(type.id, input) : await createContentType(input)
       // The list endpoint adds the counts and the lock; the caller reloads it.
       onSaved({ ...(type ?? { entryCount: 0, locked: false, isBuiltIn: false }), ...saved })
@@ -77,7 +121,11 @@ export function ContentTypeForm({
   }
 
   const example = siteUrl(`/${prefix || 'events'}/summer-fair`).replace(/^https?:\/\//, '')
-  const ready = name.trim() !== '' && singularName.trim() !== '' && prefix.trim() !== ''
+  const ready =
+    name.trim() !== '' &&
+    singularName.trim() !== '' &&
+    prefix.trim() !== '' &&
+    rows.every((row) => row.label.trim() !== '' && (row.kind !== 'select' || (row.options ?? []).some((o) => o.trim() !== '')))
 
   return (
     <div className="type-form-backdrop" onClick={requestClose}>
@@ -167,6 +215,101 @@ export function ContentTypeForm({
                 )}
             </p>
           </div>
+
+          <fieldset className="type-form-fields">
+            <legend>Fields</legend>
+            <p className="type-form-hint">
+              What you fill in for each entry, besides the page content. Removing a field only hides it; entries keep
+              what was saved in it.
+            </p>
+            {rows.map((row, index) => (
+              <div key={row.rowId} className="type-field">
+                <div className="type-field-main">
+                  <label className="type-field-label">
+                    <span className="type-field-caption">Name</span>
+                    <input
+                      type="text"
+                      value={row.label}
+                      maxLength={60}
+                      placeholder={index === 0 ? 'Venue' : 'Field name'}
+                      onChange={(event) => updateRow(row.rowId, { label: event.target.value })}
+                    />
+                  </label>
+                  <label className="type-field-label">
+                    <span className="type-field-caption">Kind</span>
+                    <select
+                      value={row.kind}
+                      disabled={Boolean(row.key)}
+                      onChange={(event) => updateRow(row.rowId, { kind: event.target.value as FieldKind })}
+                    >
+                      {KIND_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {row.kind === 'select' && (
+                  <label className="type-field-label">
+                    <span className="type-field-caption">Choices, one per line</span>
+                    <textarea
+                      rows={3}
+                      value={(row.options ?? []).join('\n')}
+                      placeholder={'Talk\nWorkshop'}
+                      onChange={(event) => updateRow(row.rowId, { options: event.target.value.split('\n') })}
+                    />
+                  </label>
+                )}
+
+                <div className="type-field-actions">
+                  <label className="type-field-required">
+                    <input
+                      type="checkbox"
+                      checked={row.required}
+                      onChange={(event) => updateRow(row.rowId, { required: event.target.checked })}
+                    />
+                    Needed before publishing
+                  </label>
+                  <span className="type-field-buttons">
+                    <button
+                      type="button"
+                      aria-label={`Move ${row.label || 'field'} up`}
+                      disabled={index === 0}
+                      onClick={() => moveRow(index, -1)}
+                    >
+                      Up
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move ${row.label || 'field'} down`}
+                      disabled={index === rows.length - 1}
+                      onClick={() => moveRow(index, 1)}
+                    >
+                      Down
+                    </button>
+                    <button
+                      type="button"
+                      className="type-field-remove"
+                      aria-label={`Remove ${row.label || 'field'}`}
+                      onClick={() => setRows((current) => current.filter((candidate) => candidate.rowId !== row.rowId))}
+                    >
+                      Remove
+                    </button>
+                  </span>
+                </div>
+                {row.key && <p className="type-form-hint">The kind of a saved field can’t be changed.</p>}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="type-field-add"
+              onClick={() => setRows((current) => [...current, { rowId: crypto.randomUUID(), label: '', kind: 'text', required: false }])}
+            >
+              Add a field
+            </button>
+          </fieldset>
 
           {error && (
             <p className="type-form-error" role="alert">

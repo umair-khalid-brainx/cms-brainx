@@ -39,6 +39,8 @@ export type PublishChecks = { errors: PublishProblem[]; warnings: PublishProblem
 
 export type Page = PageSummary & {
   data: Data<EditorComponents>;
+  /** The content type this is an entry of; null for an ordinary page (TYP-01). */
+  typeId: string | null;
 };
 
 type FlatBlock = { type: string } & Record<string, unknown>;
@@ -50,6 +52,9 @@ type ContentRecord = {
   status: PageStatus;
   blocks: FlatBlock[];
   archivedAt: string | null;
+  typeId: string | null;
+  /** Values of the type's custom fields, by key (TYP-02). */
+  data: Record<string, unknown>;
 };
 
 function decapitalize(value: string): string {
@@ -116,8 +121,18 @@ function blockToPuckItem(block: FlatBlock): { type: string; props: Record<string
   return { type: puckType, props };
 }
 
-function blocksToPuckData(blocks: FlatBlock[]): Data<EditorComponents> {
-  return { root: {}, content: blocks.map(blockToPuckItem) } as Data<EditorComponents>;
+// An entry's custom field values sit in Puck's root props, which is what the side
+// panel edits when no block is selected (puck/entryFields.tsx).
+function blocksToPuckData(blocks: FlatBlock[], values: Record<string, unknown> = {}): Data<EditorComponents> {
+  return { root: { props: values }, content: blocks.map(blockToPuckItem) } as unknown as Data<EditorComponents>;
+}
+
+/** The custom field values in the editor's data, for the keys the type has. */
+function fieldValues(data: Data<EditorComponents>, keys: readonly string[]): Record<string, unknown> {
+  const props = ((data.root as { props?: Record<string, unknown> }).props ?? {}) as Record<string, unknown>;
+  const values: Record<string, unknown> = {};
+  for (const key of keys) if (key in props) values[key] = props[key];
+  return values;
 }
 
 function puckDataToBlocks(data: Data<EditorComponents>): FlatBlock[] {
@@ -154,21 +169,38 @@ export async function getPage(slug: string): Promise<Page | undefined> {
   const session = requireSession();
   try {
     const record = await apiGet<ContentRecord>(`/content/${slug}`, session.accessToken);
-    return { ...toSummary(record), data: blocksToPuckData(record.blocks) };
+    return { ...toSummary(record), data: blocksToPuckData(record.blocks, record.data), typeId: record.typeId };
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return undefined;
     throw error;
   }
 }
 
-export async function saveDraft(slug: string, data: Data<EditorComponents>): Promise<void> {
+// The blocks and the custom field values are saved by separate requests, so a value
+// the API refuses (a half-typed link, say) never costs the person their blocks. A
+// refused value comes back as a FieldValuesError with the API's own message.
+export class FieldValuesError extends Error {}
+
+export async function saveDraft(slug: string, data: Data<EditorComponents>, fieldKeys: readonly string[] = []): Promise<void> {
   const session = requireSession();
   await apiSend('PATCH', `/content/${slug}`, { blocks: puckDataToBlocks(data) }, session.accessToken);
+  if (fieldKeys.length === 0) return;
+  try {
+    await apiSend('PATCH', `/content/${slug}`, { data: fieldValues(data, fieldKeys) }, session.accessToken);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 400) throw new FieldValuesError(error.message);
+    throw error;
+  }
 }
 
-export async function publishPage(slug: string, data: Data<EditorComponents>): Promise<void> {
+export async function publishPage(slug: string, data: Data<EditorComponents>, fieldKeys: readonly string[] = []): Promise<void> {
   const session = requireSession();
-  await apiSend('PATCH', `/content/${slug}`, { blocks: puckDataToBlocks(data), status: 'published' }, session.accessToken);
+  await apiSend(
+    'PATCH',
+    `/content/${slug}`,
+    { blocks: puckDataToBlocks(data), status: 'published', ...(fieldKeys.length > 0 && { data: fieldValues(data, fieldKeys) }) },
+    session.accessToken,
+  );
 }
 
 export async function getPublishChecks(slug: string): Promise<PublishChecks> {

@@ -154,3 +154,10 @@
     outline-color: #72aee6;
   }
 }
+
+/* A document has no picture: its file tile fills the same square a thumbnail would. */
+.media-library-doc {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 1;
+}

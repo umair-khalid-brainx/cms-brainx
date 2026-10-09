@@ -11,7 +11,7 @@
 
 .type-form {
   width: 100%;
-  max-width: 460px;
+  max-width: 560px;
   max-height: 90vh;
   overflow-y: auto;
   padding: 1.5rem;
@@ -150,7 +150,192 @@
   outline-offset: 2px;
 }
 
+/* The field builder: one bordered block per field, so each reads as a unit. */
+.type-form-fields {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+}
+
+.type-form-fields legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.type-field {
+  margin-top: 0.7rem;
+  padding: 0.75rem;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+}
+
+.type-field-main {
+  display: grid;
+  grid-template-columns: 1fr 11rem;
+  gap: 0.6rem;
+}
+
+.type-field-label {
+  display: block;
+  margin-top: 0.4rem;
+}
+
+.type-field-main .type-field-label {
+  margin-top: 0;
+}
+
+.type-field-caption {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #50575e;
+}
+
+.type-field input[type='text'],
+.type-field select,
+.type-field textarea {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e1e1e;
+  font: inherit;
+  font-size: 0.8125rem;
+}
+
+.type-field select:disabled {
+  background: #f0f0f1;
+  color: #50575e;
+}
+
+.type-field input:focus-visible,
+.type-field select:focus-visible,
+.type-field textarea:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: -1px;
+}
+
+.type-field-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.type-field-required {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: #1e1e1e;
+}
+
+.type-field-buttons button,
+.type-field-add {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  background: #f6f7f7;
+  color: #1e1e1e;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.type-field-buttons button + button {
+  margin-left: 0.3rem;
+}
+
+.type-field-buttons button:disabled {
+  color: #8c8f94;
+  cursor: default;
+}
+
+.type-field-remove {
+  color: #b32d2e !important;
+}
+
+.type-field-add {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  border-color: #2271b1;
+  background: #fff;
+  color: #2271b1;
+}
+
+.type-field-buttons button:focus-visible,
+.type-field-add:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .type-field-main {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
+  .type-form-fields legend,
+  .type-field-required {
+    color: #ededed;
+  }
+
+  .type-field {
+    border-color: #444;
+  }
+
+  .type-field-caption {
+    color: #b0b0b0;
+  }
+
+  .type-field input[type='text'],
+  .type-field select,
+  .type-field textarea {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #ededed;
+  }
+
+  .type-field select:disabled {
+    background: #2c3338;
+    color: #b0b0b0;
+  }
+
+  .type-field-buttons button,
+  .type-field-add {
+    border-color: #444;
+    background: #232323;
+    color: #ededed;
+  }
+
+  .type-field-buttons button:disabled {
+    color: #6b6f73;
+  }
+
+  .type-field-remove {
+    color: #f28b82 !important;
+  }
+
+  .type-field-add {
+    border-color: #72aee6;
+    color: #72aee6;
+  }
+
+  .type-field input:focus-visible,
+  .type-field select:focus-visible,
+  .type-field textarea:focus-visible,
+  .type-field-buttons button:focus-visible,
+  .type-field-add:focus-visible {
+    outline-color: #72aee6;
+  }
+
   .type-form {
     background: #1f2023;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
