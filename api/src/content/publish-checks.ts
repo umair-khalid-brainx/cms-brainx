@@ -43,6 +43,7 @@ export const BLOCK_LABELS = {
   pricingTable: 'Pricing table',
   teamGrid: 'Team grid',
   contactForm: 'Contact form',
+  videoEmbed: 'Video',
 } as const;
 
 export type KnownBlockType = keyof typeof BLOCK_LABELS;
@@ -209,6 +210,11 @@ const RULES: Record<KnownBlockType, Rule> = {
     });
   },
   spacer() {},
+  // `videoId` is only set when the pasted link parsed as YouTube or Vimeo; without
+  // it the block renders nothing (D-040).
+  videoEmbed(c, b) {
+    c.text(b, 'videoId', 'url', 'Paste a YouTube or Vimeo link');
+  },
   gallery(c, b) {
     c.list(b, 'images', 'Add at least one image', 1, (image, path, n) => {
       c.image({ image }, 'image', path, `image ${n}`, true);

@@ -8,6 +8,49 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-042 — 2026-10-06 — Contact form submissions go through `web`, guarded by a shared secret (`BLK-06`)
+
+**Decision:**
+
+- **Route:** the `ContactForm` block posts to a Next.js server action in `web`. `web` resolves the
+  site from the request host (as it does for pages) and forwards to the API at
+  `POST /public/sites/:subdomain/submissions`. The browser never sends a `siteId` and never calls
+  the API directly, so no per-tenant CORS is needed.
+- **Shared secret:** `web` sends a secret header (env var on both sides); the API rejects a
+  submission without it. Without this, the public endpoint could be called directly, bypassing
+  every check in `web`.
+- **Spam:** both a honeypot field (filled → silently dropped) and a rate limit of 5 submissions per
+  minute per visitor IP. The rate limit lives in `web`, because only `web` sees the visitor's IP —
+  to the API every submission comes from `web`'s server. In-memory counter: fine on the single EC2
+  box, resets on restart. The IP is the last `X-Forwarded-For` entry, so the limit is only as good
+  as the proxy in front: `next dev` passes a client-sent header through unchanged (verified), and
+  production needs nginx to overwrite it with `$remote_addr` (DoD item added to `DEP-01a`).
+- **Storage:** a `submissions` table, accessed through a repository whose methods require `siteId`
+  (invariant #1). Answers are JSONB, an ordered array of `{ name, label, value }` — the editor
+  defines the fields per block, JSONB objects don't keep key order, and the label snapshot keeps an
+  old submission readable after a field is renamed. The API reads the form's fields from the live
+  page (`blocks[blockIndex]`), never from the request, so required fields and email format are
+  enforced server-side; unknown keys are dropped.
+- **Who reads them:** a new `submissions:read` permission for Owner, Administrator and Editor.
+  Submissions hold visitors' personal details, so Author and Contributor don't get them.
+- **cms-blocks stays network-free:** `ContactForm` gets its submit function from a
+  `ContactFormProvider`. `web` provides its server action; the editor canvas provides none, so the
+  form there is a preview that never sends. `BlockRenderer` now passes each block its `index`.
+- **Admin:** list plus detail view in `BLK-06`. Status (New → Read → Handled) and internal notes
+  (author + timestamp) are split into `BLK-08`. The visitor's answers are never editable — the
+  record must show what the customer actually sent.
+
+**Options the user chose between:**
+
+- Route: through `web` (chosen) vs browser → API with `siteId` in the body (anyone can post to any
+  site, and CORS for every subdomain).
+- Rate limit: in `web` + shared secret (chosen) vs in the API trusting a forwarded-IP header
+  (spoofable by calling the API directly) vs per-site limit (one bot blocks real customers).
+- Admin "edit": status only (chosen) vs editing the visitor's answers vs both.
+
+**Cost accepted:** one more env var in `web` and `api`; rate-limit state lost on restart; ticket
+split adds `BLK-08` (status + notes) rather than doubling `BLK-06`'s 0.5-day estimate. Delete, email
+alerts and CSV export are backlog (B-16).
 ## D-044 — 2026-10-07 — Media replace keeps the URL, same type only; "used on" is a runtime scan (`MED-02`)
 
 **Decision:** three choices, all confirmed with the owner before building.

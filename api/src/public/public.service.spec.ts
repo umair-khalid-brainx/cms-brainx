@@ -3,7 +3,7 @@ import type { ContentRepository } from '../content/content.repository.js';
 import type { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import type { SiteRepository } from '../sites/site.repository.js';
 import type { SubdomainCache } from '../sites/subdomain-cache.js';
-import { PublicService } from './public.service.js';
+import type { SubmissionRepository } from '../submissions/submission.repository.js';import { PublicService } from './public.service.js';
 
 const TOKEN_A = 'a'.repeat(43);
 const TOKEN_B = 'b'.repeat(43);
@@ -54,6 +54,7 @@ function setup() {
     {} as ContentRepository,
     previewLinks as unknown as PreviewLinkRepository,
     subdomainCache as unknown as SubdomainCache,
+    {} as SubmissionRepository,
   );
   return { service, previewLinks };
 }

@@ -5,6 +5,84 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Week-3 merge: seven finished branches brought onto one base
+
+Merged into `claude/week-3-tickets-review-b9d261`, in this order: week-2 tickets, `BLK-02`, `BLK-03`
+tests, `BLK-04`, `MED-01`, `MED-02`, `BLK-06`. Plan: `docs/WEEK3_PLAN.md`.
+
+- **Renumbered** clashing IDs: `BLK-02` D-033 → D-040, `BLK-03` D-034 → D-041, `BLK-06` D-034 → D-042,
+  `MED-01` D-036 → D-043, `MED-02` D-037 → D-044. Backlog: `BLK-02`'s B-16 → B-19, `BLK-04`'s B-17 → B-20
+  (its B-16 was the same item as the week-2 B-16), `BLK-06`'s B-16 → B-21.
+- **Integration fixes** the branches couldn't have known about: replace-in-place now regenerates the
+  thumbnail (`MED-01` x `MED-02`); `CNT-12`'s publish checks got a rule for `videoEmbed` (`BLK-02`
+  added a 15th block after they were written); `MediaPage.tsx`, `config.tsx`, `public.service.ts` and
+  `schema.prisma` merged by hand.
+- **Verified:** `api` typecheck, lint and 69 tests; `admin` typecheck, 26 tests and build; `cms-blocks`
+  and `web` build; all migrations apply in order on an empty database with no drift from the schema.
+
+**Not done:** not run in a browser yet, and `api/test/submissions.e2e-spec.ts` (needs a running
+database) wasn't run. `BLK-06` split out a new ticket, `BLK-08` (submission status and notes), which
+`WEEK3_PLAN.md` doesn't schedule yet.
+
+---
+
+## 2026-10-06 — Contact form submissions work end to end (`BLK-06`, D-042)
+
+**What changed**
+- `api`: `submissions` table (migration `20261006164148_add_submissions`), `SubmissionRepository`
+  (every method takes `siteId`), `POST /public/sites/:subdomain/submissions` behind
+  `FormSecretGuard`, and `GET /submissions`, `GET /submissions/:id` behind a new
+  `submissions:read` permission (Owner, Administrator, Editor).
+- `cms-blocks`: `ContactForm` really submits now, through a `ContactFormProvider`; it has a
+  honeypot field and sending, sent and error states. With no provider (the editor canvas) it shows
+  a preview note instead. `BlockRenderer` passes `index` to every block.
+- `web`: `src/site/contactFormAction.ts` server action, which resolves the site from the host,
+  applies the rate limit (5/min per IP, `src/lib/rateLimit.ts`) and the honeypot, then forwards
+  with the shared secret. The page wraps its blocks in `ContactFormProvider`.
+- `admin`: Submissions nav item, list page (`/submissions`) and detail page (`/submissions/:id`).
+- Pagination: `GET /submissions` returns `{ items, nextCursor, total }`, 50 per page, newest first;
+  `?after=<id>` gets the next page, and the cursor id is looked up within the caller's site only.
+  Admin shows "Showing N of M" and a "Load more" button.
+- New env var `FORM_SUBMIT_SECRET`, same value in `api/.env` and `web/.env.local`.
+
+**Verified**
+- `api` e2e, `test/submissions.e2e-spec.ts` (7 tests, two sites): no or wrong secret gives 403;
+  a valid submission is stored with labels in field order and extra keys dropped; a missing
+  required field or bad email gives 400; a non-form block gives 400; a draft page or unknown site
+  gives 404; each owner sees only their own site's list; site B can't open site A's submission by
+  id (404); a Contributor gets 403; 56 submissions page as 50 + 6 with no duplicates, and site B's id
+  as a cursor gives 400.
+- Headless Chrome on `corrick.lvh.me` and `harbour.lvh.me`: real submissions were stored under the
+  right site. A filled honeypot showed "sent" and stored nothing. With the browser's `required`
+  stripped, the server refused the missing name. The 6th submission within a minute was refused.
+  The honeypot field is not visible.
+- Admin in the browser: the list shows only Corrick's submissions; the detail view keeps line
+  breaks; with 65 submissions, "Load more" goes from 50 to 65 unique rows and then disappears. In the editor canvas the form shows the preview note and stays usable.
+- `api` typecheck, lint and tests; `web` typecheck, lint and `next build`; `admin` typecheck and
+  build. All pass.
+
+**Found while verifying:** `next dev` passes a client-sent `X-Forwarded-For` straight through, so
+locally the rate limit can be dodged by faking it. Production depends on nginx overwriting that
+header; this is now a DoD item on `DEP-01a`.
+
+**Not done**
+- Status and internal notes are `BLK-08`. Delete, email alerts and CSV export are B-16.
+- The honeypot and rate limit have no automated tests (`web` has no test runner); both were
+  verified by hand in headless Chrome, twice.
+
+**Editor follow-up (user feedback, same day):** in the sidebar, each form field now shows its label
+instead of "Item #0" (Puck `getItemSummary`), and **label** comes before **name**. Name is now
+optional: on save, `resolveContactFieldNames` (cms-blocks) builds an empty name from the label
+("Phone number" → `phone_number`) and numbers repeats (`phone_2`). Before this, a nameless field
+made the live form fail with "This form has changed". Verified in the browser: I added a field with
+only a label, it saved as `phone_number`, and a live submission stored the phone answer.
+
+**Review:** reviewer APPROVED; verifier PASS on every DoD item. Both ran as general agents with the
+kit's reviewer/verifier instructions (the kit's own agents need `docs/plan.md` and `docs/use-cases.md`). One
+minor bug from the review is fixed: a form field named `constructor` read `Object.prototype` and
+crashed the submit with a 500. It now uses `Object.hasOwn`, with an e2e test. Not acted on: with no
+`X-Forwarded-For` at all, every visitor shares one rate-limit bucket. Production nginx always sets
+it (`DEP-01a`).
 ## 2026-10-07 — Media replace-in-place and "used on" delete warning (`MED-02` done)
 
 The two open `MED-02` items, built after confirming three choices with the owner (D-044).

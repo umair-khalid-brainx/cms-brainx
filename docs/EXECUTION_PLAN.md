@@ -117,6 +117,7 @@ Puck's config) validates the integration.
 | `BLK-05` | TipTap integration and sanitisation on write | B | 0.40 | 3 | BLK-04 |
 | `BLK-06` | Form block, submissions table, admin list | B | 0.50 | 3 | BLK-04, FND-02 |
 | `BLK-07` | Inline editing: Editable primitive + TipTap in canvas | C | 0.30 | 3 | XRP-01, BLK-04 |
+| `BLK-08` | Submission status and internal notes (split from BLK-06, D-034) | B | 0.40 | 3 | BLK-06 |
 
 ### TYP — Content types and templates  ·  1.70d  ·  api + admin + web
 

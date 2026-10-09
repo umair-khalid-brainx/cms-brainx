@@ -146,7 +146,7 @@ export type ContactFormBlock = {
   heading?: string;
   intro?: string;
   submitLabel: string;
-  /** No submission endpoint yet — see docs/BACKLOG.md. */
+  /** Submissions go wherever the surface's ContactFormProvider sends them (D-034). */
   fields: ContactFormField[];
 };
 

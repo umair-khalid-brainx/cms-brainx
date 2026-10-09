@@ -22,6 +22,7 @@ Status: **open** / **done** (with date) / **accepted** (deliberately not acting)
 | B-17 | **The ISR cache can be filled by anyone.** Since `CNT-08`, every unknown path or `*.<root>` subdomain renders a 404 that Next caches on disk, so a crawler or attacker can grow `.next/cache` without limit; under `no-store` this didn't exist. | 2026-10-07 | Before launch: don't cache 404s for unknown sites, or cap and evict the cache, or put rate limiting in nginx (D-039) |
 | B-18 | **Block `/__revalidate` at nginx** so only `api` (over localhost) can reach it; today the shared secret is its only guard and it answers on every public host. | 2026-10-07 | Part of `DEP-01b`'s nginx config (D-039) |
 | B-20 | **Puck's default page-level `title` field shows in the sidebar** when no block is selected, but `contentApi.ts` never saves `root.props`, so typing in it does nothing. | 2026-10-06 | Hide it (`root.fields: {}`) or wire it to the page title |
+| B-21 | **Contact form submissions: delete, email alerts, CSV export.** Deliberately left out of `BLK-06`/`BLK-08` (D-042). | 2026-10-06 | Email alerts need a mail provider |
 
 ## Accepted — deliberately not acting
 

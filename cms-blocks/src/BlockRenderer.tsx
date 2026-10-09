@@ -16,7 +16,7 @@ export function BlockRenderer({ blocks }: Props) {
       {blocks.map((block, index) => {
         const Component = getBlockComponent(block);
         if (!Component) return null;
-        return <Component key={`${block.type}-${index}`} block={block} />;
+        return <Component key={`${block.type}-${index}`} block={block} index={index} />;
       })}
     </>
   );

@@ -16,7 +16,9 @@ import { TeamGrid } from './TeamGrid';
 import { Testimonial } from './Testimonial';
 import { VideoEmbed } from './VideoEmbed';
 
-export type BlockComponent<T extends BlockType> = ComponentType<{ block: BlockOfType<T> }>;
+// `index` is the block's position on the page. Only ContactForm uses it, to
+// tell the API which form was submitted (D-034).
+export type BlockComponent<T extends BlockType> = ComponentType<{ block: BlockOfType<T>; index?: number }>;
 
 type Registry = { [T in BlockType]: BlockDefinition<T> };
 

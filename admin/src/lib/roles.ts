@@ -43,3 +43,8 @@ export function canArchiveContent(role: Role | undefined): boolean {
 export function canManageSite(role: Role | undefined): boolean {
   return role === 'owner' || role === 'administrator';
 }
+
+/** Contact form submissions — Owner, Administrator, Editor, matching the API's submissions:read (D-034). */
+export function canReadSubmissions(role: Role | undefined): boolean {
+  return role === 'owner' || role === 'administrator' || role === 'editor';
+}

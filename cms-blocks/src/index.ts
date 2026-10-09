@@ -18,5 +18,6 @@ export * from './TeamGrid';
 export * from './ContactForm';
 export * from './VideoEmbed';
 export * from './video';
+export * from './contactFormFields';
 export * from './theme/theme';
 export * from './theme/SiteThemeRoot';

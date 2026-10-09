@@ -424,8 +424,12 @@ export const config: Config<EditorComponents> = {
           type: 'array',
           label: 'Form fields',
           arrayFields: {
-            name: { type: 'text', label: 'Field key (no spaces, e.g. phone)' },
             label: { type: 'text', label: 'Label shown to visitors' },
+            name: {
+              type: 'text',
+              label: 'Field key (optional, no spaces)',
+              placeholder: 'Made from the label if left empty',
+            },
             fieldType: {
               type: 'radio',
               label: 'Input type',
@@ -463,9 +467,9 @@ export const config: Config<EditorComponents> = {
     VideoEmbed: {
       label: 'Video',
       fields: {
-        heading: { type: 'text' },
+        heading: { type: 'text', label: 'Heading' },
         url: { type: 'text', label: 'YouTube or Vimeo link' },
-        caption: { type: 'text' },
+        caption: { type: 'text', label: 'Caption' },
       },
       defaultProps: { url: '' },
       render: ({ heading, url, caption }) => {

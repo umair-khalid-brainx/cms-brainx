@@ -1,3 +1,4 @@
+import { resolveContactFieldNames, type ContactFormField } from 'cms-blocks';
 import type { Data } from '@puckeditor/core';
 import { parseVideoUrl } from 'cms-blocks';
 import type { EditorComponents } from '../puck/config';
@@ -91,6 +92,11 @@ function puckItemToBlock(item: { type: string; props: Record<string, unknown> })
     // link saves without them.
     const url = typeof fields.url === 'string' ? fields.url : '';
     return { type, ...fields, url, ...parseVideoUrl(url) };
+  }
+  // A field left without a name gets one from its label, so the live form
+  // can always be submitted (the API refuses a form with a nameless field).
+  if (item.type === 'ContactForm' && Array.isArray(fields.fields)) {
+    return { type, ...fields, fields: resolveContactFieldNames(fields.fields as ContactFormField[]) };
   }
   return { type, ...fields };
 }
