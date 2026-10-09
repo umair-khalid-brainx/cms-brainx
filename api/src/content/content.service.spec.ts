@@ -728,3 +728,42 @@ describe('ContentService entry fields (TYP-02)', () => {
     expect(await service.duplicate('alice', 'fair')).toMatchObject({ data: { summary: 'x' } });
   });
 });
+
+describe('ContentService publish date and listing refresh (TYP-03)', () => {
+  const TYPES = [{ id: 'type-events', siteId: 'site-a', prefix: 'events', fields: [] }];
+  const setup = (rows: Row[]) => fakeContent(rows, { alice: { siteId: 'site-a', role: 'owner' } }, {}, TYPES);
+  const draft = (extra: Partial<Row> = {}): Row => ({
+    siteId: 'site-a', title: 'Fair', slug: 'fair', path: '/events/fair', status: 'draft',
+    blocks: [{ type: 'richText', html: '<p>x</p>' }], typeId: 'type-events', ...extra,
+  });
+
+  it('sets the publish date the first time it goes live, and keeps it after', async () => {
+    const { service, table } = setup([draft()]);
+
+    await service.update('alice', 'fair', { status: 'published' });
+    const first = (table[0] as Row & { publishedAt?: Date }).publishedAt;
+    expect(first).toBeInstanceOf(Date);
+
+    // The fake repository copies an undefined `blocks` over the saved ones (Prisma ignores it), so they are sent.
+    const blocks = [{ type: 'richText', html: '<p>x</p>' }];
+    await service.update('alice', 'fair', { status: 'draft', blocks });
+    await service.update('alice', 'fair', { status: 'published', blocks });
+    expect((table[0] as Row & { publishedAt?: Date }).publishedAt).toBe(first);
+  });
+
+  it('refreshes an entry’s listing as well as its page when it goes live', async () => {
+    const { service, revalidation } = setup([draft()]);
+
+    await service.update('alice', 'fair', { status: 'published' });
+
+    expect(revalidation.page.mock.calls.map((c: unknown[]) => c[1]).sort()).toEqual(['/events', '/events/fair']);
+  });
+
+  it('refreshes only the page for an ordinary page', async () => {
+    const { service, revalidation } = setup([draft({ typeId: null, path: '/fair' })]);
+
+    await service.update('alice', 'fair', { status: 'published' });
+
+    expect(revalidation.page.mock.calls.map((c: unknown[]) => c[1])).toEqual(['/fair']);
+  });
+});

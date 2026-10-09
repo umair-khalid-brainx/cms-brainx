@@ -54,6 +54,14 @@ export class MediaRepository {
     });
   }
 
+  /** What the public entry page needs to show a file: its type and the library's words, by stored name. */
+  findByFilenames(siteId: string, filenames: string[]) {
+    return this.prisma.media.findMany({
+      where: { siteId, filename: { in: filenames } },
+      select: { filename: true, mimetype: true, alt: true, title: true },
+    });
+  }
+
   delete(siteId: string, id: string) {
     return this.prisma.media.deleteMany({ where: { id, siteId } });
   }

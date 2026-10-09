@@ -35,7 +35,20 @@ export class ContentRepository {
    * this one condition already excludes it; there's no second flag to forget.
    */
   findLiveByPath(siteId: string, path: string) {
-    return this.prisma.content.findFirst({ where: { siteId, path, status: 'published' } });
+    return this.prisma.content.findFirst({
+      where: { siteId, path, status: 'published' },
+      // The author's name only (never their email) and the type, for an entry's public header (TYP-03).
+      include: { author: { select: { name: true } }, type: true },
+    });
+  }
+
+  /** A type's published entries, newest first (TYP-03). Never drafts or archived ones. */
+  findPublishedByType(siteId: string, typeId: string, take: number) {
+    return this.prisma.content.findMany({
+      where: { siteId, typeId, status: 'published' },
+      orderBy: [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
+      take,
+    });
   }
 
   /**

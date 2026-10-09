@@ -36,7 +36,7 @@ export class PreviewLinkRepository {
   async findPageByToken(siteId: string, token: string) {
     const link = await this.prisma.previewLink.findFirst({
       where: { siteId, token },
-      include: { content: true },
+      include: { content: { include: { author: { select: { name: true } }, type: true } } },
     });
     return link?.content ?? null;
   }

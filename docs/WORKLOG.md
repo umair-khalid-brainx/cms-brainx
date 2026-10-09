@@ -5,6 +5,25 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Public pages for content types (`TYP-03`, built; review pending)
+
+Decision in D-050.
+
+- **API:** migration `20261009150000_add_published_at`; `GET /public/sites/:sub/types/:prefix`; an `entry` block on
+  a page that is an entry (author name only, visible fields shaped for display, media with the library's alt);
+  publishing an entry refreshes its listing as well as its page. `api` 337 tests.
+- **cms-blocks:** `EntryHeader`, `EntryList`, `entry.ts` (shapes and date formatting). **web:** the existing
+  catch-all route renders them; the preview route shows the header too. `admin` 99 tests (render tests).
+- **Checked with real screenshots** (headless Chrome, two hosts): the Corrick blog listing and a post with its
+  featured image, excerpt, author and date; a talk entry with facts, a download, a button and a formatted-text
+  body; a phone-width probe of both; Kestrel's `/blog` is its own empty listing, and Corrick's `/talks` and post
+  are 404 on Kestrel's host. Two layout problems found and fixed from the first screenshots (an excerpt shown as a
+  tiny fact row; an empty second column).
+
+**Not done:** reviewer and verifier pending; a second tenant's theme with entries hasn't been photographed.
+
+---
+
 ## 2026-10-09 — Custom fields on content types (`TYP-02` done)
 
 Decision in D-049.

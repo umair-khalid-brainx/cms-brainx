@@ -134,6 +134,8 @@ export class ContentService {
       ...dto,
       blocks: blocks as Prisma.InputJsonValue | undefined,
       data: data as Prisma.InputJsonValue | undefined,
+      // Set the first time it goes live and kept after (TYP-03).
+      ...(dto.status === 'published' && !existing.publishedAt && { publishedAt: new Date() }),
       ...(entering && { archivedAt: new Date() }),
       ...(leaving && { archivedAt: null }),
     });
@@ -144,6 +146,8 @@ export class ContentService {
     // site + path in `web`'s cache (CNT-08). Draft-only edits aren't public.
     if (existing.status === 'published' || updated?.status === 'published') {
       await this.revalidation.page(membership.site.subdomain, existing.path);
+      // An entry also sits in its type's listing (`/events`), which changed with it (TYP-03).
+      if (existing.typeId) await this.revalidation.page(membership.site.subdomain, `/${existing.path.split('/')[1]}`);
     }
     return updated;
   }

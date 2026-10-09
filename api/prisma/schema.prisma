@@ -128,20 +128,23 @@ enum ContentStatus {
 // admin is responsible for translating Puck's ComponentData into this shape
 // before it ever reaches the API (see DECISIONS.md D-013 addendum).
 model Content {
-  id         String        @id @default(cuid())
-  siteId     String        @map("site_id")
-  title      String
-  slug       String
-  path       String
-  status     ContentStatus @default(draft)
-  blocks     Json          @default("[]")
+  id          String        @id @default(cuid())
+  siteId      String        @map("site_id")
+  title       String
+  slug        String
+  path        String
+  status      ContentStatus @default(draft)
+  blocks      Json          @default("[]")
   // Values of the type's custom fields, by field key (TYP-02). Empty for pages.
-  data       Json          @default("{}")
+  data        Json          @default("{}")
   // When it was archived, for display only — set on entering `archived`,
   // cleared on leaving it. `status` is the source of truth, not this.
-  archivedAt DateTime?     @map("archived_at")
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
+  archivedAt  DateTime?     @map("archived_at")
+  // When it was first published: the date shown on a public entry, and what a type's listing is
+  // ordered by, newest first (TYP-03). Set once; unpublishing doesn't clear it.
+  publishedAt DateTime?     @map("published_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
   // Set for entries of a custom type (events, posts...); null for ordinary pages (TYP-01).
   typeId   String? @map("type_id")

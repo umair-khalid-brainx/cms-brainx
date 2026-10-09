@@ -8,6 +8,43 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-050 — 2026-10-09 — Entries get an automatic header and a type listing, from the existing route (`TYP-03`)
+
+**Decision (the week 3 plan the user approved):**
+
+- **No per-type routes.** The existing catch-all route serves everything: it looks up the page; if there is none
+  and the path is a single segment, it asks for a type listing at that address (a page can never take a type's
+  address, D-048, so the two can't clash). A new type needs no deploy.
+- **The entry header is automatic**, built from what each field *is*, not from a template per type
+  (`cms-blocks/src/EntryHeader.tsx`): the title, the author's name and the first-publish date; the first picture
+  as the lead image; an excerpt or summary (fields named `excerpt`, `summary`, `intro`, `standfirst`, or any text
+  over 80 characters) leading under the title; short text, choices and dates as a quiet facts list; links as
+  buttons and other files as downloads ("Slides (PDF)"); formatted text as the body, each under its field's
+  name. The entry's own blocks follow. The two-column layout only appears when there is body text.
+- **The listing is a ruled list, not a grid of cards** (`EntryList.tsx`): date, title linking to the entry,
+  a short summary (the first short-text field, cut to 200 characters) and the first picture. Newest first by
+  publish date, up to 50 (paging arrives with the archive pages, TAX-02).
+- **Publish date:** `content.published_at`, set the first time an entry or page goes live and kept after;
+  existing live rows took their last-edited time in the migration.
+- **What the public API returns:** `entry` on a page (type names, author's **name only**, date, and each visible
+  field with a value, shaped for display; media as a full address with the library's alt text and kind; a file
+  deleted from the library is left out) and `GET /public/sites/:sub/types/:prefix` for the listing. Hidden
+  fields are never sent. Values are shown as saved (invariant 5); media is stored short and given the API's
+  address here. A missing type, another site's type and a draft are all the same 404.
+- **Freshness:** publishing, unpublishing, archiving or saving a live entry refreshes its page and its type's
+  listing (`/events`), as well as the page, through the existing on-demand refresh (CNT-08).
+- Private preview links show the same header.
+
+**Costs and limits:**
+
+- The excerpt rule uses four field names (`excerpt`, `summary`, `intro`, `standfirst`); a differently named short
+  text is a fact, not a lede.
+- Entries have no SEO fields or social image yet (`SEO-01`), and no categories or tags (`TAX-01`/`TAX-02`).
+- A listing shows the newest 50; there is no paging or search.
+- A document is a download link named after its field and file type, not its title.
+
+---
+
 ## D-049 — 2026-10-09 — Custom fields: six fixed kinds, validated on write, edited in the editor's side panel (`TYP-02`)
 
 **Decision (the week 3 plan the user approved; the six kinds were the user's choice):**

@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
+import { ConfigService } from '@nestjs/config';
 import { ContentRepository } from '../content/content.repository.js';
+import { ContentTypeRepository } from '../content-types/content-type.repository.js';
+import { parseStoredFields, type FieldDefinition } from '../content-types/field-definitions.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import { MediaRepository } from '../media/media.repository.js';
@@ -8,10 +11,33 @@ import { SiteRepository } from '../sites/site.repository.js';
 import { SubdomainCache } from '../sites/subdomain-cache.js';
 import type { CreateSubmissionDto, SubmissionAnswer } from '../submissions/dto/submission.dto.js';
 import { SubmissionRepository } from '../submissions/submission.repository.js';
+import {
+  buildEntryFields,
+  listingItem,
+  mediaFilenames,
+  type FileInfo,
+  type ListingItem,
+  type PublicField,
+} from './entry-view.js';
 import { filenamesNeedingAlt, withLibraryAlt } from './image-alt.js';
 
 export type PublicSite = { name: string; subdomain: string; theme: unknown };
-export type PublicPage = { title: string; path: string; blocks: unknown; updatedAt: Date };
+/** What an entry shows above its page content (TYP-03). Absent for an ordinary page. */
+export type PublicEntry = {
+  type: { name: string; singularName: string; prefix: string };
+  /** The author's name only. */
+  author: string | null;
+  publishedAt: Date | null;
+  fields: PublicField[];
+};
+export type PublicPage = { title: string; path: string; blocks: unknown; updatedAt: Date; entry?: PublicEntry };
+export type PublicListing = {
+  type: { name: string; singularName: string; prefix: string };
+  entries: ListingItem[];
+};
+
+// A listing shows this many, newest first. Paging comes with the archive pages (TAX-02).
+const LISTING_LIMIT = 50;
 export type PreviewPage = PublicPage & { status: 'draft' | 'published' };
 
 // What `randomBytes(32).toString('base64url')` produces; anything else is
@@ -32,6 +58,8 @@ export class PublicService {
     private readonly subdomainCache: SubdomainCache,
     private readonly submissions: SubmissionRepository,
     private readonly media: MediaRepository,
+    private readonly types: ContentTypeRepository,
+    private readonly config: ConfigService,
   ) {}
 
   async getSite(subdomain: string): Promise<PublicSite> {
@@ -45,7 +73,31 @@ export class PublicService {
     const siteId = await this.findSiteId(subdomain);
     const page = await this.content.findLiveByPath(siteId, normalisePath(rawPath));
     if (!page) throw new NotFoundException('Page not found');
-    return { title: page.title, path: page.path, blocks: await this.withLibraryAlt(siteId, page.blocks), updatedAt: page.updatedAt };
+    return {
+      title: page.title,
+      path: page.path,
+      blocks: await this.withLibraryAlt(siteId, page.blocks),
+      updatedAt: page.updatedAt,
+      ...(page.type && { entry: await this.entryOf(siteId, page, page.type) }),
+    };
+  }
+
+  /**
+   * A content type's published entries, newest first: the page at `/events`. An unknown address,
+   * or another site's, is the same 404 as a missing page (D-030).
+   */
+  async getListing(subdomain: string, prefix: string): Promise<PublicListing> {
+    const siteId = await this.findSiteId(subdomain);
+    const type = await this.types.findByPrefix(siteId, prefix.toLowerCase());
+    if (!type) throw new NotFoundException('Page not found');
+    const fields = parseStoredFields(type.fields);
+    const rows = await this.content.findPublishedByType(siteId, type.id, LISTING_LIMIT);
+    const files = await this.filesFor(siteId, fields, rows.map((row) => row.data));
+    const origin = this.apiOrigin();
+    return {
+      type: { name: type.name, singularName: type.singularName, prefix: type.prefix },
+      entries: rows.map((row) => listingItem(row, fields, files, origin)),
+    };
   }
 
   /**
@@ -65,6 +117,34 @@ export class PublicService {
       blocks: await this.withLibraryAlt(siteId, page.blocks),
       updatedAt: page.updatedAt,
       status: page.status,
+      ...(page.type && { entry: await this.entryOf(siteId, page, page.type) }),
+    };
+  }
+
+  private apiOrigin(): string {
+    return (this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4001').replace(/\/+$/, '');
+  }
+
+  /** The library's details for every file the given entries' media fields name, in one query. */
+  private async filesFor(siteId: string, fields: readonly FieldDefinition[], datas: unknown[]): Promise<Map<string, FileInfo>> {
+    const names = [...new Set(datas.flatMap((data) => mediaFilenames(fields, data)))];
+    if (names.length === 0) return new Map();
+    const rows = await this.media.findByFilenames(siteId, names);
+    return new Map(rows.map((row) => [row.filename, { mimetype: row.mimetype, alt: row.alt, title: row.title }]));
+  }
+
+  private async entryOf(
+    siteId: string,
+    page: { data: unknown; publishedAt: Date | null; author: { name: string } | null },
+    type: { name: string; singularName: string; prefix: string; fields: unknown },
+  ): Promise<PublicEntry> {
+    const fields = parseStoredFields(type.fields);
+    const files = await this.filesFor(siteId, fields, [page.data]);
+    return {
+      type: { name: type.name, singularName: type.singularName, prefix: type.prefix },
+      author: page.author?.name ?? null,
+      publishedAt: page.publishedAt,
+      fields: buildEntryFields(fields, page.data, files, this.apiOrigin()),
     };
   }
 

@@ -1,10 +1,11 @@
 import { cache } from 'react';
-import type { Block, SiteTheme } from 'cms-blocks';
+import type { Block, EntryView, SiteTheme, TypeListing } from 'cms-blocks';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4001';
 
 export type PublicSite = { name: string; subdomain: string; theme: SiteTheme };
-export type PublicPage = { title: string; path: string; blocks: Block[]; updatedAt: string };
+/** `entry` is present when the page is an entry of a content type (TYP-03). */
+export type PublicPage = { title: string; path: string; blocks: Block[]; updatedAt: string; entry?: EntryView };
 export type PreviewPage = PublicPage & { status: 'draft' | 'published' };
 
 /**
@@ -35,6 +36,14 @@ export const getSite = cache((subdomain: string) =>
 
 export const getPage = cache((subdomain: string, path: string) =>
   getJson<PublicPage>(`/public/sites/${encodeURIComponent(subdomain)}/page?path=${encodeURIComponent(path)}`),
+);
+
+/**
+ * The page at a content type's address, like `/events`: its published entries, newest first (TYP-03).
+ * `null` when no type has that address on this site, the same 404 as a missing page.
+ */
+export const getListing = cache((subdomain: string, prefix: string) =>
+  getJson<TypeListing>(`/public/sites/${encodeURIComponent(subdomain)}/types/${encodeURIComponent(prefix)}`),
 );
 
 /**

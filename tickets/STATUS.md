@@ -54,7 +54,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | BLK-08 | Submission status and internal notes | TODO | 0 | Split from BLK-06 (D-042) |
 | TYP-01 | Type builder UI | DONE | 0 |  |
 | TYP-02 | Six field kinds, dynamic forms, JSONB, Zod | DONE | 0 |  |
-| TYP-03 | Type-driven routing | TODO | 0 |  |
+| TYP-03 | Type-driven routing | IN-PROGRESS | 0 |  |
 | TYP-04 | Template selection on create | TODO | 0 |  |
 | MED-01 | Upload, thumbnails, local disk | DONE | 0 |  |
 | MED-02 | Library grid, reuse, replace, delete, metadata | DONE | 0 |  |

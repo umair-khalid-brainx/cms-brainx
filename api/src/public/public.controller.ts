@@ -24,6 +24,12 @@ export class PublicController {
     return this.publicSite.getPage(subdomain, path);
   }
 
+  // The page at a content type's address, `/events`: its published entries, newest first (TYP-03).
+  @Get('types/:prefix')
+  getListing(@Param('subdomain') subdomain: string, @Param('prefix') prefix: string) {
+    return this.publicSite.getListing(subdomain, prefix);
+  }
+
   // A draft behind a secret link: never cached by anything in between, never
   // indexed even if the link leaks (CNT-09).
   @Get('preview/:token')

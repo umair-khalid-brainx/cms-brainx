@@ -3,6 +3,8 @@ import type { ContentRepository } from '../content/content.repository.js';
 import type { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import type { SiteRepository } from '../sites/site.repository.js';
 import type { SubdomainCache } from '../sites/subdomain-cache.js';
+import type { ConfigService } from '@nestjs/config';
+import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { MediaRepository } from '../media/media.repository.js';
 import type { SubmissionRepository } from '../submissions/submission.repository.js';
 import { PublicService } from './public.service.js';
@@ -58,6 +60,8 @@ function setup() {
     subdomainCache as unknown as SubdomainCache,
     {} as SubmissionRepository,
     {} as MediaRepository,
+    {} as ContentTypeRepository,
+    { get: () => undefined } as unknown as ConfigService,
   );
   return { service, previewLinks };
 }
@@ -132,6 +136,8 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       subdomainCache as unknown as SubdomainCache,
       {} as SubmissionRepository,
       media as unknown as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
     );
     return { service, media };
   }
@@ -167,6 +173,8 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       { resolve: vi.fn(async () => SITE) } as unknown as SubdomainCache,
       {} as SubmissionRepository,
       media as unknown as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
     );
 
     const page = await service.getPreview('alpha', TOKEN);
@@ -180,5 +188,91 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
     await service.getPage('alpha', '/');
 
     expect(media.findAltsByFilenames).not.toHaveBeenCalled();
+  });
+});
+
+describe('PublicService entries and listings (TYP-03)', () => {
+  const TYPE = {
+    id: 'type-events',
+    siteId: 'site-a',
+    name: 'Events',
+    singularName: 'Event',
+    prefix: 'events',
+    fields: [
+      { key: 'summary', label: 'Summary', kind: 'text', required: false },
+      { key: 'photo', label: 'Photo', kind: 'media', required: false },
+    ],
+  };
+  const ROWS = [
+    { title: 'Newest', path: '/events/newest', publishedAt: new Date('2026-10-02T00:00:00Z'), data: { summary: 'S1', photo: '/uploads/site-a/p-1.png' } },
+    { title: 'Older', path: '/events/older', publishedAt: new Date('2026-10-01T00:00:00Z'), data: {} },
+  ];
+
+  function setup() {
+    const content = {
+      findPublishedByType: vi.fn(async (siteId: string, typeId: string) => (siteId === 'site-a' && typeId === 'type-events' ? ROWS : [])),
+      findLiveByPath: vi.fn(async () => ({
+        title: 'Newest', path: '/events/newest', blocks: [], updatedAt: new Date(), data: ROWS[0].data, publishedAt: ROWS[0].publishedAt,
+        author: { name: 'Ada' }, type: TYPE,
+      })),
+    };
+    const types = {
+      findByPrefix: vi.fn(async (siteId: string, prefix: string) => (siteId === 'site-a' && prefix === 'events' ? TYPE : null)),
+    };
+    const media = {
+      findByFilenames: vi.fn(async () => [{ filename: 'p-1.png', mimetype: 'image/png', alt: 'Harbour', title: null }]),
+      findAltsByFilenames: vi.fn(async () => []),
+    };
+    const service = new PublicService(
+      {} as SiteRepository,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async (sub: string) => ({ alpha: 'site-a', beta: 'site-b' })[sub] ?? null) } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      media as unknown as MediaRepository,
+      types as unknown as ContentTypeRepository,
+      { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
+    );
+    return { service, content, media };
+  }
+
+  it('lists a type’s published entries with summary and picture, asking for them newest first', async () => {
+    const { service, content } = setup();
+
+    const listing = await service.getListing('alpha', 'events');
+
+    expect(listing.type).toEqual({ name: 'Events', singularName: 'Event', prefix: 'events' });
+    expect(listing.entries.map((e) => e.title)).toEqual(['Newest', 'Older']);
+    expect(listing.entries[0]).toMatchObject({ summary: 'S1', image: { url: 'http://api.test/uploads/site-a/p-1.png', alt: 'Harbour' } });
+    expect(content.findPublishedByType).toHaveBeenCalledWith('site-a', 'type-events', 50);
+  });
+
+  it('answers 404 for an unknown address, another site’s address and an unknown site', async () => {
+    const { service } = setup();
+
+    await expect(service.getListing('alpha', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getListing('beta', 'events')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getListing('nobody', 'events')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('adds the entry’s header details to a page that is an entry: author name only, type, fields', async () => {
+    const { service } = setup();
+
+    const page = await service.getPage('alpha', '/events/newest');
+
+    expect(page.entry).toMatchObject({
+      type: { prefix: 'events' },
+      author: 'Ada',
+      publishedAt: ROWS[0].publishedAt,
+    });
+    expect(page.entry?.fields.map((f) => f.key)).toEqual(['summary', 'photo']);
+    expect(JSON.stringify(page)).not.toContain('@');
+  });
+
+  it('leaves an ordinary page without an entry', async () => {
+    const { service, content } = setup();
+    content.findLiveByPath.mockResolvedValueOnce({ title: 'About', path: '/about', blocks: [], updatedAt: new Date(), data: {}, publishedAt: null, author: null, type: null } as never);
+
+    expect((await service.getPage('alpha', '/about')).entry).toBeUndefined();
   });
 });

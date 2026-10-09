@@ -12,7 +12,7 @@ import { Heading, Section } from './ui';
 // Spacing rules are written so no element matches two of them (a heading is
 // spaced by what precedes it; a body block by what precedes it), because
 // competing utilities of equal specificity would be order-dependent.
-const richTextClass = [
+export const richTextClass = [
   'max-w-[var(--site-measure)] text-[1.0625rem] leading-[1.7] text-[var(--site-muted)]',
   // rhythm
   '[&_:is(p,ul,ol,blockquote)+:is(p,ul,ol,blockquote)]:mt-[1.15em]',
