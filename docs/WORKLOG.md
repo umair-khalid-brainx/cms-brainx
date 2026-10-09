@@ -5,6 +5,22 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Start a page from a layout (`TYP-04`, built; review pending)
+
+Decision in D-051.
+
+- **API:** `POST /content` accepts `layout`; the server copies the blocks from `starter_layouts` (404 for an unknown
+  key, 400 with blocks of its own), sanitised like any write. `api` 347 tests.
+- **Admin:** the create screen shows Blank and the four layouts as radio cards (name, description, the blocks it
+  holds); Article is preselected for a new Post. Light and dark styles. `admin` 99 tests.
+- **Checked in the browser (scripted):** the five cards with their contents; choosing Landing made a page with exactly
+  `hero, featureGrid, stats, testimonial, cta`; a new Post preselected Article and made `hero, richText, cta` at
+  `/blog/harvest-diary`; an unknown layout is a 404 from the API.
+
+**Not done:** reviewer and verifier pending; the picker hasn't been looked at visually.
+
+---
+
 ## 2026-10-09 — Public pages for content types (`TYP-03` done)
 
 Decision in D-050.

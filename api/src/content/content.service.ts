@@ -13,6 +13,7 @@ import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
+import { StarterLayoutRepository } from '../starter-layouts/starter-layout.repository.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import { parseStoredFields, visibleFields, type FieldDefinition } from '../content-types/field-definitions.js';
 import { mergeEntryData, missingRequired, parseEntryData } from '../content-types/field-values.js';
@@ -28,6 +29,7 @@ export class ContentService {
     private readonly previewLinks: PreviewLinkRepository,
     private readonly revalidation: RevalidationService,
     private readonly types: ContentTypeRepository,
+    private readonly layouts: StarterLayoutRepository,
   ) {}
 
   /** Pages, or with `typePrefix` the entries of that content type (TYP-01). */
@@ -61,6 +63,15 @@ export class ContentService {
   async create(userId: string, dto: CreateContentDto) {
     const siteId = await this.resolveSiteId(userId);
     const type = await this.resolveType(siteId, dto.type);
+    // A starter layout is copied on the server from the platform's own table, never taken from the
+    // request, so a page can only start from what was seeded (TYP-04).
+    let startingBlocks = dto.blocks;
+    if (dto.layout) {
+      if (dto.blocks.length > 0) throw new BadRequestException('Choose a layout or send blocks, not both');
+      const layout = await this.layouts.findByKey(dto.layout);
+      if (!layout) throw new NotFoundException('Starter layout not found');
+      startingBlocks = structuredClone(layout.blocks) as typeof dto.blocks;
+    }
     const slug = await this.uniqueSlug(siteId, dto.slug ?? dto.title, !type);
     // An entry lives under its type's address; a page at the top (TYP-01).
     const path = type ? `/${type.prefix}/${slug}` : slug === 'home' ? '/' : `/${slug}`;
@@ -72,7 +83,7 @@ export class ContentService {
       typeId: type?.id ?? null,
       authorId: userId,
       // Sanitise on write (BLK-05, invariant 5): what is stored is already safe.
-      blocks: sanitizeBlocks(dto.blocks) as Prisma.InputJsonValue,
+      blocks: sanitizeBlocks(startingBlocks) as Prisma.InputJsonValue,
     });
   }
 

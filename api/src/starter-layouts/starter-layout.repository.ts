@@ -8,6 +8,10 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class StarterLayoutRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  findByKey(key: string) {
+    return this.prisma.starterLayout.findUnique({ where: { key }, select: { key: true, blocks: true } });
+  }
+
   findAll() {
     return this.prisma.starterLayout.findMany({
       orderBy: { sortOrder: 'asc' },

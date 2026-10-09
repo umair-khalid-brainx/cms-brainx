@@ -8,6 +8,7 @@ import {
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
 import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
+import type { StarterLayoutRepository } from '../starter-layouts/starter-layout.repository.js';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { PreviewLinkRepository } from './preview-link.repository.js';
 import { ContentService } from './content.service.js';
@@ -87,14 +88,20 @@ function fakeContent(
     ),
     prefixes: vi.fn(async (siteId: string) => typeTable.filter((type) => type.siteId === siteId).map((type) => type.prefix)),
   };
+  const layouts = {
+    findByKey: vi.fn(async (key: string) =>
+      key === 'landing' ? { key, blocks: [{ type: 'hero', headline: 'Start here' }, { type: 'richText', html: '<p>x</p>' }] } : null,
+    ),
+  };
   const service = new ContentService(
     content as unknown as ContentRepository,
     users as unknown as UserRepository,
     previewLinks as PreviewLinkRepository,
     revalidation as unknown as RevalidationService,
     types as unknown as ContentTypeRepository,
+    layouts as unknown as StarterLayoutRepository,
   );
-  return { service, table, content, revalidation, types };
+  return { service, table, content, revalidation, types, layouts };
 }
 
 const blocks = [{ type: 'hero', headline: 'Hello' }];
@@ -795,5 +802,53 @@ describe('an entry made only of fields (TYP-03 verifier)', () => {
     const { service } = setup([entry({ typeId: null, path: '/fair', data: { when: 'x' } } as Partial<Row>)]);
 
     await expect(service.update('alice', 'fair', { status: 'published' })).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+});
+
+describe('ContentService.create from a starter layout (TYP-04)', () => {
+  const setup = () => fakeContent([], { alice: { siteId: 'site-a', role: 'owner' } });
+
+  it('starts the page with a copy of the layout’s blocks', async () => {
+    const { service, table, layouts } = setup();
+
+    await service.create('alice', { title: 'Home page', layout: 'landing', blocks: [] });
+
+    expect(table[0].blocks).toEqual([{ type: 'hero', headline: 'Start here' }, { type: 'richText', html: '<p>x</p>' }]);
+    expect(layouts.findByKey).toHaveBeenCalledWith('landing');
+  });
+
+  it('gives each page its own copy, so editing one never changes the layout or another page', async () => {
+    const { service, table } = setup();
+
+    await service.create('alice', { title: 'One', layout: 'landing', blocks: [] });
+    await service.create('alice', { title: 'Two', layout: 'landing', blocks: [] });
+    (table[0].blocks as { headline?: string }[])[0].headline = 'Changed';
+
+    expect((table[1].blocks as { headline?: string }[])[0].headline).toBe('Start here');
+  });
+
+  it('refuses an unknown layout with a 404 and creates nothing', async () => {
+    const { service, table } = setup();
+
+    await expect(service.create('alice', { title: 'x', layout: 'nope', blocks: [] })).rejects.toBeInstanceOf(NotFoundException);
+    expect(table).toHaveLength(0);
+  });
+
+  it('refuses a layout together with blocks of its own', async () => {
+    const { service, table } = setup();
+
+    await expect(
+      service.create('alice', { title: 'x', layout: 'landing', blocks: [{ type: 'hero' }] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(table).toHaveLength(0);
+  });
+
+  it('works for an entry of a type too, and still sanitises what it stores', async () => {
+    const rows = fakeContent([], { alice: { siteId: 'site-a', role: 'owner' } }, {}, [{ id: 't', siteId: 'site-a', prefix: 'blog' }]);
+    rows.layouts.findByKey.mockResolvedValueOnce({ key: 'article', blocks: [{ type: 'richText', html: '<p onclick="x()">Hi</p>' }] });
+
+    await rows.service.create('alice', { title: 'A post', type: 'blog', layout: 'article', blocks: [] });
+
+    expect(rows.table[0]).toMatchObject({ path: '/blog/a-post', blocks: [{ type: 'richText', html: '<p>Hi</p>' }] });
   });
 });

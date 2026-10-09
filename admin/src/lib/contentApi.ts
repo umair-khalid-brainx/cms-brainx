@@ -223,13 +223,20 @@ function escapeHtml(value: string): string {
 // Used by both Dashboard's Quick Draft (title + body text, wrapped as one
 // RichText block) and the "New Page" flow (title only, body '' -> no
 // blocks, straight into an empty page in the editor).
-export async function createPage(title: string, body = '', type?: string): Promise<PageSummary> {
+export type StarterLayout = { key: string; name: string; description: string; blocks: { type: string }[] };
+
+/** The platform's four starter arrangements (TYP-05) offered when creating a page (TYP-04). */
+export async function listStarterLayouts(): Promise<StarterLayout[]> {
+  return apiGet('/starter-layouts', requireSession().accessToken);
+}
+
+export async function createPage(title: string, body = '', type?: string, layout?: string): Promise<PageSummary> {
   const session = requireSession();
   const blocks: FlatBlock[] = body.trim() ? [{ type: 'richText', html: `<p>${escapeHtml(body.trim())}</p>` }] : [];
   const record = await apiSend<ContentRecord>(
     'POST',
     '/content',
-    { title: title.trim() || 'Untitled', blocks, ...(type && { type }) },
+    { title: title.trim() || 'Untitled', blocks, ...(type && { type }), ...(layout && { layout }) },
     session.accessToken,
   );
   return toSummary(record);

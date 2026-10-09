@@ -11,5 +11,7 @@ import { StarterLayoutsController } from './starter-layouts.controller.js';
   imports: [UsersModule, AuthModule],
   controllers: [StarterLayoutsController],
   providers: [StarterLayoutRepository, JwtAuthGuard, PermissionsGuard],
+  // ContentService copies a layout's blocks into a new page (TYP-04).
+  exports: [StarterLayoutRepository],
 })
 export class StarterLayoutsModule {}

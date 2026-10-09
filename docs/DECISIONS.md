@@ -8,6 +8,28 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-051 — 2026-10-09 — Starting a page from a layout: the server copies it (`TYP-04`)
+
+**Decision (the week 3 plan the user approved; the user declined a new "Campaign" layout):**
+
+- **The create screen offers Blank and the four seeded layouts** (Landing, About, Contact, Article) as radio
+  cards with the layout's description and the blocks it contains, in the editor's own block names. It is the
+  same screen for pages and for entries of any type. Nothing new is added to the layout list (req. 6's
+  "campaign pages" stays a layout the client can build from Landing; no extra data was invented).
+- **The server does the copying.** `POST /content` takes a `layout` key, loads the blocks from the platform's
+  own `starter_layouts` table and stores a copy (`structuredClone`, then the usual sanitising). The browser
+  never sends the layout's blocks, so a page can only start from what was seeded; sending blocks together with
+  a layout is a 400, an unknown key a 404. Layouts are platform data, not tenant content, so this is the one
+  read that takes no site (D-038).
+- **Defaults:** Blank for pages and custom types, Article for the built-in Posts type. If the layouts can't be
+  loaded the screen still makes a blank page.
+- **A copy, not a link:** later changes to the seed don't reach pages already made from it.
+
+**Costs and limits:** the cards show the blocks' names, not a picture of the layout; a client can't save their own
+page as a template (not in the requirements).
+
+---
+
 ## D-050 — 2026-10-09 — Entries get an automatic header and a type listing, from the existing route (`TYP-03`)
 
 **Decision (the week 3 plan the user approved):**

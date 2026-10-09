@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { createPage } from '../lib/contentApi'
+import { createPage, listStarterLayouts, type StarterLayout } from '../lib/contentApi'
+import { config } from '../puck/config'
 import { ApiError } from '../lib/api'
 import type { ContentType } from '../lib/typesApi'
 import './CreatePagePage.css'
@@ -11,6 +12,15 @@ function CreatePagePage({ contentType }: { contentType?: ContentType } = {}) {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [creating, setCreating] = useState(false)
+  // The starter arrangements to begin from (TYP-04). Blank is always first; a new Post
+  // starts from Article, the one made for long-form writing.
+  const [layouts, setLayouts] = useState<StarterLayout[]>([])
+  const [layout, setLayout] = useState<string>(contentType?.prefix === 'blog' ? 'article' : '')
+
+  useEffect(() => {
+    // A failure only means no templates are offered: a blank page still works.
+    listStarterLayouts().then(setLayouts, () => setLayouts([]))
+  }, [])
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -19,7 +29,7 @@ function CreatePagePage({ contentType }: { contentType?: ContentType } = {}) {
     setCreating(true)
     setError(null)
     try {
-      const page = await createPage(title, '', contentType?.prefix)
+      const page = await createPage(title, '', contentType?.prefix, layout || undefined)
       navigate(`/editor/${page.slug}`, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : `Could not create this ${noun.toLowerCase()} — check your connection`)
@@ -46,6 +56,32 @@ function CreatePagePage({ contentType }: { contentType?: ContentType } = {}) {
             disabled={creating}
           />
 
+          {layouts.length > 0 && (
+            <fieldset className="layout-picker" disabled={creating}>
+              <legend>Start from</legend>
+              <div className="layout-picker-grid" role="radiogroup" aria-label="Starting layout">
+                <LayoutOption
+                  value=""
+                  checked={layout === ''}
+                  name="Blank"
+                  description="An empty page. Add blocks yourself."
+                  onSelect={setLayout}
+                />
+                {layouts.map((option) => (
+                  <LayoutOption
+                    key={option.key}
+                    value={option.key}
+                    checked={layout === option.key}
+                    name={option.name}
+                    description={option.description}
+                    includes={blockNames(option)}
+                    onSelect={setLayout}
+                  />
+                ))}
+              </div>
+            </fieldset>
+          )}
+
           {error ? <p className="create-page-error">{error}</p> : null}
 
           <div className="create-page-actions">
@@ -59,6 +95,55 @@ function CreatePagePage({ contentType }: { contentType?: ContentType } = {}) {
         </form>
       </section>
     </>
+  )
+}
+
+/** "Hero, Feature grid, Stats": what a layout is made of, in the editor's own names for the blocks. */
+function blockNames(layout: StarterLayout): string {
+  const labels = layout.blocks.map((block) => {
+    const key = block.type.charAt(0).toUpperCase() + block.type.slice(1)
+    return (config.components as Record<string, { label?: string }>)[key]?.label ?? block.type
+  })
+  return [...new Set(labels)].join(', ')
+}
+
+function LayoutOption({
+  value,
+  checked,
+  name,
+  description,
+  includes,
+  onSelect,
+}: {
+  value: string
+  checked: boolean
+  name: string
+  description: string
+  includes?: string
+  onSelect: (value: string) => void
+}) {
+  return (
+    <label className={`layout-option${checked ? ' is-selected' : ''}`}>
+      <input
+        type="radio"
+        name="starting-layout"
+        className="layout-option-input"
+        value={value}
+        checked={checked}
+        onChange={() => onSelect(value)}
+      />
+      <span className="layout-option-name">
+        {name}
+        {/* The selected card says so in a mark as well as in its outline, so it never relies on colour alone. */}
+        {checked && (
+          <svg className="layout-option-check" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+            <path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <span className="layout-option-description">{description}</span>
+      {includes && <span className="layout-option-includes">{includes}</span>}
+    </label>
   )
 }
 

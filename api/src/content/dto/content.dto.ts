@@ -13,6 +13,8 @@ export const createContentSchema = z.object({
   // The address prefix of a content type (`events`): makes this an entry of that type (TYP-01).
   type: z.string().min(1).optional(),
   blocks: z.array(blockSchema).default([]),
+  // The key of a starter layout (`landing`): the new page starts with its blocks (TYP-04). Not with `blocks`.
+  layout: z.string().min(1).optional(),
 });
 
 export type CreateContentDto = z.infer<typeof createContentSchema>;

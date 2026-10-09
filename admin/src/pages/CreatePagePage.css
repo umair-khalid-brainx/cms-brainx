@@ -14,7 +14,7 @@
   border: 1px solid #c3c4c7;
   border-radius: 4px;
   padding: 1.25rem;
-  max-width: 480px;
+  max-width: 760px;
 }
 
 .create-page-form {
@@ -89,6 +89,96 @@
   text-decoration: underline;
 }
 
+/* The starting-layout picker (TYP-04): radio cards. The real radio stays in the page for
+   keyboard and screen reader use; the card is its label. */
+.layout-picker {
+  margin: 0.9rem 0 0.4rem;
+  padding: 0;
+  border: none;
+}
+
+.layout-picker legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.layout-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.7rem;
+}
+
+.layout-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #c3c4c7;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.layout-option:hover {
+  border-color: #2271b1;
+}
+
+.layout-option.is-selected {
+  border-color: #2271b1;
+  box-shadow: 0 0 0 1px #2271b1;
+  background: #f0f6fc;
+}
+
+.layout-option:has(.layout-option-input:focus-visible) {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+/* Visually hidden, still focusable. */
+.layout-option-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.layout-option-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.layout-option-check {
+  flex-shrink: 0;
+  color: #2271b1;
+}
+
+.layout-option-description {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #50575e;
+}
+
+.layout-option-includes {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #50575e;
+}
+
+.layout-picker:disabled .layout-option {
+  opacity: 0.6;
+  cursor: default;
+}
+
 @media (prefers-color-scheme: dark) {
   .create-page-title {
     color: #ededed;
@@ -111,5 +201,38 @@
 
   .create-page-cancel {
     color: #9ca3af;
+  }
+
+  .layout-picker legend,
+  .layout-option-name {
+    color: #ededed;
+  }
+
+  .layout-option {
+    background: #1a1a1a;
+    border-color: #444;
+  }
+
+  .layout-option:hover {
+    border-color: #72aee6;
+  }
+
+  .layout-option.is-selected {
+    border-color: #72aee6;
+    box-shadow: 0 0 0 1px #72aee6;
+    background: #17232e;
+  }
+
+  .layout-option:has(.layout-option-input:focus-visible) {
+    outline-color: #72aee6;
+  }
+
+  .layout-option-check {
+    color: #72aee6;
+  }
+
+  .layout-option-description,
+  .layout-option-includes {
+    color: #b0b0b0;
   }
 }
