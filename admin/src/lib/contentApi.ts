@@ -1,4 +1,5 @@
 import type { Data } from '@puckeditor/core';
+import { parseVideoUrl } from 'cms-blocks';
 import type { EditorComponents } from '../puck/config';
 import { ApiError, apiDelete, apiGet, apiSend } from './api';
 import { getSession } from './auth';
@@ -84,6 +85,13 @@ function puckItemToBlock(item: { type: string; props: Record<string, unknown> })
   if (item.type === 'PricingTable' && 'plans' in fields) {
     return { type, ...fields, plans: plansToFlat(fields.plans) };
   }
+  if (item.type === 'VideoEmbed') {
+    // The editor only holds the pasted link; the stored contract also carries
+    // the parsed provider + ID the block renders from (D-040). An unparseable
+    // link saves without them.
+    const url = typeof fields.url === 'string' ? fields.url : '';
+    return { type, ...fields, url, ...parseVideoUrl(url) };
+  }
   return { type, ...fields };
 }
 
@@ -93,6 +101,11 @@ function blockToPuckItem(block: FlatBlock): { type: string; props: Record<string
   const props = { id: `${type}-${crypto.randomUUID()}`, ...fields };
   if (puckType === 'PricingTable' && 'plans' in props) {
     return { type: puckType, props: { ...props, plans: plansToPuck(props.plans) } };
+  }
+  if (puckType === 'VideoEmbed') {
+    // Re-derived from `url` on every save, so not kept as editable props.
+    const { provider: _provider, videoId: _videoId, ...editable } = fields as Record<string, unknown>;
+    return { type: puckType, props: { id: props.id, ...editable } };
   }
   return { type: puckType, props };
 }

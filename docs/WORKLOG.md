@@ -5,6 +5,43 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-06 — Video embed block; unknown block types no longer 500 a page (`BLK-02` done)
+
+New `videoEmbed` block (YouTube/Vimeo by pasted link). Decision and alternatives in `DECISIONS.md` D-040.
+
+- `cms-blocks`: `VideoEmbedBlock` in `types.ts`; `video.ts` (`parseVideoUrl`, `videoEmbedSrc`);
+  `VideoEmbed.tsx`; registered as "Video". No hex colours (grep clean).
+- `admin`: Puck `VideoEmbed` component with heading / link / caption fields and an editor-only
+  placeholder for an empty or unsupported link. `contentApi.ts` derives `provider` + `videoId` from
+  `url` on save and drops them on load.
+- **Bug fix found on the way:** `getBlockComponent` threw on a block type the running build doesn't
+  know, so the page 500'd — despite `BlockRenderer`'s comment saying it skips them. Reproduced against
+  the main checkout's `web` (old `cms-blocks`, page containing a `videoEmbed`) → 500. Now returns
+  `undefined` and the block is skipped. Matters on every new block type: stored JSON can be newer than
+  a not-yet-redeployed `web`.
+
+**Verified** (this worktree's api/web/admin on ports 4002/3100/5174, shared `cms` DB, throwaway
+`video-test` page created then archived and deleted):
+- Parser, run against the built `dist`: `watch?v=`, `youtu.be` (with/without scheme, with `?t=`),
+  `m.`, `/shorts/`, `/embed/`, `/live/`, `vimeo.com/N`, `player.vimeo.com/video/N` → parsed.
+  `evil-youtube.com`, `youtube.com.evil.com`, `javascript:`, `ftp:`, short IDs, channel URLs, an ID
+  with `"><script>` appended → null. Tampered stored IDs (`x" onload=…`, `../../evil.com/…`,
+  unknown provider) → no iframe src.
+- Public site (curl + headless Chrome screenshot of `umair.lvh.me:3100/video-test`): YouTube block
+  with heading + caption and a Vimeo block render as themed 16:9 iframes; the tampered block renders
+  nothing; the FAQ after it still renders. An unknown `notARealBlock` → page 200, rest renders.
+- Editor (browser pane): existing video blocks load; the tampered block shows the "isn't a YouTube
+  or Vimeo video" placeholder; typing a YouTube link swaps in the player and autosave stored the
+  re-parsed `provider` + `videoId` (overwriting the tampered ID); a lookalike-domain link stored with
+  neither.
+- `admin` + `web` typecheck and lint clean; `cms-blocks` typecheck + build clean.
+
+**Not done / not verified**
+- Dragging a *new* Video block in from the picker — the browser pane's synthetic drag doesn't trigger
+  Puck's drop (same limitation as every earlier editor entry). Editing an existing one was verified.
+- Start time, unlisted Vimeo (`?h=`), other providers — see D-040 "Not covered".
+- Note: the seeded site's subdomain is currently `umair`, not `corrick` (renamed via Settings, D-031),
+  so `corrick.lvh.me` 404s locally.
 ## 2026-10-07 — Public pages cached with ISR, refreshed on publish (`CNT-08` done)
 
 `web`'s tenant route is now ISR, and `api` tells `web` exactly which site and path to refresh when a

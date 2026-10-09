@@ -14,6 +14,7 @@ import { Spacer } from './Spacer';
 import { Stats } from './Stats';
 import { TeamGrid } from './TeamGrid';
 import { Testimonial } from './Testimonial';
+import { VideoEmbed } from './VideoEmbed';
 
 export type BlockComponent<T extends BlockType> = ComponentType<{ block: BlockOfType<T> }>;
 
@@ -44,10 +45,15 @@ export const blockRegistry: Registry = {
   pricingTable: { name: 'Pricing table', component: PricingTable },
   teamGrid: { name: 'Team grid', component: TeamGrid },
   contactForm: { name: 'Contact form', component: ContactForm },
+  videoEmbed: { name: 'Video', component: VideoEmbed },
 };
 
 export const blockTypes = Object.keys(blockRegistry) as BlockType[];
 
-export function getBlockComponent(block: Block): BlockComponent<BlockType> {
-  return blockRegistry[block.type].component as BlockComponent<BlockType>;
+/**
+ * Undefined for a type this build doesn't know — stored JSON can be newer than
+ * the running code (a block added in `admin` before `web` is redeployed).
+ */
+export function getBlockComponent(block: Block): BlockComponent<BlockType> | undefined {
+  return blockRegistry[block.type]?.component as BlockComponent<BlockType> | undefined;
 }
