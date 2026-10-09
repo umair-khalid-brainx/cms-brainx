@@ -11,6 +11,7 @@ import type { ContentRepository } from './content.repository.js';
 import type { StarterLayoutRepository } from '../starter-layouts/starter-layout.repository.js';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { PreviewLinkRepository } from './preview-link.repository.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { ContentService } from './content.service.js';
 
 type Row = {
@@ -850,5 +851,118 @@ describe('ContentService.create from a starter layout (TYP-04)', () => {
     await rows.service.create('alice', { title: 'A post', type: 'blog', layout: 'article', blocks: [] });
 
     expect(rows.table[0]).toMatchObject({ path: '/blog/a-post', blocks: [{ type: 'richText', html: '<p>Hi</p>' }] });
+  });
+});
+
+describe('ContentService slug changes (CNT-04)', () => {
+  function setup() {
+    return fakeContent(
+      [
+        { siteId: 'site-a', title: 'Home', slug: 'home', path: '/', status: 'published', blocks },
+        { siteId: 'site-a', title: 'About', slug: 'about', path: '/about', status: 'published', blocks },
+        { siteId: 'site-a', title: 'Draft', slug: 'draft', path: '/draft', status: 'draft', blocks },
+        { siteId: 'site-a', title: 'Fair', slug: 'fair', path: '/events/fair', status: 'published', blocks, typeId: 't-a' },
+        { siteId: 'site-b', title: 'Taken elsewhere', slug: 'story', path: '/story', status: 'draft', blocks },
+      ],
+      {
+        alice: { siteId: 'site-a', role: 'owner' },
+        carl: { siteId: 'site-a', role: 'contributor' },
+      },
+      {},
+      [{ id: 't-a', siteId: 'site-a', prefix: 'events' }],
+    );
+  }
+
+  it('normalises whatever the client sends and moves the page to the new path', async () => {
+    const { service, table } = setup();
+    const updated = await service.update('alice', 'about', { slug: '  Our Café & Story!  ' });
+    expect(updated).toMatchObject({ slug: 'our-cafe-story', path: '/our-cafe-story' });
+    expect(table.find((r) => r.title === 'About')).toMatchObject({ slug: 'our-cafe-story', path: '/our-cafe-story' });
+  });
+
+  it('keeps an entry under its type’s prefix', async () => {
+    const { service } = setup();
+    expect(await service.update('alice', 'fair', { slug: 'summer-fair' })).toMatchObject({
+      slug: 'summer-fair',
+      path: '/events/summer-fair',
+    });
+  });
+
+  it('never changes the slug when only the title changes', async () => {
+    const { service } = setup();
+    expect(await service.update('alice', 'about', { title: 'About the farm' })).toMatchObject({
+      title: 'About the farm',
+      slug: 'about',
+      path: '/about',
+    });
+  });
+
+  it('treats the same slug (after normalising) as no change', async () => {
+    const { service, revalidation } = setup();
+    await service.update('alice', 'draft', { slug: 'DRAFT' });
+    expect(revalidation.page).not.toHaveBeenCalled();
+  });
+
+  it('refuses a slug another page or entry in the site already uses (409), and writes nothing', async () => {
+    const { service, table } = setup();
+    await expect(service.update('alice', 'about', { slug: 'draft' })).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.update('alice', 'about', { slug: 'fair' })).rejects.toBeInstanceOf(ConflictException);
+    expect(table.find((r) => r.title === 'About')).toMatchObject({ slug: 'about', path: '/about' });
+  });
+
+  it('allows a slug that only another site uses', async () => {
+    const { service } = setup();
+    expect(await service.update('alice', 'about', { slug: 'story' })).toMatchObject({ slug: 'story', path: '/story' });
+  });
+
+  it('refuses a reserved word or a content type’s address for a page', async () => {
+    const { service } = setup();
+    await expect(service.update('alice', 'about', { slug: 'home' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'about', { slug: 'sitemap' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'about', { slug: 'events' })).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('lets an entry use a word that is only reserved at the top of the site', async () => {
+    const { service } = setup();
+    expect(await service.update('alice', 'fair', { slug: 'search' })).toMatchObject({ path: '/events/search' });
+  });
+
+  it('refuses a slug with no letters or numbers, and changing the home page’s address', async () => {
+    const { service } = setup();
+    await expect(service.update('alice', 'about', { slug: '!!!' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'home', { slug: 'start' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('refreshes the old and the new address of a live page', async () => {
+    const { service, revalidation } = setup();
+    await service.update('alice', 'about', { slug: 'about-us' });
+    expect(revalidation.page).toHaveBeenCalledWith('a', '/about');
+    expect(revalidation.page).toHaveBeenCalledWith('a', '/about-us');
+  });
+
+  it('leaves the cache alone when a draft moves', async () => {
+    const { service, revalidation } = setup();
+    await service.update('alice', 'draft', { slug: 'later' });
+    expect(revalidation.page).not.toHaveBeenCalled();
+  });
+
+  it('lets anyone who can edit move a draft, but only those who can publish move a live page (D-053)', async () => {
+    const { service, table } = setup();
+    expect(await service.update('carl', 'draft', { slug: 'later' })).toMatchObject({ path: '/later' });
+    await expect(service.update('carl', 'about', { slug: 'about-us' })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(table.find((r) => r.title === 'About')).toMatchObject({ slug: 'about', path: '/about' });
+  });
+
+  it('gives a new page a suffix instead of a word the site itself uses, as a rename refuses it', async () => {
+    const { service } = setup();
+    expect(await service.create('alice', { title: 'Sitemap', blocks: [] })).toMatchObject({ slug: 'sitemap-2', path: '/sitemap-2' });
+  });
+
+  it('answers two moves racing to the same slug with a 409, not a 500', async () => {
+    const { service, content } = setup();
+    content.update.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: 'test' }),
+    );
+    await expect(service.update('alice', 'draft', { slug: 'team' })).rejects.toBeInstanceOf(ConflictException);
   });
 });

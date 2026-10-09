@@ -5,6 +5,34 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Changing a page's address, and a Page settings panel (`CNT-04` done)
+
+First ticket of week 4 (`docs/WEEK4_PLAN.md`). Decision in D-053.
+
+- `api`: `PATCH /content/:slug` takes `slug`. New `api/src/content/slug.ts` (`normaliseSlug`, `slugProblem`);
+  `ContentService.planRename` refuses the home page, reserved words and type prefixes (pages only) and taken
+  slugs, and needs `content:publish` for a live page. Only the normalised slug and its path are written; old and
+  new paths revalidate when live. Migration `20261009160000_unique_content_slug_per_site` adds
+  `@@unique([siteId, slug])`; a racing write gets the same 409. `create` now normalises the same way (accents
+  dropped) and suffixes reserved words (`sitemap-2`), as a rename refuses them.
+- `admin`: new `components/PageSettingsPanel.tsx/.css`, a native `<dialog>` from the editor's top bar with
+  Title (own save) and Address (Change, live preview of the cleaned-up address, live-page warning). Built to take
+  the parent, SEO and categories sections later. `EditorPage` saves unsaved edits (only if there are any, after
+  any autosave in flight) before a move, then follows the page to `/editor/<new slug>` without reloading Puck.
+  Top bar no longer wraps at tablet width (site name hides under 60rem). `lib/slug.ts` mirrors the normaliser
+  for the preview; both sides share one table of test cases.
+- Tests: 11 service tests + `slug.spec.ts`/`slug.test.ts`. api 377, admin 106 pass; typecheck, lint, build clean.
+- Verified against a DB copy `cms_wk4` (API `:4011`, admin `:5174`; the other session's `:3000/:4001/:5173`
+  untouched): curl on both tenants (same slug in two sites, isolation, every refusal); in the browser: Change
+  flow, Esc, keyboard Enter, taken-slug error, title save, autosave after a move landing on the new slug, light
+  theme at 768px, dark at desktop, a move with no edits sending one request.
+
+**Not done:** the old address of a moved live page is a 404 until `GOV-05`'s redirects. `create` doesn't map the
+new index's error to a 409 yet (B-29). The shared `cms` database is behind `main`'s migrations and needs
+`npm run db:migrate` before a browser check there.
+
+---
+
 ## 2026-10-09 — Start a page from a layout (`TYP-04` done)
 
 Decision in D-051.

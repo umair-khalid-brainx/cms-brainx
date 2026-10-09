@@ -8,7 +8,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { hasPermission } from '../auth/permission.js';
-import type { Prisma } from '../generated/prisma/client.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
 import { ContentRepository } from './content.repository.js';
@@ -20,6 +20,8 @@ import { mergeEntryData, missingRequired, parseEntryData } from '../content-type
 import { PreviewLinkRepository } from './preview-link.repository.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
+import { normaliseSlug, slugProblem } from './slug.js';
+import { RESERVED_PREFIXES } from '../content-types/prefix.js';
 
 @Injectable()
 export class ContentService {
@@ -108,6 +110,9 @@ export class ContentService {
       throw new ForbiddenException('Missing permission: content:delete');
     }
 
+    // A new slug moves the page to a new address (CNT-04). Checked before anything is written.
+    const rename = dto.slug === undefined ? null : await this.planRename(membership.siteId, membership.role, existing, dto.slug);
+
     // Sanitise on write (BLK-05, invariant 5), before the checks below so they
     // judge what would actually be stored.
     const blocks = dto.blocks ? sanitizeBlocks(dto.blocks) : undefined;
@@ -149,22 +154,34 @@ export class ContentService {
       }
     }
 
-    await this.content.update(membership.siteId, slug, {
-      ...dto,
-      blocks: blocks as Prisma.InputJsonValue | undefined,
-      data: data as Prisma.InputJsonValue | undefined,
-      // Set the first time it goes live and kept after (TYP-03).
-      ...(dto.status === 'published' && !existing.publishedAt && { publishedAt: new Date() }),
-      ...(entering && { archivedAt: new Date() }),
-      ...(leaving && { archivedAt: null }),
-    });
-    const updated = await this.content.findBySlug(membership.siteId, slug);
+    // The slug the client sent is never written as-is: only the normalised one, with its path.
+    const { slug: _requestedSlug, ...changes } = dto;
+    try {
+      await this.content.update(membership.siteId, slug, {
+        ...changes,
+        ...(rename && { slug: rename.slug, path: rename.path }),
+        blocks: blocks as Prisma.InputJsonValue | undefined,
+        data: data as Prisma.InputJsonValue | undefined,
+        // Set the first time it goes live and kept after (TYP-03).
+        ...(dto.status === 'published' && !existing.publishedAt && { publishedAt: new Date() }),
+        ...(entering && { archivedAt: new Date() }),
+        ...(leaving && { archivedAt: null }),
+      });
+    } catch (error) {
+      // Two pages moved to the same free slug at the same moment: planRename's check
+      // passes for both, the unique index rejects the second write.
+      if (rename && isUniqueViolation(error)) throw takenSlug(rename.slug);
+      throw error;
+    }
+    const updated = await this.content.findBySlug(membership.siteId, rename?.slug ?? slug);
 
     // Live before or after this write → the public page changed: publish,
     // unpublish, archive, or a save to a live page. Refresh exactly that
     // site + path in `web`'s cache (CNT-08). Draft-only edits aren't public.
     if (existing.status === 'published' || updated?.status === 'published') {
       await this.revalidation.page(membership.site.subdomain, existing.path);
+      // A moved page is also new at its new address (and gone from the old one, above).
+      if (rename) await this.revalidation.page(membership.site.subdomain, rename.path);
       // An entry also sits in its type's listing (`/events`), which changed with it (TYP-03).
       if (existing.typeId) await this.revalidation.page(membership.site.subdomain, `/${existing.path.split('/')[1]}`);
     }
@@ -298,12 +315,45 @@ export class ContentService {
     return type;
   }
 
+  /**
+   * The slug and path a page moves to, or null when the slug didn't actually change
+   * (CNT-04). Refuses, with words for the person, what can't be used. The path keeps
+   * everything before the last part: an entry stays under its type's prefix.
+   */
+  private async planRename(
+    siteId: string,
+    role: Parameters<typeof hasPermission>[0],
+    existing: { slug: string; path: string; status: string; typeId: string | null },
+    requested: string,
+  ) {
+    const page = !existing.typeId;
+    const slug = normaliseSlug(requested);
+    if (slug === existing.slug) return null;
+    if (existing.path === '/') throw new BadRequestException('The home page’s address can’t be changed.');
+    // Moving a live page changes the public site, so it sits at the same tier as
+    // publishing (D-053); anyone who can edit can still move a draft.
+    if (existing.status === 'published' && !hasPermission(role, 'content:publish')) {
+      throw new ForbiddenException('Missing permission: content:publish');
+    }
+    const problem = slugProblem(slug, page);
+    if (problem) throw new BadRequestException(problem);
+    if (page && (await this.types.prefixes(siteId)).includes(slug)) {
+      throw new ConflictException(`/${slug} is the address of a content type’s listing. Choose a different address.`);
+    }
+    if (await this.content.findBySlug(siteId, slug)) throw takenSlug(slug);
+    return { slug, path: `${existing.path.slice(0, existing.path.lastIndexOf('/'))}/${slug}` };
+  }
+
   // Slugs are unique across the whole site, because admin routes by slug alone.
   // A page also can't take a content type's address (`/events` is the type's
-  // listing), so it gets a suffix instead (TYP-01).
+  // listing) or a word the site itself uses (`/sitemap.xml`'s `sitemap`), so it
+  // gets a suffix instead (TYP-01, CNT-04) — the same words a rename refuses.
+  // `home` is the exception: a page created as "Home" becomes the home page.
   private async uniqueSlug(siteId: string, base: string, page: boolean): Promise<string> {
     const slugified = slugify(base);
-    const taken = page ? new Set(await this.types.prefixes(siteId)) : new Set<string>();
+    const taken = page
+      ? new Set([...(await this.types.prefixes(siteId)), ...[...RESERVED_PREFIXES].filter((word) => word !== 'home')])
+      : new Set<string>();
     let candidate = slugified;
     let suffix = 2;
     while (taken.has(candidate) || (await this.content.findBySlug(siteId, candidate))) {
@@ -314,11 +364,15 @@ export class ContentService {
   }
 }
 
+function takenSlug(slug: string): ConflictException {
+  return new ConflictException(`Another page or entry already uses “${slug}”. Choose a different address.`);
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+// Created slugs and changed slugs follow the same rules (CNT-04).
 function slugify(value: string): string {
-  const base = value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-  return base || 'untitled';
+  return normaliseSlug(value) || 'untitled';
 }

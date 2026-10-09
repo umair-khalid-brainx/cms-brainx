@@ -8,6 +8,32 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-053 — 2026-10-09 — Changing a page's address: explicit, publish-tier when live, unique per site in the database (`CNT-04`)
+
+**Decision (the user chose the permission rule after the reviewer raised it):**
+
+- **A slug changes only when someone asks for it**, in the editor's Page settings panel. The title never
+  changes it. The server normalises whatever is sent (lowercase, accents dropped, single hyphens, 80
+  characters at most) and only the normalised slug and its path are written.
+- **Moving a live page needs `content:publish`**, the same tier as publishing, because it changes the
+  public site (and until `GOV-05`, breaks the old link). Anyone with `content:write` can still move a draft.
+  In this project's role table that blocks only Contributors: Authors hold `content:publish`.
+- **Refused, with a message for the person:** the home page, a reserved word (pages only; an entry sits
+  under its type's prefix), a content type's prefix (pages only), and a slug already used anywhere in the site.
+  Creating a page avoids the same words by adding a suffix (`sitemap-2`), so both paths follow one rule;
+  `home` stays allowed on create, where it makes the home page.
+- **A slug is unique per site in the database too** (`@@unique([siteId, slug])`), not only in the service's
+  check: two moves racing to the same slug would otherwise both pass the check, and a page and an entry could
+  share a slug because their paths differ. The losing write is answered with the same 409.
+- **The admin's editor follows the page to its new URL without reloading**, after saving any edit not yet
+  saved; a move with nothing unsaved sends only the slug.
+
+**Costs and limits:** the normaliser exists twice (`api/src/content/slug.ts` for the rule, `admin/src/lib/slug.ts`
+for the live preview), kept in step by a shared table of test cases. Creating a page has the same check-then-write
+race; the index now turns it into an error instead of a duplicate, but `create` doesn't map it to a 409 yet.
+
+---
+
 ## D-052 — 2026-10-09 — Week 4 scope: URL tickets pulled in, menus include the footer
 
 **Decision (week 4 ticket review with the user; full list in `docs/WEEK4_PLAN.md`):**

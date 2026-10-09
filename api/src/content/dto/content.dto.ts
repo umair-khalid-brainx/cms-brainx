@@ -21,7 +21,10 @@ export type CreateContentDto = z.infer<typeof createContentSchema>;
 
 export const updateContentSchema = z
   .object({
-    title: z.string().min(1).optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    // A new slug (CNT-04): an explicit change, normalised and checked by the service.
+    // The title never changes it.
+    slug: z.string().max(200).optional(),
     status: z.enum(['draft', 'published', 'archived']).optional(),
     blocks: z.array(blockSchema).optional(),
     // Values of a content type's custom fields, by field key (TYP-02). Entries only.

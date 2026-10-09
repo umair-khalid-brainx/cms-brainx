@@ -40,6 +40,30 @@
   color: #a7aaad;
 }
 
+/* Secondary to Publish, like Share preview: outlined on the dark top bar. */
+.editor-secondary {
+  background: transparent;
+  color: #f0f0f1;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms, background-color 150ms;
+}
+
+.editor-secondary:hover {
+  border-color: #f0f0f1;
+  background: #2c3338;
+}
+
+.editor-secondary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .editor-publish {
   background: #2271b1;
   color: #fff;
@@ -104,4 +128,32 @@
 
 .editor-puck > div {
   height: 100%;
+}
+
+/* Tablet: the top bar holds back link, title, status, site and three buttons.
+   Buttons and the back link keep one line; the title gives way with an ellipsis;
+   the site name (also in the admin's sidebar) goes first when space runs out. */
+.editor-back,
+.editor-status,
+.editor-secondary,
+.editor-publish,
+.share-preview-trigger {
+  white-space: nowrap;
+}
+
+.editor-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 60rem) {
+  .editor-site {
+    display: none;
+  }
+
+  .editor-status {
+    margin-left: auto;
+  }
 }

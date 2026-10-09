@@ -160,6 +160,9 @@ model Content {
   // Matches the actual read pattern (ARCHITECTURE.md: "fetch content by
   // (site_id, path)"). path === slug for now since hierarchy is deferred.
   @@unique([siteId, path])
+  // Admin routes by slug alone, so a slug is unique across the whole site, pages and
+  // entries together (CNT-04). The service checks first; this catches two writes racing.
+  @@unique([siteId, slug])
   @@map("content")
 }
 
