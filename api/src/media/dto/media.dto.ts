@@ -7,6 +7,8 @@ const optionalText = (max: number) =>
     .string()
     .trim()
     .max(max, `Keep it to ${max} characters or fewer`)
+    // Postgres refuses a NUL character in text, which would otherwise be a 500.
+    .transform((value) => value.split('\u0000').join(''))
     .transform((value) => (value === '' ? null : value))
     .optional();
 

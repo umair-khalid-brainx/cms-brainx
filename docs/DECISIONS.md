@@ -19,14 +19,15 @@ decisions themselves were made on the dates shown.
 - **Library text:** `media` gets `alt`, `title` and `description` (nullable, per site, via
   `PATCH /media/:id`, `content:write`). A new file's title starts as the name it was uploaded with
   ("Price list 2026.docx" becomes "Price list 2026"), so the library isn't a wall of generated names; the
-  stored file name stays our own. Alt text is for images only (a PDF is refused with 400). Title and
+  stored file name stays our own (direction-override characters are removed). Alt text is for images
+  only (setting it on a PDF is refused with 400). Title and
   description are for the library; they are not shown on the live site.
 - **Alt text reaches pages as a fallback, not a copy.** When the public page is read, an image of this
   site's own uploads whose `alt` is empty gets the library's alt text (`api/src/public/image-alt.ts`, one
   scoped query per page view, none when every image has its own). Text typed on the page always wins. The
   stored page is never changed (invariant 7), so there are no stale copies and a change in the library
   reaches every page. Changing a file's alt text refreshes the live pages that use it (CNT-08's
-  revalidation). This adds information on read; it doesn't clean anything, so it isn't the "sanitise on
+  revalidation, in parallel batches of 10). This adds information on read; it doesn't clean anything, so it isn't the "sanitise on
   read" invariant 5 forbids.
 
 **Options not taken:** copying the library text onto the page when the image is picked (each page gets its
@@ -36,7 +37,21 @@ way for one Puck field to set its sibling).
 **Costs and limits:**
 
 - Documents can't be picked into a page yet: the image picker and the editor's upload stay images only
-  (the editor upload now refuses a non-image). A document field is `TYP-02`'s media field.
+  (the editor's upload box refuses a non-image in the browser; the API itself still takes documents, as it
+  must). A document field is `TYP-02`'s media field.
+- **An empty alt means "use the library's", so a page can't mark an image decorative.** In HTML an empty
+  alt is how an image is declared decorative, and the editor can't tell "left blank" from "decorative". A
+  decorative flourish whose library file has alt text will be announced by a screen reader. A per-image
+  "decorative" switch would fix it (B-25).
+- **Changing a file's alt text changes live pages without a publish step.** `PATCH /media/:id` needs
+  `content:write`, so a contributor can do it; replacing a file already worked the same way (MED-02).
+- The signature check is a sanity filter, not a validator: a zip passes as a Word or Excel file, and the
+  PDF header only has to appear in the first KiB. The real protections are that the served type comes
+  from our own generated extension and `nosniff`.
+- Office files the operating system labels with no type or `application/octet-stream` are refused as
+  "unsupported" (B-25).
+- The fallback matches on the `/uploads/<siteId>/<file>` part of the address, so an image hosted
+  elsewhere with that same path would also get this site's text; nothing crosses sites.
 - The page alt fallback matches on the stored file name inside `/uploads/<siteId>/`; an image hosted
   elsewhere, or a library file that is later deleted, gets no fallback.
 - PDFs are served inline from the API's address. A PDF reader runs in the browser's own sandbox, and

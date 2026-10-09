@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
   deleteMedia,
   formatBadge,
@@ -70,14 +70,25 @@ function MediaPage() {
     };
   }, []);
 
+  // The panel now holds a form, so closing it over unsaved text asks first.
+  const detailsDirty = useRef(false);
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    detailsDirty.current = dirty;
+  }, []);
+  const requestClose = useCallback(() => {
+    if (detailsDirty.current && !window.confirm('Discard your unsaved changes?')) return;
+    detailsDirty.current = false;
+    setSelected(null);
+  }, []);
+
   useEffect(() => {
     if (!selected) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setSelected(null);
+      if (event.key === 'Escape') requestClose();
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selected]);
+  }, [selected, requestClose]);
 
   function displayUrl(item: MediaItem, url: string = item.url): string {
     const version = versions[item.id];
@@ -134,10 +145,20 @@ function MediaPage() {
     setReplaceError(null);
     try {
       const updated = await replaceMedia(id, file);
-      setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === updated.id ? { ...updated, alt: i.alt, title: i.title, description: i.description } : i,
+        ),
+      );
       setVersions((prev) => ({ ...prev, [updated.id]: Date.now() }));
-      // Only refresh the panel if it's still showing this file — never reopen it.
-      setSelected((current) => (current?.id === id ? updated : current));
+      // Only refresh the panel if it's still showing this file — never reopen it. The
+      // replace answer was read before any details saved meanwhile, so the words keep
+      // what the panel already has.
+      setSelected((current) =>
+        current?.id === id
+          ? { ...updated, alt: current.alt, title: current.title, description: current.description }
+          : current,
+      );
     } catch (error) {
       if (openIdRef.current === id) setReplaceError(error instanceof Error ? error.message : 'Replace failed');
     } finally {
@@ -157,7 +178,7 @@ function MediaPage() {
     if (usage.status !== 'ready' || usage.pages.length === 0) return base;
     const list = usage.pages.map((page) => `• ${page.title} (${page.path}, ${page.status})`).join('\n');
     const count = usage.pages.length === 1 ? '1 page uses' : `${usage.pages.length} pages use`;
-    return `${count} this file and will show a broken image:\n${list}\n\n${base}`;
+    return `${count} this file and will show a broken ${isDocument(item) ? 'link' : 'image'}:\n${list}\n\n${base}`;
   }
 
   async function handleDelete(item: MediaItem) {
@@ -221,7 +242,7 @@ function MediaPage() {
                   <img
                     className={`media-thumb${item.mimetype === 'image/svg+xml' ? ' media-thumb--contain' : ''}`}
                     src={displayUrl(item, previewUrl(item))}
-                    alt={item.filename}
+                    alt={item.alt || item.title || ''}
                     loading="lazy"
                   />
                 )}
@@ -237,24 +258,24 @@ function MediaPage() {
       )}
 
       {selected && (
-        <div className="media-detail-backdrop" onClick={() => setSelected(null)}>
+        <div className="media-detail-backdrop" onClick={requestClose}>
           <div className="media-detail" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="media-detail-close" onClick={() => setSelected(null)} aria-label="Close">
+            <button type="button" className="media-detail-close" onClick={requestClose} aria-label="Close">
               &times;
             </button>
             {isDocument(selected) ? (
               <>
                 <FileTile mimetype={selected.mimetype} size="large" />
-                <a className="media-detail-open" href={selected.url} target="_blank" rel="noopener noreferrer">
+                <a className="media-detail-open" href={displayUrl(selected)} target="_blank" rel="noopener noreferrer">
                   Open file
                 </a>
               </>
             ) : selected.mimetype.startsWith('video/') ? (
               <video className="media-detail-preview" src={displayUrl(selected)} controls />
             ) : (
-              <img className="media-detail-preview" src={displayUrl(selected)} alt={selected.filename} />
+              <img className="media-detail-preview" src={displayUrl(selected)} alt={selected.alt || selected.title || ''} />
             )}
-            <MediaDetailsForm key={selected.id} item={selected} onSaved={handleDetailsSaved} />
+            <MediaDetailsForm key={selected.id} item={selected} onSaved={handleDetailsSaved} onDirtyChange={handleDirtyChange} />
             <dl className="media-detail-meta">
               <dt>File</dt>
               <dd>{selected.filename}</dd>

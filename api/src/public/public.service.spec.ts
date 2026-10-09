@@ -153,6 +153,27 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
     expect(media.findAltsByFilenames).not.toHaveBeenCalled();
   });
 
+  it('does the same for a page opened through a preview link', async () => {
+    const TOKEN = 'a'.repeat(43);
+    const blocks = [{ type: 'hero', image: { src: SRC, alt: '' } }];
+    const previewLinks = {
+      findPageByToken: vi.fn(async () => ({ title: 'D', path: '/d', status: 'draft', blocks, updatedAt: new Date() })),
+    };
+    const media = { findAltsByFilenames: vi.fn(async () => [{ filename: 'aaa-111.png', alt: 'Library alt' }]) };
+    const service = new PublicService(
+      {} as SiteRepository,
+      {} as ContentRepository,
+      previewLinks as unknown as PreviewLinkRepository,
+      { resolve: vi.fn(async () => SITE) } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      media as unknown as MediaRepository,
+    );
+
+    const page = await service.getPreview('alpha', TOKEN);
+
+    expect(page.blocks).toEqual([{ type: 'hero', image: { src: SRC, alt: 'Library alt' } }]);
+  });
+
   it('makes no lookup for a page with no images', async () => {
     const { service, media } = setupPage([{ type: 'richText', html: '<p>x</p>' }]);
 

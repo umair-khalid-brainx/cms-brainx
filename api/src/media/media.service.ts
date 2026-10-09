@@ -42,10 +42,22 @@ export function titleFromUploadName(originalName: string | undefined): string | 
   const decoded = Buffer.from(originalName, 'latin1').toString('utf8');
   const base = decoded.split(/[\\/]/).pop() ?? '';
   const withoutExtension = base.replace(/\.[A-Za-z0-9]{1,5}$/, '');
-  // eslint-disable-next-line no-control-regex
-  const cleaned = withoutExtension.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+  const cleaned = Array.from(
+    withoutExtension
+      // Direction overrides can make "invoice\u202Efdp.exe" read as something else in the library.
+      .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\u2028\u2029]/g, '')
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u001f\u007f]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  )
+    // By code point, so a character outside the basic range is never cut in half.
+    .slice(0, 200)
+    .join('');
   return cleaned || null;
 }
+
+const REVALIDATE_BATCH = 10;
 
 // Sits next to the original in the same site folder: <uuid>.png → <uuid>-thumb.webp.
 function thumbnailFilenameFor(filename: string): string {
@@ -199,8 +211,13 @@ export class MediaService {
 
     if (dto.alt !== undefined && dto.alt !== record.alt) {
       const pages = await this.content.findReferencing(siteId, `/uploads/${siteId}/${record.filename}`);
-      for (const page of pages) {
-        if (page.status === 'published') await this.revalidation.page(membership.site.subdomain, page.path);
+      // A logo can sit on many pages and each refresh can take seconds if `web` is slow,
+      // so they go in small parallel batches rather than one after another.
+      const live = pages.filter((page) => page.status === 'published');
+      for (let start = 0; start < live.length; start += REVALIDATE_BATCH) {
+        await Promise.all(
+          live.slice(start, start + REVALIDATE_BATCH).map((page) => this.revalidation.page(membership.site.subdomain, page.path)),
+        );
       }
     }
     return this.media.findById(siteId, id);

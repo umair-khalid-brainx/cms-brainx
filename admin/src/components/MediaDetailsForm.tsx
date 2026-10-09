@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { isImage, updateMediaDetails, type MediaItem } from '../lib/mediaApi'
 import './MediaDetailsForm.css'
 
@@ -11,7 +11,16 @@ const same = (field: string, saved: string | null) => field.trim() === (saved ??
 // default for any page that leaves its own empty, so it is the one that matters
 // to visitors using a screen reader and to search engines; title and description
 // are for the library only (D-047).
-export function MediaDetailsForm({ item, onSaved }: { item: MediaItem; onSaved: (updated: MediaItem) => void }) {
+export function MediaDetailsForm({
+  item,
+  onSaved,
+  onDirtyChange,
+}: {
+  item: MediaItem
+  onSaved: (updated: MediaItem) => void
+  /** Lets the panel ask before closing over text that hasn't been saved. */
+  onDirtyChange?: (dirty: boolean) => void
+}) {
   const id = useId()
   const [alt, setAlt] = useState(item.alt ?? '')
   const [title, setTitle] = useState(item.title ?? '')
@@ -20,6 +29,11 @@ export function MediaDetailsForm({ item, onSaved }: { item: MediaItem; onSaved: 
   const image = isImage(item)
 
   const dirty = (image && !same(alt, item.alt)) || !same(title, item.title) || !same(description, item.description)
+
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+    return () => onDirtyChange?.(false)
+  }, [dirty, onDirtyChange])
 
   function edit(setter: (value: string) => void) {
     return (event: { target: { value: string } }) => {
@@ -78,9 +92,12 @@ export function MediaDetailsForm({ item, onSaved }: { item: MediaItem; onSaved: 
           rows={3}
           value={description}
           maxLength={2000}
+          aria-describedby={`${id}-description-hint`}
           onChange={edit(setDescription)}
         />
-        <p className="media-details-hint">Only shown here in the library, to help your team find the right file.</p>
+        <p id={`${id}-description-hint`} className="media-details-hint">
+          Only shown here in the library, to help your team find the right file.
+        </p>
       </div>
 
       <div className="media-details-actions">

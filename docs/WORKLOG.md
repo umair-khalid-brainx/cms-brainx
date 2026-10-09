@@ -5,7 +5,7 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
-## 2026-10-09 — Media documents, alt text, title and description (`MED-04`, built; review pending)
+## 2026-10-09 — Media documents, alt text, title and description (`MED-04` done)
 
 Decision in D-047.
 
@@ -25,7 +25,17 @@ Decision in D-047.
 - **Found by looking:** my first form was unreadable in dark mode, and the close button hid behind a
   document tile; both fixed.
 
-**Not done:** picking a document into a page (`TYP-02`'s media field). Reviewer and verifier pending.
+- **Review follow-ups:** live-page refresh in parallel batches of 10 (it was one by one, up to 2 s each); a
+  NUL character in a title or description no longer gives a 500; closing the panel over unsaved text
+  asks first; a replace no longer overwrites freshly saved details in the panel; direction-override
+  characters and half-cut emoji handled in titles; "Open file" cache-busts after a replace; library alt
+  text used for the grid images' own alt. `api` 166 tests, `admin` 69.
+- **Verifier:** every item passed, including the second tenant getting 404 on every media route, and a live
+  check that an alt change calls the refresh for each published page that uses the file.
+
+**Not done:** picking a document into a page (`TYP-02`'s media field); B-25 (a "decorative image" switch;
+Office files with no type from the operating system). The built-in `reviewer` and `verifier` agents refused to
+run without the `/build` kit docs again; general-purpose agents did both.
 
 ---
 

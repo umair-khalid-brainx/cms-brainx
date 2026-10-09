@@ -16,6 +16,8 @@ _Confirmed with the user 2026-10-09 (alt text reaches pages as an automatic fall
 - [x] Changing a file's alt text refreshes the live pages that use it
 - [x] Only the caller's own site's files can be read or changed
 - [x] Documents can't be picked into image fields (the image picker and the editor's upload stay images only)
-- [ ] All tests pass. Reviewer approved. Verifier passed.
+- [x] All tests pass. Reviewer approved. Verifier passed.
 ## Technical notes
 `api/src/media/`, `admin/src/pages/MediaPage.tsx`, `api/src/public/public.service.ts` (the fallback, one scoped query per page view). Title and description are library information only; they are not shown on the live site. Picking a document into a field is `TYP-02`'s media field.
+## History
+2026-10-09: done (D-047). PDF/Word/Excel uploads with a first-bytes check and `nosniff`; `alt`, `title`, `description` per file; the live site falls back to the library's alt text; a Details form and file tiles in the library, light and dark. Checked in a real browser (tiles, typing and saving details, the discard prompt) and on the live site (fallback, typed text wins, stored page unchanged). The verifier passed every item, including cross-tenant access and a refresh of the live pages on an alt change. The review found nothing serious; fixed: parallel refresh, NUL characters in text, unsaved-changes prompt, a stale form after replace, title edge cases, small admin nits. Left: B-25.

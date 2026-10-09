@@ -186,6 +186,39 @@ describe('MediaService', () => {
     });
   });
 
+  describe('replacing a document (MED-04)', () => {
+    const PDF_RECORD = {
+      ...RECORD,
+      id: 'doc-1',
+      url: `http://localhost:4001/uploads/${SITE}/doc.pdf`,
+      filename: 'doc.pdf',
+      mimetype: 'application/pdf',
+      thumbnailUrl: null,
+    };
+
+    beforeEach(async () => {
+      await writeFile(join(uploadsRoot, SITE, 'doc.pdf'), '%PDF-old');
+      media.findById.mockImplementation(async (siteId: string, id: string) =>
+        siteId === SITE && id === PDF_RECORD.id ? PDF_RECORD : null,
+      );
+    });
+
+    it('swaps in a real PDF, keeping the URL', async () => {
+      const result = await service.replace('user-1', 'doc-1', file('application/pdf', '%PDF-new bytes'));
+
+      expect(result.url).toBe(PDF_RECORD.url);
+      expect(await readFile(join(uploadsRoot, SITE, 'doc.pdf'), 'utf8')).toBe('%PDF-new bytes');
+    });
+
+    it('refuses a file that is not a PDF and leaves the original in place', async () => {
+      await expect(
+        service.replace('user-1', 'doc-1', file('application/pdf', '<html><script>alert(1)</script></html>')),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(await readFile(join(uploadsRoot, SITE, 'doc.pdf'), 'utf8')).toBe('%PDF-old');
+      expect(media.updateSize).not.toHaveBeenCalled();
+    });
+  });
+
   describe('updateDetails', () => {
     it('saves alt, title and description for the caller’s site', async () => {
       await service.updateDetails('user-1', RECORD.id, { alt: 'Oysters', title: 'Harvest', description: 'Morning haul' });
@@ -223,6 +256,26 @@ describe('MediaService', () => {
       expect(revalidation.page).toHaveBeenCalledWith('alpha', '/');
     });
 
+    it('refreshes many live pages in parallel batches, not one after another', async () => {
+      content.findReferencing.mockResolvedValueOnce(
+        Array.from({ length: 25 }, (_, i) => ({ id: `c${i}`, title: `P${i}`, path: `/p${i}`, status: 'published' })),
+      );
+      let running = 0;
+      let peak = 0;
+      revalidation.page.mockImplementation(async () => {
+        running += 1;
+        peak = Math.max(peak, running);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        running -= 1;
+      });
+
+      await service.updateDetails('user-1', RECORD.id, { alt: 'Changed' });
+
+      expect(revalidation.page).toHaveBeenCalledTimes(25);
+      expect(peak).toBeGreaterThan(1);
+      expect(peak).toBeLessThanOrEqual(10);
+    });
+
     it('leaves the live pages alone when only the title or description changes', async () => {
       await service.updateDetails('user-1', RECORD.id, { title: 'New title', description: 'New description' });
 
@@ -247,6 +300,18 @@ describe('titleFromUploadName', () => {
 
   it('decodes a UTF-8 name the browser sent as Latin-1', () => {
     expect(titleFromUploadName(Buffer.from('Café menu.pdf', 'utf8').toString('latin1'))).toBe('Café menu');
+  });
+
+  it('removes direction overrides, which could make a name read as something else', () => {
+    // As a browser sends it: UTF-8 bytes, read as Latin-1.
+    const sent = Buffer.from('invoice\u202Efdp.exe', 'utf8').toString('latin1');
+    expect(titleFromUploadName(sent)).toBe('invoicefdp');
+  });
+
+  it('never cuts a character outside the basic range in half when it caps the length', () => {
+    const title = titleFromUploadName(`${'😀'.repeat(300)}.pdf`) ?? '';
+    expect(Array.from(title)).toHaveLength(200);
+    expect(title).not.toContain('\ufffd');
   });
 
   it('gives nothing for an empty, missing or control-only name, and caps the length', () => {
