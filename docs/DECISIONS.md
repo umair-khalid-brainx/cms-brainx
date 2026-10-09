@@ -19,22 +19,35 @@ in `cms-blocks` is not built: it would duplicate what Puck already does.
 - **Scope:** every top-level `text`, `textarea` and `richtext` field except two (`ContactForm.submitLabel`,
   the text inside a `<button>`; `VideoEmbed.url`, never rendered as text). A test
   (`admin/src/puck/config.test.ts`) fails when a new text field is added without the flag.
-- **Not possible in place:** text inside lists (FAQ answers, team members, pricing plans, feature items)
-  and link/button labels, because Puck only edits top-level fields. They stay in the sidebar.
+- **Not possible in place:** text inside lists (FAQ answers, team members, pricing plans, feature items),
+  link/button labels and image alt text and captions (hero, image-and-text, gallery, team photos),
+  because Puck only edits top-level fields. They stay in the sidebar.
 - **No change to the stored data or the public site.** The blocks already render these props as children,
   and on the public site they are plain strings. Only one block used a text prop as an attribute (the
   video's `<iframe title>`); it now ignores non-string values.
 - **Rich text:** the canvas floating menu is Puck's action bar. Its default has underline (switched off
   here), so `RichTextInlineMenu` replaces it with the same controls as the sidebar toolbar, from one
-  shared component: H2, H3, bold, italic, bulleted and numbered lists, quote. **It has no link button:**
-  the address box needs keyboard focus, and the moment focus leaves the canvas editor Puck closes the
-  floating menu. Links are added from the sidebar toolbar, which stays visible beside it.
+  shared component: H2, H3, bold, italic, bulleted and numbered lists, quote, and link (the address box
+  opens as a small popover under the bar).
+- **`data-puck-rte-menu` is required on both menus.** Puck ends a rich-text editing session the moment
+  keyboard focus moves to anything outside an element carrying that attribute; without it the link box
+  (or Tab into the menu) closed the floating menu. Found in the review, and tested: select a word on the
+  canvas, click Link, type an address, Enter gives `<a href="https://…">` with the menu staying open.
+  While editing on the canvas the sidebar shows no toolbar of its own, so this menu is the only one.
+- **Line breaks:** Enter in a plain-text field inserts a line break (in the sidebar and on the canvas), so
+  `Prose` and the testimonial quote now use `whitespace-pre-line`; before, the canvas showed the break
+  and the public site collapsed it.
 
 **Costs and limits:**
 
-- An optional text field left empty renders as a zero-size editable span in the canvas (Puck always passes
-  a node), so it can't be clicked, and a block that wraps it (a feature grid's heading area) leaves a
-  blank gap the public site doesn't have. Fill empty ones from the sidebar. (B-24)
+- A text field left empty (optional or not) renders as a zero-size editable span in the canvas, because Puck
+  always passes a node, so it can't be clicked, and every `value ? <wrapper>` check in a block is true
+  there. Most blocks therefore show blank structure the public site doesn't: an empty eyebrow or body
+  adds gaps in the hero, an empty video caption leaves a bordered strip, a feature grid or FAQ keeps its
+  heading area, a testimonial shows a lone "—". Fill empty ones from the sidebar. (B-24)
+- Nothing but the types stops a block author using a top-level text prop as a string. Instead a test
+  (`admin/src/puck/inline-render.test.ts`) renders every block with editable nodes and fails on a throw,
+  on `[object Object]`, or when an editable value isn't drawn.
 - Press-and-type is plain text for `text`/`textarea` fields (`contenteditable="plaintext-only"`), as it
   is in the sidebar.
 

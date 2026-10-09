@@ -159,7 +159,8 @@
 }
 
 /* ---- inline variant: the floating menu on the canvas (BLK-07) ----
-   Sits in Puck's dark action bar above the block, so light-on-dark. */
+   Sits in Puck's dark action bar above the block, so light-on-dark, with the
+   link box opening as a small light popover below it. */
 .rt-inline {
   position: relative;
   display: inline-flex;
@@ -193,4 +194,18 @@
 .rt-inline .rt-divider {
   height: 16px;
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* The link box opens as a small light popover under the floating bar. */
+.rt-inline .rt-link {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 10;
+  width: 280px;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  text-align: left;
 }

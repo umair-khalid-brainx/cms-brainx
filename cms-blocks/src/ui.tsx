@@ -55,7 +55,9 @@ export function Heading({
 
 export function Prose({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <p className={`max-w-[var(--site-measure)] text-[1.0625rem] leading-[1.6] text-[var(--site-muted)] ${className}`}>
+    // `whitespace-pre-line`: a line break typed into the plain text field is kept, as
+    // it is in the editor (where Enter in the canvas inserts one); spaces still collapse.
+    <p className={`max-w-[var(--site-measure)] whitespace-pre-line text-[1.0625rem] leading-[1.6] text-[var(--site-muted)] ${className}`}>
       {children}
     </p>
   );

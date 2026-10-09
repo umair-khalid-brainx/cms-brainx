@@ -5,6 +5,37 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-09 — Edit text in place on the canvas (`BLK-07` done)
+
+Decision in D-046; follows D-045.
+
+- **In-place editing:** `contentEditable: true` on every top-level text, textarea and rich-text field
+  (29 fields, 15 blocks), except the form's submit label and the video link. Puck swaps each for an
+  editable span inside the block's own heading or paragraph; typing writes the same prop as the sidebar
+  field. No `Editable` primitive was built. Text inside lists and button labels stay sidebar-only.
+- **Floating menu on the canvas:** `RichTextInlineMenu` (same controls as the sidebar toolbar, one shared
+  component, no underline). Both menus carry `data-puck-rte-menu`, without which Puck ended the editing
+  session as soon as the link box took focus.
+- **Public site:** `Prose` and the testimonial quote use `whitespace-pre-line`, so a line break typed in a
+  plain-text field shows on the live page as it does in the editor. The video embed's iframe `title`
+  ignores non-string values.
+- **Tests:** `config.test.ts` (every text field is editable or on a reasoned exception list; the list can't
+  go stale) and `inline-render.test.ts` (every block renders with editable nodes: no throw, no
+  `[object Object]`, every editable value drawn). Both were shown to fail when the thing they guard breaks.
+  `admin` 66 tests, `api` 105, builds clean.
+- **Checked by hand with real clicks and typing:** Hero headline and testimonial quote (canvas text and
+  sidebar field identical, autosave stored it, survives a reload); bold and italic from the floating
+  menu; a link added from the floating menu (`<a href="https://example.com/brave">`, menu stays open, no
+  reload). The verifier also built `web` for production and confirmed the public HTML has no editor
+  markup.
+
+**Not done:** B-24, the canvas shows blank structure for empty text that the public site doesn't, and an
+empty field can't be clicked, so it is refilled from the sidebar. Image alt text and captions are
+sidebar-only. The built-in `reviewer` and `verifier` agents refused to run for this ticket (they need the
+`/build` kit's `docs/plan.md` and `docs/use-cases.md`); general-purpose agents did both jobs.
+
+---
+
 ## 2026-10-09 — Rich text: editor, toolbar, sanitising on write, shared typography (`BLK-05` done)
 
 Decision and costs in D-045.

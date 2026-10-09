@@ -87,7 +87,10 @@ function RichTextControls({ editor, readOnly, variant }: MenuProps & { variant: 
   const inline = variant === 'inline'
 
   return (
-    <div className={inline ? 'rt-inline' : 'rt-toolbar-wrap'}>
+    // `data-puck-rte-menu` tells Puck this is part of the editor's menu: without it,
+    // moving focus into the menu (the link box, or Tab from the text) counts as
+    // leaving the editor, and Puck ends the editing session.
+    <div className={inline ? 'rt-inline' : 'rt-toolbar-wrap'} data-puck-rte-menu>
       <div className="rt-toolbar" role="group" aria-label="Text formatting">
         {inline ? (
           // A dropdown doesn't fit the canvas's small floating bar, so the two
@@ -158,27 +161,19 @@ function RichTextControls({ editor, readOnly, variant }: MenuProps & { variant: 
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           icon="M6 17c0-4 1-7 4-9M14 17c0-4 1-7 4-9M6 13h4v4H6zM14 13h4v4h-4z"
         />
-        {/* No link button on the canvas menu: the link address box needs keyboard
-            focus, and the moment focus leaves the canvas editor Puck closes this
-            menu, taking the box with it. Links are added from the sidebar toolbar,
-            which stays visible beside it. */}
-        {!inline && (
-          <>
-            <span className="rt-divider" aria-hidden="true" />
-            <ToolButton
-              label="Link"
-              active={editor.isActive('link')}
-              expanded={linkOpen}
-              controls={linkBoxId}
-              buttonRef={linkButton}
-              disabled={disabled}
-              onClick={openLink}
-              icon="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"
-            />
-          </>
-        )}
+        <span className="rt-divider" aria-hidden="true" />
+        <ToolButton
+          label="Link"
+          active={editor.isActive('link')}
+          expanded={linkOpen}
+          controls={linkBoxId}
+          buttonRef={linkButton}
+          disabled={disabled}
+          onClick={openLink}
+          icon="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"
+        />
       </div>
-      {!inline && linkOpen && (
+      {linkOpen && (
         <div className="rt-link" id={linkBoxId}>
           <label className="rt-link-label" htmlFor={linkInputId}>
             Link address
