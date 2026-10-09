@@ -8,6 +8,38 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-046 — 2026-10-09 — Inline editing uses Puck's `contentEditable`, no `Editable` primitive (`BLK-07`)
+
+**Decision (follows D-045, the user's call):** a text field edits on the canvas when its Puck field has
+`contentEditable: true`. Puck swaps the prop for an editable `<span>` inside the block's own heading or
+paragraph; typing writes the same prop the sidebar field edits (checked: canvas and sidebar show the
+identical text, autosave stores it, it survives a reload). The ticket's idea of an `Editable` primitive
+in `cms-blocks` is not built: it would duplicate what Puck already does.
+
+- **Scope:** every top-level `text`, `textarea` and `richtext` field except two (`ContactForm.submitLabel`,
+  the text inside a `<button>`; `VideoEmbed.url`, never rendered as text). A test
+  (`admin/src/puck/config.test.ts`) fails when a new text field is added without the flag.
+- **Not possible in place:** text inside lists (FAQ answers, team members, pricing plans, feature items)
+  and link/button labels, because Puck only edits top-level fields. They stay in the sidebar.
+- **No change to the stored data or the public site.** The blocks already render these props as children,
+  and on the public site they are plain strings. Only one block used a text prop as an attribute (the
+  video's `<iframe title>`); it now ignores non-string values.
+- **Rich text:** the canvas floating menu is Puck's action bar. Its default has underline (switched off
+  here), so `RichTextInlineMenu` replaces it with the same controls as the sidebar toolbar, from one
+  shared component: H2, H3, bold, italic, bulleted and numbered lists, quote. **It has no link button:**
+  the address box needs keyboard focus, and the moment focus leaves the canvas editor Puck closes the
+  floating menu. Links are added from the sidebar toolbar, which stays visible beside it.
+
+**Costs and limits:**
+
+- An optional text field left empty renders as a zero-size editable span in the canvas (Puck always passes
+  a node), so it can't be clicked, and a block that wraps it (a feature grid's heading area) leaves a
+  blank gap the public site doesn't have. Fill empty ones from the sidebar. (B-24)
+- Press-and-type is plain text for `text`/`textarea` fields (`contenteditable="plaintext-only"`), as it
+  is in the sidebar.
+
+---
+
 ## D-045 — 2026-10-09 — Rich text: Puck's built-in `richtext` field, a custom toolbar, `sanitize-html` on write (`BLK-05`)
 
 **Decision (user's calls):**

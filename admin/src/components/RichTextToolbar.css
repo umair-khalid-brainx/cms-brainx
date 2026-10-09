@@ -151,3 +151,46 @@
     transition: none;
   }
 }
+
+.rt-button-text {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---- inline variant: the floating menu on the canvas (BLK-07) ----
+   Sits in Puck's dark action bar above the block, so light-on-dark. */
+.rt-inline {
+  position: relative;
+  display: inline-flex;
+}
+
+.rt-inline .rt-toolbar {
+  flex-wrap: nowrap;
+  padding: 0;
+}
+
+.rt-inline .rt-button {
+  width: 28px;
+  height: 28px;
+  color: #fff;
+}
+
+.rt-inline .rt-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.rt-inline .rt-button[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.7);
+  color: #fff;
+}
+
+.rt-inline .rt-button:focus-visible {
+  outline-color: #fff;
+}
+
+.rt-inline .rt-divider {
+  height: 16px;
+  background: rgba(255, 255, 255, 0.3);
+}

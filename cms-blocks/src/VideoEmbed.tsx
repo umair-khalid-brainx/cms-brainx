@@ -17,7 +17,9 @@ export function VideoEmbed({ block }: { block: VideoEmbedBlock }) {
       <figure className="overflow-hidden rounded-[var(--site-radius-md)] border border-[var(--site-line)]">
         <iframe
           src={src}
-          title={heading || caption || `${PROVIDER_NAME[provider]} video`}
+          // In the editor canvas the text props are editable nodes, not strings (BLK-07); an
+          // attribute can only take a string.
+          title={[heading, caption].find((text): text is string => typeof text === 'string' && text !== '') || `${PROVIDER_NAME[provider]} video`}
           className="block aspect-video w-full"
           loading="lazy"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

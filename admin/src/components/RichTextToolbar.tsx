@@ -5,13 +5,25 @@ import './RichTextToolbar.css'
 
 type MenuProps = Parameters<NonNullable<RichtextField['renderMenu']>>[0]
 
-// The editing controls for every rich-text field (BLK-05): exactly the set the
-// client's requirements ask for (headings, paragraphs, lists, links, quotations)
-// plus bold and italic, and nothing else. Puck's default toolbar also offers
-// underline and alignment, which the editor has switched off (puck/config.tsx
-// `richTextOptions`) and the API's sanitiser would strip, so it is replaced
+// The editing controls for every rich-text field (BLK-05, BLK-07): exactly the
+// set the client's requirements ask for (headings, paragraphs, lists, links,
+// quotations) plus bold and italic, and nothing else. Puck's default menus also
+// offer underline and alignment, which the editor has switched off (puck/config.tsx
+// `richTextOptions`) and the API's sanitiser would strip, so both are replaced
 // rather than left with greyed-out buttons.
-export function RichTextToolbar({ editor, readOnly }: MenuProps) {
+//
+// One implementation, two places: the sidebar field (`panel`) and the floating
+// menu that appears on the canvas while editing in place (`inline`), so the two
+// can't drift apart.
+export function RichTextToolbar(props: MenuProps) {
+  return <RichTextControls {...props} variant="panel" />
+}
+
+export function RichTextInlineMenu(props: MenuProps) {
+  return <RichTextControls {...props} variant="inline" />
+}
+
+function RichTextControls({ editor, readOnly, variant }: MenuProps & { variant: 'panel' | 'inline' }) {
   const [linkOpen, setLinkOpen] = useState(false)
   const [href, setHref] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
@@ -72,76 +84,101 @@ export function RichTextToolbar({ editor, readOnly }: MenuProps) {
     closeLink()
   }
 
+  const inline = variant === 'inline'
+
   return (
-    <div className="rt-toolbar-wrap">
+    <div className={inline ? 'rt-inline' : 'rt-toolbar-wrap'}>
       <div className="rt-toolbar" role="group" aria-label="Text formatting">
-        <select
-          className="rt-block"
-          aria-label="Text style"
-          value={block}
-          disabled={disabled}
-          onChange={(event) => setBlock(event.target.value)}
-        >
-          <option value="p">Paragraph</option>
-          <option value="h2">Heading</option>
-          <option value="h3">Subheading</option>
-        </select>
+        {inline ? (
+          // A dropdown doesn't fit the canvas's small floating bar, so the two
+          // heading levels are toggles there; switching one off gives a paragraph.
+          <>
+            <ToolButton
+              label="Heading"
+              text="H2"
+              active={block === 'h2'}
+              disabled={disabled}
+              onClick={() => setBlock(block === 'h2' ? 'p' : 'h2')}
+            />
+            <ToolButton
+              label="Subheading"
+              text="H3"
+              active={block === 'h3'}
+              disabled={disabled}
+              onClick={() => setBlock(block === 'h3' ? 'p' : 'h3')}
+            />
+          </>
+        ) : (
+          <select
+            className="rt-block"
+            aria-label="Text style"
+            value={block}
+            disabled={disabled}
+            onChange={(event) => setBlock(event.target.value)}
+          >
+            <option value="p">Paragraph</option>
+            <option value="h2">Heading</option>
+            <option value="h3">Subheading</option>
+          </select>
+        )}
         <span className="rt-divider" aria-hidden="true" />
         <ToolButton
           label="Bold"
           active={editor.isActive('bold')}
           disabled={disabled}
           onClick={() => editor.chain().focus().toggleBold().run()}
-        >
-          <path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" />
-        </ToolButton>
+          icon="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z"
+        />
         <ToolButton
           label="Italic"
           active={editor.isActive('italic')}
           disabled={disabled}
           onClick={() => editor.chain().focus().toggleItalic().run()}
-        >
-          <path d="M19 5h-9M14 19H5M15 5 9 19" />
-        </ToolButton>
+          icon="M19 5h-9M14 19H5M15 5 9 19"
+        />
         <span className="rt-divider" aria-hidden="true" />
         <ToolButton
           label="Bulleted list"
           active={editor.isActive('bulletList')}
           disabled={disabled}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-        >
-          <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
-        </ToolButton>
+          icon="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"
+        />
         <ToolButton
           label="Numbered list"
           active={editor.isActive('orderedList')}
           disabled={disabled}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        >
-          <path d="M10 6h10M10 12h10M10 18h10M4 5l1.5-1v4M4 14.5a1.5 1.5 0 0 1 3 0c0 1-3 2-3 3.5h3" />
-        </ToolButton>
+          icon="M10 6h10M10 12h10M10 18h10M4 5l1.5-1v4M4 14.5a1.5 1.5 0 0 1 3 0c0 1-3 2-3 3.5h3"
+        />
         <ToolButton
           label="Quote"
           active={editor.isActive('blockquote')}
           disabled={disabled}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        >
-          <path d="M6 17c0-4 1-7 4-9M14 17c0-4 1-7 4-9M6 13h4v4H6zM14 13h4v4h-4z" />
-        </ToolButton>
-        <span className="rt-divider" aria-hidden="true" />
-        <ToolButton
-          label="Link"
-          active={editor.isActive('link')}
-          expanded={linkOpen}
-          controls={linkBoxId}
-          buttonRef={linkButton}
-          disabled={disabled}
-          onClick={openLink}
-        >
-          <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
-        </ToolButton>
+          icon="M6 17c0-4 1-7 4-9M14 17c0-4 1-7 4-9M6 13h4v4H6zM14 13h4v4h-4z"
+        />
+        {/* No link button on the canvas menu: the link address box needs keyboard
+            focus, and the moment focus leaves the canvas editor Puck closes this
+            menu, taking the box with it. Links are added from the sidebar toolbar,
+            which stays visible beside it. */}
+        {!inline && (
+          <>
+            <span className="rt-divider" aria-hidden="true" />
+            <ToolButton
+              label="Link"
+              active={editor.isActive('link')}
+              expanded={linkOpen}
+              controls={linkBoxId}
+              buttonRef={linkButton}
+              disabled={disabled}
+              onClick={openLink}
+              icon="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"
+            />
+          </>
+        )}
       </div>
-      {linkOpen && (
+      {!inline && linkOpen && (
         <div className="rt-link" id={linkBoxId}>
           <label className="rt-link-label" htmlFor={linkInputId}>
             Link address
@@ -197,7 +234,8 @@ function ToolButton({
   buttonRef,
   disabled,
   onClick,
-  children,
+  icon,
+  text,
 }: {
   label: string
   active: boolean
@@ -206,7 +244,9 @@ function ToolButton({
   buttonRef?: Ref<HTMLButtonElement>
   disabled?: boolean
   onClick: () => void
-  children: ReactNode
+  /** An SVG path for the icon, or `text` for a short word like "H2". */
+  icon?: string
+  text?: ReactNode
 }) {
   return (
     <button
@@ -223,9 +263,25 @@ function ToolButton({
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
     >
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {children}
-      </svg>
+      {icon ? (
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d={icon} />
+        </svg>
+      ) : (
+        <span className="rt-button-text" aria-hidden="true">
+          {text}
+        </span>
+      )}
     </button>
   )
 }

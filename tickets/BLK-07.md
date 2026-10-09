@@ -6,10 +6,10 @@
 ## Goal
 Edit text directly on the canvas instead of only in the sidebar.
 ## Definition of Done
-_Items marked Draft were written from the plan, decisions and code, not from use cases. Confirm them before `/build`._
-- [ ] Draft: clicking a text element on the canvas makes it editable in place
-- [ ] Draft: the edit saves to the same prop the sidebar edits
-- [ ] Draft: rich text uses the same TipTap setup as `BLK-05`
+_Confirmed with the user 2026-10-09 (D-045, D-046)._
+- [x] Clicking a text element on the canvas makes it editable in place (every top-level text field except the two listed in D-046)
+- [x] The edit saves to the same prop the sidebar edits
+- [x] Rich text uses the same TipTap setup as `BLK-05`, with a matching floating menu on the canvas (no link button there, see D-046)
 - [ ] All tests pass. Reviewer approved. Verifier passed.
 ## Technical notes
-An `Editable` primitive in `cms-blocks` that is inert on the public site.
+Puck's `contentEditable` on the field config (`admin/src/puck/config.tsx`), no `Editable` primitive (D-046). `admin/src/components/RichTextToolbar.tsx` holds the sidebar and canvas menus.

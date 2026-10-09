@@ -35,7 +35,7 @@ import {
   type SiteTheme,
 } from 'cms-blocks';
 import { ImageUploadField } from '../components/ImageUploadField';
-import { RichTextToolbar } from '../components/RichTextToolbar';
+import { RichTextInlineMenu, RichTextToolbar } from '../components/RichTextToolbar';
 
 // Field shapes mirror cms-blocks/src/types.ts exactly. Puck hands `render` the
 // field values flat; each block component wants them nested under `block`, so
@@ -155,6 +155,11 @@ const imageField = (label: string) => ({
 const summary = (text: string | undefined, fallback: string, index?: number) =>
   text?.trim() || `${fallback} ${(index ?? 0) + 1}`;
 
+// `contentEditable: true` on a text field lets people edit it straight on the
+// canvas (BLK-07): Puck swaps the prop for an editable <span> inside the block's
+// own heading or paragraph, and typing writes the same prop the sidebar field
+// edits. Only top-level text props can do this, so text inside lists (FAQ answers,
+// team members, pricing plans) and button labels stay sidebar-only.
 export const config: Config<EditorComponents> = {
   root: {
     // `min-h-screen` as in web's SiteChrome: the site's paper fills the canvas
@@ -169,9 +174,9 @@ export const config: Config<EditorComponents> = {
     Hero: {
       label: 'Hero',
       fields: {
-        eyebrow: { type: 'text', label: 'Eyebrow (small text above the headline)' },
-        headline: { type: 'text', label: 'Headline' },
-        body: { type: 'textarea', label: 'Body' },
+        eyebrow: { type: 'text', label: 'Eyebrow (small text above the headline)', contentEditable: true },
+        headline: { type: 'text', label: 'Headline', contentEditable: true },
+        body: { type: 'textarea', label: 'Body', contentEditable: true },
         primaryAction: linkField('Primary button'),
         secondaryAction: linkField('Secondary button'),
         image: imageField('Image'),
@@ -194,13 +199,15 @@ export const config: Config<EditorComponents> = {
     RichText: {
       label: 'Rich text',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
         html: {
           type: 'richtext',
           label: 'Content',
           contentEditable: true,
           options: richTextOptions,
           renderMenu: RichTextToolbar,
+          // The floating menu while editing on the canvas: same controls, compact.
+          renderInlineMenu: RichTextInlineMenu,
           // Tall enough to keep writing room when the toolbar's link form is open.
           initialHeight: 260,
         },
@@ -212,8 +219,8 @@ export const config: Config<EditorComponents> = {
     ImageText: {
       label: 'Image and text',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
-        body: { type: 'textarea', label: 'Body' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
+        body: { type: 'textarea', label: 'Body', contentEditable: true },
         image: imageField('Image'),
         imagePosition: {
           type: 'radio',
@@ -238,8 +245,8 @@ export const config: Config<EditorComponents> = {
     FeatureGrid: {
       label: 'Feature grid',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
-        intro: { type: 'textarea', label: 'Intro' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
+        intro: { type: 'textarea', label: 'Intro', contentEditable: true },
         ordered: {
           type: 'radio',
           label: 'Numbering',
@@ -268,9 +275,9 @@ export const config: Config<EditorComponents> = {
     Testimonial: {
       label: 'Testimonial',
       fields: {
-        quote: { type: 'textarea', label: 'Quote' },
-        attribution: { type: 'text', label: 'Name' },
-        role: { type: 'text', label: 'Role or company' },
+        quote: { type: 'textarea', label: 'Quote', contentEditable: true },
+        attribution: { type: 'text', label: 'Name', contentEditable: true },
+        role: { type: 'text', label: 'Role or company', contentEditable: true },
       },
       defaultProps: { quote: '', attribution: '' },
       render: ({ quote, attribution, role }) => (
@@ -280,10 +287,10 @@ export const config: Config<EditorComponents> = {
     Cta: {
       label: 'Call to action',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
-        body: { type: 'textarea', label: 'Body' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
+        body: { type: 'textarea', label: 'Body', contentEditable: true },
         action: linkField('Button'),
-        note: { type: 'text', label: 'Note (small text under the button)' },
+        note: { type: 'text', label: 'Note (small text under the button)', contentEditable: true },
       },
       defaultProps: { heading: 'Heading', action: { label: '', href: '' } },
       render: ({ heading, body, action, note }) => (
@@ -293,7 +300,7 @@ export const config: Config<EditorComponents> = {
     LogoCloud: {
       label: 'Logo cloud',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
         logos: {
           type: 'array',
           label: 'Logos',
@@ -308,7 +315,7 @@ export const config: Config<EditorComponents> = {
     Stats: {
       label: 'Stats',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
         items: {
           type: 'array',
           label: 'Stats',
@@ -326,8 +333,8 @@ export const config: Config<EditorComponents> = {
     Faq: {
       label: 'FAQ',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
-        intro: { type: 'textarea', label: 'Intro' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
+        intro: { type: 'textarea', label: 'Intro', contentEditable: true },
         items: {
           type: 'array',
           label: 'Questions',
@@ -361,7 +368,7 @@ export const config: Config<EditorComponents> = {
     Gallery: {
       label: 'Gallery',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
         images: {
           type: 'array',
           label: 'Images',
@@ -376,8 +383,8 @@ export const config: Config<EditorComponents> = {
     PricingTable: {
       label: 'Pricing table',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
-        intro: { type: 'textarea', label: 'Intro' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
+        intro: { type: 'textarea', label: 'Intro', contentEditable: true },
         plans: {
           type: 'array',
           label: 'Plans',
@@ -427,8 +434,8 @@ export const config: Config<EditorComponents> = {
     TeamGrid: {
       label: 'Team grid',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
-        intro: { type: 'textarea', label: 'Intro' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
+        intro: { type: 'textarea', label: 'Intro', contentEditable: true },
         members: {
           type: 'array',
           label: 'Team members',
@@ -450,8 +457,8 @@ export const config: Config<EditorComponents> = {
     ContactForm: {
       label: 'Contact form',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
-        intro: { type: 'textarea', label: 'Intro' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
+        intro: { type: 'textarea', label: 'Intro', contentEditable: true },
         submitLabel: { type: 'text', label: 'Submit button text' },
         fields: {
           type: 'array',
@@ -500,9 +507,9 @@ export const config: Config<EditorComponents> = {
     VideoEmbed: {
       label: 'Video',
       fields: {
-        heading: { type: 'text', label: 'Heading' },
+        heading: { type: 'text', label: 'Heading', contentEditable: true },
         url: { type: 'text', label: 'YouTube or Vimeo link' },
-        caption: { type: 'text', label: 'Caption' },
+        caption: { type: 'text', label: 'Caption', contentEditable: true },
       },
       defaultProps: { url: '' },
       render: ({ heading, url, caption }) => {
