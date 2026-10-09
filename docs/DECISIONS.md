@@ -8,6 +8,35 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-043 — 2026-10-07 — Media thumbnails: one 400px WebP, stored URL, no backfill (`MED-01`)
+
+**Decision:** every PNG, JPEG or WebP upload gets one thumbnail made with `sharp`
+(`api/src/media/thumbnail.ts`): 400px wide, never enlarged, WebP at quality 80, EXIF rotation applied.
+It sits next to the original as `<uuid>-thumb.webp`, and its URL is stored in a new nullable
+`Media.thumbnailUrl` column. The `/media` grid and the editor's image picker show the thumbnail; the
+picker still puts the original `url` into the page.
+
+**Options the user chose between:**
+
+- **Sizes:** one size, not several. The admin grid is the only consumer today. Responsive `srcset`
+  sizes for public pages would be a separate change.
+- **Where the URL lives:** a column, not a naming rule the client works out. Cost: a migration.
+  Benefit: `null` says plainly "no thumbnail", so old uploads and SVGs need no special case.
+- **Existing uploads:** no backfill. They have `thumbnailUrl = null` and the UI falls back to `url`.
+- **SVG, GIF, video:** no thumbnail. SVG is already small and sharp at any size, a GIF would lose its
+  animation, and video isn't an image. They keep `url` as their preview.
+
+**Also (made during the build):** a PNG/JPEG/WebP that `sharp` can't decode is rejected with 400 and
+nothing is written to disk. The mimetype is client-supplied, so this is the first real check that the
+file is what it says. Images over 50 megapixels are rejected the same way (`limitInputPixels`), so a
+small, highly-compressed file that claims huge dimensions can't eat the server's memory. Delete
+removes the thumbnail file along with the original.
+
+**Supersedes:** the "No thumbnails" part of D-025.
+
+**Admin presentation:** previews sit on a transparency checkerboard (not flat grey), so a cut-out PNG
+or logo shows its real edges; SVGs are shown whole with padding instead of cropped to fill the square;
+GIF and SVG cards carry a small format tag; video cards show a play mark.
 ## D-041 — 2026-10-06 — `admin` gets vitest; canvas actions are tested at the save/load boundary
 
 **Decision:** `admin` now has `vitest` as a dev dependency (`npm test`), the same runner `api` uses.

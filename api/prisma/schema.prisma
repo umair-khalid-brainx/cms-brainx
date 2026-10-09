@@ -158,6 +158,9 @@ model Media {
   id               String   @id @default(cuid())
   siteId           String   @map("site_id")
   url              String
+  // Null for files sharp doesn't thumbnail (SVG, GIF, video) and for uploads
+  // made before MED-01's thumbnails existed — the library falls back to url.
+  thumbnailUrl     String?  @map("thumbnail_url")
   filename         String
   mimetype         String
   size             Int

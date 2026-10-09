@@ -74,6 +74,7 @@
 }
 
 .media-library-card {
+  position: relative;
   padding: 0;
   border: 1px solid #c3c4c7;
   border-radius: 6px;
@@ -87,12 +88,38 @@
   border-color: #2271b1;
 }
 
+.media-library-card:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+/* Same checkerboard and SVG treatment as MediaPage.css's grid. */
 .media-library-thumb {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  background: #f0f0f1;
+  background: repeating-conic-gradient(#f0f0f1 0 25%, #fff 0 50%) 0 0 / 12px 12px;
   display: block;
+}
+
+.media-library-thumb--contain {
+  object-fit: contain;
+  padding: 14%;
+  box-sizing: border-box;
+}
+
+.media-library-format {
+  position: absolute;
+  left: 0.3rem;
+  bottom: 0.3rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  background: rgba(30, 30, 30, 0.78);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -120,6 +147,10 @@
   }
 
   .media-library-thumb {
-    background: #232323;
+    background: repeating-conic-gradient(#232323 0 25%, #2c2d30 0 50%) 0 0 / 12px 12px;
+  }
+
+  .media-library-card:focus-visible {
+    outline-color: #72aee6;
   }
 }

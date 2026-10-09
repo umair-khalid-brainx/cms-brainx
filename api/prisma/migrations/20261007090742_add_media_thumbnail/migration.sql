@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "media" ADD COLUMN     "thumbnail_url" TEXT;
