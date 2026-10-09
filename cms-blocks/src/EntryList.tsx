@@ -19,9 +19,9 @@ export function EntryList({ listing }: { listing: TypeListing }) {
               <li key={entry.path} className="border-b border-[var(--site-line)]">
                 <a
                   href={entry.path}
-                  className="group grid gap-6 py-8 outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--site-accent)] sm:grid-cols-[1fr_11rem] sm:items-start"
+                  className="group grid gap-6 py-8 outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--site-accent)] sm:grid-cols-[minmax(0,1fr)_11rem] sm:items-start"
                 >
-                  <div>
+                  <div className="min-w-0 [overflow-wrap:anywhere]">
                     {date ? (
                       <time
                         dateTime={entry.publishedAt ?? undefined}

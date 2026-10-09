@@ -52,7 +52,7 @@ export class ContentRepository {
   }
 
   /**
-   * Pages (any status) whose blocks mention `needle` anywhere — used to warn
+   * Pages and entries (any status) whose blocks or custom field values mention `needle` anywhere — used to warn
    * before deleting a media file a page still uses (MED-02, B-12). A runtime
    * scan of the JSONB as text rather than a usage table kept in sync on every
    * save: always accurate, and cheap at one site's page count.
@@ -61,7 +61,8 @@ export class ContentRepository {
     return this.prisma.$queryRaw<{ id: string; title: string; path: string; status: string }[]>`
       SELECT id, title, path, status::text AS status
       FROM content
-      WHERE site_id = ${siteId} AND strpos(blocks::text, ${needle}) > 0
+      WHERE site_id = ${siteId}
+        AND (strpos(blocks::text, ${needle}) > 0 OR strpos(data::text, ${needle}) > 0)
       ORDER BY title`;
   }
 

@@ -767,3 +767,33 @@ describe('ContentService publish date and listing refresh (TYP-03)', () => {
     expect(revalidation.page.mock.calls.map((c: unknown[]) => c[1])).toEqual(['/fair']);
   });
 });
+
+describe('an entry made only of fields (TYP-03 verifier)', () => {
+  const TYPES = [{ id: 'type-events', siteId: 'site-a', prefix: 'events', fields: [{ key: 'when', label: 'When', kind: 'date', required: false }] }];
+  const setup = (rows: Row[]) => fakeContent(rows, { alice: { siteId: 'site-a', role: 'owner' } }, {}, TYPES);
+  const entry = (extra: Partial<Row> = {}): Row => ({
+    siteId: 'site-a', title: 'Fair', slug: 'fair', path: '/events/fair', status: 'draft', blocks: [], typeId: 'type-events', ...extra,
+  });
+
+  it('can go live with a value and no blocks', async () => {
+    const { service, table } = setup([entry({ data: { when: '2026-05-05' } } as Partial<Row>)]);
+
+    await service.update('alice', 'fair', { status: 'published' });
+
+    expect(table[0].status).toBe('published');
+  });
+
+  it('still needs something: no blocks and no values is refused', async () => {
+    const { service } = setup([entry()]);
+
+    await expect(service.update('alice', 'fair', { status: 'published' })).rejects.toMatchObject({
+      response: { errors: [expect.objectContaining({ message: 'Add at least one block' })] },
+    });
+  });
+
+  it('an ordinary page still needs a block', async () => {
+    const { service } = setup([entry({ typeId: null, path: '/fair', data: { when: 'x' } } as Partial<Row>)]);
+
+    await expect(service.update('alice', 'fair', { status: 'published' })).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+});

@@ -5,7 +5,7 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
-## 2026-10-09 — Public pages for content types (`TYP-03`, built; review pending)
+## 2026-10-09 — Public pages for content types (`TYP-03` done)
 
 Decision in D-050.
 
@@ -20,7 +20,12 @@ Decision in D-050.
   are 404 on Kestrel's host. Two layout problems found and fixed from the first screenshots (an excerpt shown as a
   tiny fact row; an empty second column).
 
-**Not done:** reviewer and verifier pending; a second tenant's theme with entries hasn't been photographed.
+- **Review and verifier follow-ups:** long words no longer push the page wider than a phone; a listing's address is
+  exact; a NUL character in a public address is a 404 (it was a 500); a file used only in an entry's field counts
+  as "used on" it; an entry made only of fields can be published; `API_PUBLIC_URL` documented as a production
+  requirement; a test that the public page serialises no email, ids or status. `api` 342 tests.
+
+**Not done:** B-28. A second tenant's theme with entries hasn't been photographed.
 
 ---
 

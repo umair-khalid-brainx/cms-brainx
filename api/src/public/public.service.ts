@@ -45,9 +45,10 @@ export type PreviewPage = PublicPage & { status: 'draft' | 'published' };
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/;
 
 /**
- * What an anonymous visitor of a tenant site may see. Returns only fields the
- * public site renders — no ids, no status, no timestamps beyond updatedAt —
- * so nothing internal leaks through a response nobody logged in to get.
+ * What an anonymous visitor of a tenant site may see. Returns only what the
+ * public site renders — no ids, no status, no email; the author's name and the
+ * dates shown on a page — so nothing internal leaks through a response nobody
+ * logged in to get.
  */
 @Injectable()
 export class PublicService {
@@ -70,6 +71,7 @@ export class PublicService {
   }
 
   async getPage(subdomain: string, rawPath: string | undefined): Promise<PublicPage> {
+    if (rawPath?.includes('\u0000')) throw new NotFoundException('Page not found');
     const siteId = await this.findSiteId(subdomain);
     const page = await this.content.findLiveByPath(siteId, normalisePath(rawPath));
     if (!page) throw new NotFoundException('Page not found');
@@ -87,8 +89,11 @@ export class PublicService {
    * or another site's, is the same 404 as a missing page (D-030).
    */
   async getListing(subdomain: string, prefix: string): Promise<PublicListing> {
+    // Exact, like every page address: `/Events` is no address, so no second URL for one listing.
+    // A NUL character can't be in an address and Postgres refuses it, so it is a plain 404.
+    if (prefix.includes('\u0000')) throw new NotFoundException('Page not found');
     const siteId = await this.findSiteId(subdomain);
-    const type = await this.types.findByPrefix(siteId, prefix.toLowerCase());
+    const type = await this.types.findByPrefix(siteId, prefix);
     if (!type) throw new NotFoundException('Page not found');
     const fields = parseStoredFields(type.fields);
     const rows = await this.content.findPublishedByType(siteId, type.id, LISTING_LIMIT);

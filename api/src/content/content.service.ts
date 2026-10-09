@@ -51,7 +51,11 @@ export class ContentService {
   /** What would stop this page being published, as saved now (CNT-12). */
   async checks(userId: string, slug: string) {
     const page = await this.get(userId, slug);
-    return this.withRequiredFields(checkPublishable(page.blocks), await this.fieldsOf(page.siteId, page.typeId), page.data);
+    return this.withRequiredFields(
+      this.allowFieldOnlyEntry(checkPublishable(page.blocks), page.typeId, page.data),
+      await this.fieldsOf(page.siteId, page.typeId),
+      page.data,
+    );
   }
 
   async create(userId: string, dto: CreateContentDto) {
@@ -124,7 +128,11 @@ export class ContentService {
     // autosave of an already-live page isn't either: blocking it mid-edit
     // would lose work, and the editor checks before its Publish (D-036).
     if (dto.status === 'published') {
-      const checks = this.withRequiredFields(checkPublishable(blocks ?? existing.blocks), fields, data ?? existing.data);
+      const checks = this.withRequiredFields(
+        this.allowFieldOnlyEntry(checkPublishable(blocks ?? existing.blocks), existing.typeId, data ?? existing.data),
+        fields,
+        data ?? existing.data,
+      );
       if (checks.errors.length > 0) {
         throw new UnprocessableEntityException({ statusCode: 422, message: 'Fix these before publishing', ...checks });
       }
@@ -236,6 +244,22 @@ export class ContentService {
   private async fieldsOf(siteId: string, typeId: string | null): Promise<FieldDefinition[]> {
     if (!typeId) return [];
     return visibleFields(parseStoredFields((await this.types.findById(siteId, typeId))?.fields));
+  }
+
+  /**
+   * An entry made only of field values (an event with a date and a venue, no body) can go live:
+   * "add at least one block" is dropped when the entry has any value, so long as nothing else is wrong.
+   */
+  private allowFieldOnlyEntry<T extends { errors: { blockIndex: number | null; field: string | null; message: string }[] }>(
+    checks: T,
+    typeId: string | null,
+    data: unknown,
+  ): T {
+    const hasValue = typeof data === 'object' && data !== null && Object.keys(data).length > 0;
+    if (typeId && hasValue) {
+      checks.errors = checks.errors.filter((e) => !(e.blockIndex === null && e.field === null && e.message === 'Add at least one block'));
+    }
+    return checks;
   }
 
   /** Adds "fill this in" errors for required fields with no value, so publishing waits for them. */

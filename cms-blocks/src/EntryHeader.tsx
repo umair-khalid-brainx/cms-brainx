@@ -41,7 +41,7 @@ export function EntryHeader({ title, entry }: { title: string; entry: EntryView 
   return (
     // No bottom padding of its own: the entry's blocks that follow bring their own spacing.
     <Section bleed className="pt-[var(--site-section-y)] pb-2">
-      <header className="max-w-[var(--site-measure)]">
+      <header className="max-w-[var(--site-measure)] [overflow-wrap:anywhere]">
         <a
           href={`/${entry.type.prefix}`}
           className="font-[family-name:var(--site-font-utility)] text-sm text-[var(--site-muted)] underline decoration-[var(--site-line)] underline-offset-4 hover:text-[var(--site-ink)] hover:decoration-[var(--site-accent)]"
@@ -74,7 +74,7 @@ export function EntryHeader({ title, entry }: { title: string; entry: EntryView 
       ) : null}
 
       {body.length > 0 ? (
-        <div className="mt-12 grid gap-[var(--site-gap)] lg:grid-cols-[0.35fr_0.65fr]">
+        <div className="mt-12 grid gap-[var(--site-gap)] lg:grid-cols-[minmax(0,0.35fr)_minmax(0,0.65fr)]">
           {sidebar}
           <div className="flex flex-col gap-10">
             {body.map((field) =>
@@ -100,9 +100,9 @@ function Facts({ fields }: { fields: EntryField[] }) {
   return (
     <dl className="border-t border-[var(--site-line)]">
       {fields.map((field) => (
-        <div key={field.key} className="grid grid-cols-[7rem_1fr] gap-4 border-b border-[var(--site-line)] py-3">
+        <div key={field.key} className="grid grid-cols-[7rem_minmax(0,1fr)] gap-4 border-b border-[var(--site-line)] py-3">
           <dt className="font-[family-name:var(--site-font-utility)] text-sm text-[var(--site-muted)]">{field.label}</dt>
-          <dd className="text-[var(--site-ink)]">
+          <dd className="min-w-0 [overflow-wrap:anywhere] text-[var(--site-ink)]">
             {field.kind === 'date' ? formatDate(field.date) : field.kind === 'text' || field.kind === 'select' ? field.text : null}
           </dd>
         </div>

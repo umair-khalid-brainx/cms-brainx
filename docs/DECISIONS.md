@@ -42,6 +42,10 @@ decisions themselves were made on the dates shown.
 - Entries have no SEO fields or social image yet (`SEO-01`), and no categories or tags (`TAX-01`/`TAX-02`).
 - A listing shows the newest 50; there is no paging or search.
 - A document is a download link named after its field and file type, not its title.
+- An entry made only of field values (no blocks) can be published; a page still needs a block.
+- A listing's address is exact (`/Events` is a 404, not a second URL); a NUL character in a public address is a 404.
+- The full address of media comes from `API_PUBLIC_URL` (root `CLAUDE.md` gotchas, `DEP-01b`).
+- A file used only in an entry's field now counts as "used on" that entry (deleting it warns).
 
 ---
 

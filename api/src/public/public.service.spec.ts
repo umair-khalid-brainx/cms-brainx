@@ -275,4 +275,22 @@ describe('PublicService entries and listings (TYP-03)', () => {
 
     expect((await service.getPage('alpha', '/about')).entry).toBeUndefined();
   });
+
+  it('leaks nothing but what a visitor sees: no email, ids, status or site id in the serialised page', async () => {
+    const { service } = setup();
+
+    const json = JSON.stringify(await service.getPage('alpha', '/events/newest'));
+
+    for (const forbidden of ['email', '@', 'siteId', 'authorId', 'isBuiltIn', 'status', 'password']) {
+      expect(json).not.toContain(forbidden);
+    }
+  });
+
+  it('is exact about a listing’s address and answers 404 to a NUL character instead of a database error', async () => {
+    const { service } = setup();
+
+    await expect(service.getListing('alpha', 'Events')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getListing('alpha', 'events\u0000')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getPage('alpha', '/x\u0000')).rejects.toBeInstanceOf(NotFoundException);
+  });
 });

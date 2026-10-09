@@ -151,6 +151,10 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 - **Dev servers for a worktree:** run them with `npm --prefix <app> run dev`. `npx --prefix admin vite`
   runs from the repo root and serves a blank page.
 
+- **`API_PUBLIC_URL` must be set to the API's public address in production** (D-050). `api` builds the full
+  address of every picture and file on an entry page and in a listing from it, and falls back to
+  `http://localhost:4001`; unset, every entry image points at localhost. (`DEP-01b`'s checklist.)
+
 ## Docs index
 
 | File | Read it when |
