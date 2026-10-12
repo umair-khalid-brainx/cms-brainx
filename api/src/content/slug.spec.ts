@@ -35,6 +35,9 @@ describe('slugProblem (CNT-04)', () => {
   it('refuses empty and reserved slugs for a page', () => {
     expect(slugProblem('', true)).not.toBeNull();
     expect(slugProblem('admin', true)).not.toBeNull();
+    // the archive addresses (TAX-02)
+    expect(slugProblem('category', true)).not.toBeNull();
+    expect(slugProblem('tag', true)).not.toBeNull();
     expect(slugProblem('about', true)).toBeNull();
   });
 

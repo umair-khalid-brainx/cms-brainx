@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { BlockRenderer, EntryHeader } from 'cms-blocks';
+import { BlockRenderer, EntryHeader, RelatedEntries } from 'cms-blocks';
 import { getMenus, getPreview, getSite } from '@/lib/publicApi';
 import { SiteChrome } from '@/site/SiteChrome';
 import { settingsFromSite } from '@/site/types';
@@ -46,6 +46,7 @@ export default async function PreviewPage({ params }: PageProps<'/preview/[subdo
     <SiteChrome settings={settingsFromSite(site, menus)} banner={banner}>
       {page.entry ? <EntryHeader title={page.title} entry={page.entry} /> : null}
       <BlockRenderer blocks={page.blocks} />
+      {page.entry ? <RelatedEntries entries={page.entry.related} /> : null}
     </SiteChrome>
   );
 }

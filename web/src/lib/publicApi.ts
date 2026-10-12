@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import type { Block, EntryView, SiteTheme, TypeListing } from 'cms-blocks';
+import type { Block, EntryView, SiteTheme, TermArchiveView, TypeListing } from 'cms-blocks';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4001';
 
@@ -24,7 +24,14 @@ export type PublicSeo = {
   social: { title: string; description: string | null; image: { url: string; alt: string } | null };
 };
 /** `entry` is present when the page is an entry of a content type (TYP-03). */
-export type PublicPage = { title: string; path: string; blocks: Block[]; updatedAt: string; entry?: EntryView; seo: PublicSeo };
+export type PublicPage = {
+  title: string;
+  path: string;
+  blocks: Block[];
+  updatedAt: string;
+  entry?: EntryView;
+  seo: PublicSeo;
+};
 export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' };
 
 /**
@@ -81,6 +88,20 @@ export const getPage = cache((subdomain: string, path: string) =>
  */
 export const getListing = cache((subdomain: string, prefix: string) =>
   getJson<TypeListing>(`/public/sites/${encodeURIComponent(subdomain)}/types/${encodeURIComponent(prefix)}`),
+);
+
+/**
+ * A category or tag and one page of its published entries, newest first (TAX-02). `null` when the site has
+ * no such term or the page is past the end: the same 404 as a missing page.
+ *
+ * Tagged with the site, like a page: publishing, unpublishing or retagging an entry, or renaming or deleting
+ * a term, refreshes the site's tag and with it every archive page (D-058, D-061).
+ */
+export const getTermArchive = cache((subdomain: string, kind: 'category' | 'tag', slug: string, page: number) =>
+  getJson<TermArchiveView>(
+    `/public/sites/${encodeURIComponent(subdomain)}/terms/${kind}/${encodeURIComponent(slug)}?page=${page}`,
+    { tags: [siteTag(subdomain)] },
+  ),
 );
 
 /** One item of a menu as the public site shows it (GOV-03); `href` is `null` for a heading with items under it. */

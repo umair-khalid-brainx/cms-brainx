@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
+import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
 import type { CreateTermDto, RenameTermDto } from './dto/term.dto.js';
 import { TermRepository, type TermRow } from './term.repository.js';
@@ -26,6 +27,7 @@ export class TermsService {
   constructor(
     private readonly terms: TermRepository,
     private readonly users: UserRepository,
+    private readonly revalidation: RevalidationService,
   ) {}
 
   async list(userId: string) {
@@ -47,7 +49,7 @@ export class TermsService {
 
   /** A rename changes the name and, with it, the slug. 409 when another term already has that slug. */
   async rename(userId: string, id: string, dto: RenameTermDto) {
-    const siteId = await this.resolveSiteId(userId);
+    const { siteId, subdomain } = await this.resolveSite(userId);
     const term = await this.terms.findById(siteId, id);
     if (!term) throw new NotFoundException('Term not found');
     const parsed = parseTermName(dto.name, term.kind);
@@ -60,13 +62,17 @@ export class TermsService {
     } catch (error) {
       throw isUniqueViolation(error) ? taken(term.kind, parsed.term.name) : error;
     }
+    // The new name shows on the archive's heading and on every entry's chips, and the old address is gone (TAX-02).
+    await this.revalidation.site(subdomain);
     return { ...term, ...parsed.term };
   }
 
   async remove(userId: string, id: string): Promise<void> {
-    const siteId = await this.resolveSiteId(userId);
+    const { siteId, subdomain } = await this.resolveSite(userId);
     const removed = await this.terms.delete(siteId, id);
     if (removed.count === 0) throw new NotFoundException('Term not found');
+    // Its archive is gone and entries lose a chip and perhaps their related list (TAX-02).
+    await this.revalidation.site(subdomain);
   }
 
   /**
@@ -132,10 +138,14 @@ export class TermsService {
   }
 
   // Same "caller's first membership" convention as the other services.
-  private async resolveSiteId(userId: string): Promise<string> {
+  private async resolveSite(userId: string): Promise<{ siteId: string; subdomain: string }> {
     const membership = (await this.users.findByIdWithMemberships(userId))?.memberships[0];
     if (!membership) throw new ForbiddenException('No site membership');
-    return membership.siteId;
+    return { siteId: membership.siteId, subdomain: membership.site.subdomain };
+  }
+
+  private async resolveSiteId(userId: string): Promise<string> {
+    return (await this.resolveSite(userId)).siteId;
   }
 }
 

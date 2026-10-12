@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BlockRenderer, ContactFormProvider, EntryHeader, EntryList } from 'cms-blocks';
+import { BlockRenderer, ContactFormProvider, EntryHeader, EntryList, RelatedEntries } from 'cms-blocks';
 import { getListing, getPage, getRedirect, getSite } from '@/lib/publicApi';
 import { listingMetadata, pageMetadata, siteOrigin } from '@/lib/seo';
 import { submitContactForm } from '@/site/contactFormAction';
@@ -64,6 +64,7 @@ export default async function SitePage({ params }: PageProps<'/sites/[subdomain]
     <ContactFormProvider submit={submitContactForm}>
       {page.entry ? <EntryHeader title={page.title} entry={page.entry} /> : null}
       <BlockRenderer blocks={page.blocks} />
+      {page.entry ? <RelatedEntries entries={page.entry.related} /> : null}
     </ContactFormProvider>
   );
 }

@@ -13,6 +13,10 @@ function pageTree(client: Prisma.TransactionClient, siteId: string): Promise<Tre
   return client.content.findMany({ where: { siteId, typeId: null }, select: TREE_FIELDS });
 }
 
+// Newest first: the order of a type's listing, a term's archive and the related entries. `id` last, so
+// paging through ties never repeats or skips an entry.
+const NEWEST_FIRST: Prisma.ContentOrderByWithRelationInput[] = [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }, { id: 'asc' }];
+
 export type TreePageRow = { id: string; parentId: string | null; slug: string; path: string; status: string; publishedAt: Date | null };
 
 // Every method takes `siteId` as a required parameter (invariant 1) — there
@@ -82,7 +86,46 @@ export class ContentRepository {
   findPublishedByType(siteId: string, typeId: string, take: number) {
     return this.prisma.content.findMany({
       where: { siteId, typeId, status: 'published' },
-      orderBy: [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
+      orderBy: NEWEST_FIRST,
+      take,
+    });
+  }
+
+  /**
+   * One page of the published entries carrying a term, newest first, and how many there are (TAX-02).
+   * Only entries of types that still have this kind of term switched on: switching it off hides the
+   * archive's entries, as it hides the links on the entry itself (D-060). The term is matched by
+   * its own site too, so an id from another site finds nothing.
+   */
+  async findPublishedByTerm(siteId: string, term: { id: string; kind: 'category' | 'tag' }, skip: number, take: number) {
+    const where: Prisma.ContentWhereInput = {
+      siteId,
+      status: 'published',
+      type: { is: term.kind === 'category' ? { hasCategories: true } : { hasTags: true } },
+      terms: { some: { termId: term.id, term: { siteId } } },
+    };
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.content.findMany({ where, orderBy: NEWEST_FIRST, skip, take, include: { type: true } }),
+      this.prisma.content.count({ where }),
+    ]);
+    return { rows, total };
+  }
+
+  /**
+   * Published entries of one type that carry any of these terms, newest first, never the ones in
+   * `excludeIds` (the entry itself, and what an earlier pass already chose): the "Related" section (TAX-02).
+   */
+  findRelated(siteId: string, typeId: string, termIds: readonly string[], excludeIds: readonly string[], take: number) {
+    if (termIds.length === 0 || take <= 0) return Promise.resolve([]);
+    return this.prisma.content.findMany({
+      where: {
+        siteId,
+        typeId,
+        status: 'published',
+        id: { notIn: [...excludeIds] },
+        terms: { some: { termId: { in: [...termIds] }, term: { siteId } } },
+      },
+      orderBy: NEWEST_FIRST,
       take,
     });
   }

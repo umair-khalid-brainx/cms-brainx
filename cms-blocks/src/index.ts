@@ -21,6 +21,8 @@ export * from './video';
 export * from './entry';
 export * from './EntryHeader';
 export * from './EntryList';
+export * from './TermArchive';
+export * from './RelatedEntries';
 export * from './contactFormFields';
 export * from './theme/theme';
 export * from './theme/SiteThemeRoot';

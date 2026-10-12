@@ -1,85 +1,38 @@
 ---
-diff_hash: bc3e19b402cf0b79f3b3814fedad2a80329bd5dd96aecad487112000ee90ab0f
-branch: claude/week-4-cms-tickets-d0f656
-author: Umer
-timestamp: 2026-10-12T11:52:07Z
-reviewed_at: 2026-10-12T11:52:07Z
-stack: unknown
-resolved_count: 2
-files:
-  - .code-reviews/brainx-review.md
-  - admin/src/App.tsx
-  - admin/src/components/ContentTypeForm.css
-  - admin/src/components/ContentTypeForm.tsx
-  - admin/src/components/PageSettingsPanel.tsx
-  - admin/src/components/PageTermsSection.css
-  - admin/src/components/PageTermsSection.tsx
-  - admin/src/layouts/AdminLayout.tsx
-  - admin/src/lib/contentApi.ts
-  - admin/src/lib/terms.test.ts
-  - admin/src/lib/terms.ts
-  - admin/src/lib/termsApi.ts
-  - admin/src/lib/typesApi.ts
-  - admin/src/pages/EditorPage.tsx
-  - admin/src/pages/TaxonomyPage.css
-  - admin/src/pages/TaxonomyPage.tsx
-  - api/prisma/migrations/20261012160000_add_terms/migration.sql
-  - api/prisma/schema.prisma
-  - api/prisma/seed.ts
-  - api/src/content-types/content-type.repository.ts
-  - api/src/content-types/content-types.service.ts
-  - api/src/content-types/dto/content-type.dto.spec.ts
-  - api/src/content-types/dto/content-type.dto.ts
-  - api/src/content/content.controller.ts
-  - api/src/content/content.module.ts
-  - api/src/content/content.repository.ts
-  - api/src/content/content.service.spec.ts
-  - api/src/content/content.service.ts
-  - api/src/content/dto/content.dto.ts
-  - api/src/taxonomy/dto/term.dto.ts
-  - api/src/taxonomy/term-rules.spec.ts
-  - api/src/taxonomy/term-rules.ts
-  - api/src/taxonomy/term-test-kit.ts
-  - api/src/taxonomy/term.repository.ts
-  - api/src/taxonomy/terms.controller.ts
-  - api/src/taxonomy/terms.service.spec.ts
-  - api/src/taxonomy/terms.service.ts
-  - docs/BACKLOG.md
-  - docs/DECISIONS.md
-  - docs/WORKLOG.md
-  - tickets/STATUS.md
-  - tickets/TAX-01.md
+diff_hash: 654a0804cbabbc5c916aea24cf8470504934bfc84a14c1e389bb47e79af78f06
+reviewed_at: 2026-10-12T12:06:39Z
 ---
 
 ## Summary
 
-TAX-01: categories and tags. `api` adds a `term_kind` enum, a `terms` table (site, kind, name, slug; unique per
-site+kind+slug) and a `content_terms` join (both sides cascade), plus `has_categories`/`has_tags` opt-ins on
-`content_types` (the built-in Posts type starts with both on, in the migration and the seed). `term-rules.ts` holds the
-database-free rules (tidying, 60-char names, slug identity so "News" = "news", ≤20 tags per entry, opt-in check,
-category-id check). `TermRepository` is fully `siteId`-scoped; `findOrCreateTags` uses `createMany({ skipDuplicates })`
-then re-reads, so two people typing the same new tag converge. `TermsController` (`/terms`): list at `content:read`;
-create/rename/delete at `content:publish`; delete is 204. `TermsService.checkAssignment` refuses before any write (type
-not opted in, a page, a foreign or non-category id, bad tag names), and `materialise` creates new tags only after every
-other check in `ContentService.create/update`. Entry and links are written together: nested `terms.create` on create, a
-`$transaction` in `ContentRepository.update` that replaces each requested kind's links. `GET /content/:slug` now
-returns `categories`/`tags` (`getForEdit`), as do create and update. `admin` adds the Categories & Tags screen (tabs,
-add/rename/delete with counts in the confirm), the opt-in switches in `ContentTypeForm`, and a `PageTermsSection` in
-Page settings (category checkboxes, an ARIA-combobox tag input with suggestions). The previous commit's review file is
-removed (staged deletion).
+TAX-02: category and tag archives, term chips and "Related" entries. `api` adds
+`GET /public/sites/:subdomain/terms/:kind/:slug?page=` (`PublicService.getTermArchive`): kind, slug and
+page validated (`term-view.ts`'s `parsePage`), term looked up by `siteId` + kind + slug, then
+`ContentRepository.findPublishedByTerm` pages published entries of types that still have that kind on,
+newest first with an `id` tiebreak, count and rows in one `$transaction`; past-the-end is a 404. Entry
+responses gain `categories`, `tags` and `related` (`termsOf`: same type, category matches first, tag
+matches fill to 3, deduplicated by `mergeRelated`; no queries for a type with neither kind). Every new
+repository method is `siteId`-scoped, including the joined term (`term: { siteId }`). Revalidation:
+`ContentService.update` refreshes the site tag when an entry of an opted-in type goes live/off, or is
+retagged/moved while live, inside `afterWrite` so a failure never fails the save; `TermsService`
+refreshes the site after a rename or delete (`RevalidationService` never throws). `cms-blocks` adds
+`TermArchive`, `RelatedEntries`, chips in `EntryHeader`, `termHref`, and extracts `EntryRows` from
+`EntryList` for reuse; colours only via `--site-*`. `web` adds `/category/[slug]/[[...rest]]` and
+`/tag/[slug]/[[...rest]]` (ISR, `revalidate = 60`, pages in the path, not `?page=`, so they stay
+cacheable per host), sharing `archiveRoute.tsx`; `noindex, follow` metadata; archive fetched with the
+site tag. `category`/`tag` are already in `RESERVED_PREFIXES`, now covered by specs. Docs, tickets and
+the previous review file's deletion are staged.
 
-Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md) and `admin/` as React
-(react.md). One git repository, so one review. No `web` changes.
+Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md),
+`web/`, `admin/` and `cms-blocks/` as React (react.md). One git repository, so one review.
 
-Cross-project contract check: `api`'s term rows (`id, kind, name, slug, entryCount`) match `admin`'s `Term`; `forEntry`'s
-`{ categories, tags }` of `{ id, name, slug }` match `TermRef`; `admin` sends `categoryIds` (ids) and `tags` (names) only
-for the kinds the type has on, which is what `checkAssignment` expects. Admin limits (60 chars, 20 tags) mirror the API
-with a comment naming the source. Tenant scoping holds: every `TermRepository` method takes `siteId`; category ids are
-resolved with `findByIds(siteId, …)`; tag ids come from `findOrCreateTags(siteId, …)`; the link delete is filtered by
-`term: { siteId, kind }`. `PageTermsSection` is a sibling of the other settings forms, not nested in one.
+Cross-project contract check: `api`'s `PublicTermArchive` (`term {name, slug, kind}, entries, page,
+pageCount, total`) matches `cms-blocks`' `TermArchiveView`; `PublicEntry.categories/tags/related` match
+`EntryView`'s new optional fields (optional, so older cached answers still render). `web`'s
+`archivePage` only accepts `page/N` for N ≥ 2, a subset of what `parsePage` accepts, so `web` never asks
+for a page the API would refuse as malformed.
 
-Verified: `api` `tsc --noEmit` clean, `vitest run src/taxonomy src/content src/content-types` 359/359 pass; `admin`
-`tsc -b` clean, `terms.test.ts` 16/16 pass. Not run: browser checks, migration against a database.
+Checked: api unit tests for `public`, `taxonomy`, `content` pass (465); `web` typechecks.
 
 ## Findings
 
@@ -87,35 +40,42 @@ Verified: `api` `tsc --noEmit` clean, `vitest run src/taxonomy src/content src/c
 
 ### High (0)
 
-### Medium (1)
-- **api/src/content/content.repository.ts:119** — When one `PATCH /content/:slug` changes an entry's slug and its categories or tags together, the terms are silently not saved: the transaction updates the row (slug now the new one), then looks the entry up again by the *old* slug, finds nothing, and returns the successful update without writing any links. *(correctness)*
-  - status: fixed
-  - dev_reasoning: N/A
-  - ai_reasoning: Fixed. `ContentRepository.update` now looks the entry's id up by the old slug inside the transaction *before* `updateMany` (comment: "Found before the update: the update may change the slug this lookup goes by"), and writes the links against that id, so a slug change and a terms change in one PATCH both land. Re-checked: api `tsc --noEmit` clean; `vitest run src/taxonomy src/content src/content-types` 359/359 pass.
+### Medium (0)
 
 ### Low (1)
-- **api/src/content/content.service.ts:89** — The P2003 mapping on create only fires when `categoryIds` were sent, so a tag deleted between `materialise` and the insert (a tags-only request) surfaces as a 500; and both the create and update mappings say "A category was just deleted" even when it was a tag. *(error-handling)*
-  - status: fixed
+- **api/src/public/public.service.ts:301** — `filesForRows` repeats `filesFor`'s body line for line (name collection, empty check, `findByFilenames`, map building); only the source of the field definitions differs. *(maintainability)*
+  - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Fixed. The create mapping now fires when `categoryIds` or `tags` were sent (`content.service.ts:89`), and both the create and update messages read "A category or tag was just deleted. Reload the page and try again." (The comment on line 88 still says only "A category"; cosmetic, not a finding.)
+  - ai_reasoning: `filesFor(siteId, fields, datas)` is exactly `filesForRows(siteId, datas.map((data) => ({ fields, data })))`. Keeping one implementation and making the other a one-line wrapper (or replacing the callers) means a future change to the `FileInfo` shape or the lookup is made once. No functional impact.
 
 ## Reviewed files
-- api/prisma/migrations/20261012160000_add_terms/migration.sql
-- api/prisma/schema.prisma, api/prisma/seed.ts
-- api/src/content-types/content-type.repository.ts, content-types.service.ts, dto/content-type.dto.ts, dto/content-type.dto.spec.ts
-- api/src/content/content.controller.ts, content.module.ts, content.repository.ts, content.service.ts, content.service.spec.ts, dto/content.dto.ts
-- api/src/taxonomy/dto/term.dto.ts, term-rules.ts, term-rules.spec.ts, term-test-kit.ts, term.repository.ts, terms.controller.ts, terms.service.ts, terms.service.spec.ts
-- admin/src/App.tsx, layouts/AdminLayout.tsx, pages/EditorPage.tsx
-- admin/src/components/ContentTypeForm.tsx, PageSettingsPanel.tsx, PageTermsSection.tsx
-- admin/src/lib/contentApi.ts, terms.ts, terms.test.ts, termsApi.ts, typesApi.ts
-- admin/src/pages/TaxonomyPage.tsx
-- admin/src/components/ContentTypeForm.css, PageTermsSection.css, admin/src/pages/TaxonomyPage.css (skimmed; styles only)
-- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/STATUS.md, tickets/TAX-01.md (skimmed; docs only)
-- .code-reviews/brainx-review.md (staged deletion of the previous review; not reviewed)
-
-## Context used
-api/src/content/content.service.ts `planMove` (an entry's move has no `inTree`, so it goes through `content.update` with
-the old slug) and the post-write `findBySlug`; api/src/content-types/content-type.repository.ts `findMany`/`findById`
-(return full rows, so the opt-in flags reach `admin`); admin/src/components/PageSettingsPanel.tsx (section is not nested
-in another form); admin/src/pages/EditorPage.tsx `setPage` call sites (page state comes from `getForEdit` or a merged
-update result, so `categories`/`tags` are present).
+- api/src/content/content.module.ts
+- api/src/content/content.repository.ts
+- api/src/content/content.service.ts
+- api/src/content/content.service.spec.ts
+- api/src/content/slug.spec.ts
+- api/src/public/public.controller.ts
+- api/src/public/public.service.ts
+- api/src/public/public.service.spec.ts
+- api/src/public/term-view.ts
+- api/src/public/term-view.spec.ts
+- api/src/taxonomy/terms.service.ts
+- api/src/taxonomy/terms.service.spec.ts
+- admin/src/puck/entry-render.test.ts
+- cms-blocks/src/EntryHeader.tsx
+- cms-blocks/src/EntryList.tsx
+- cms-blocks/src/RelatedEntries.tsx
+- cms-blocks/src/TermArchive.tsx
+- cms-blocks/src/entry.ts
+- cms-blocks/src/index.ts
+- web/src/app/preview/[subdomain]/[token]/page.tsx
+- web/src/app/sites/[subdomain]/[[...path]]/page.tsx
+- web/src/app/sites/[subdomain]/category/[slug]/[[...rest]]/page.tsx
+- web/src/app/sites/[subdomain]/tag/[slug]/[[...rest]]/page.tsx
+- web/src/lib/archive.ts
+- web/src/lib/archive.test.ts
+- web/src/lib/publicApi.ts
+- web/src/lib/seo.ts
+- web/src/site/archiveRoute.tsx
+- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/STATUS.md, tickets/TAX-02.md (docs, skimmed)
+- .code-reviews/brainx-review.md (staged deletion of the previous review, skipped)

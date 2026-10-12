@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 39, IN-PROGRESS 3, TODO 13 (56 tickets). Updated 2026-10-12. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
+**Totals:** BACKLOG 1, DONE 39, IN-PROGRESS 4, TODO 12 (56 tickets). Updated 2026-10-12. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
 
 ## M1 (week 1)
 
@@ -69,7 +69,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | SEO-01 | SEO fields, meta rendering, Open Graph | DONE | 0 | 2026-10-12 (D-056) |
 | SEO-02 | Per-tenant sitemap.xml and robots.txt | DONE | 0 | 2026-10-12 (D-057) |
 | TAX-01 | Categories and tags, opt-in per type | DONE | 0 | 2026-10-12 (D-060) |
-| TAX-02 | Archive and category listing pages | TODO | 0 |  |
+| TAX-02 | Archive and category listing pages | IN-PROGRESS | 0 | built 2026-10-12 (D-061); reviewer and verifier to run |
 | GOV-01 | Revisions: snapshot, list, restore | TODO | 0 |  |
 | GOV-02 | Revision comparison, block level | TODO | 0 |  |
 | GOV-03 | Nested menu builder | DONE | 0 | 2026-10-12 (D-059) |

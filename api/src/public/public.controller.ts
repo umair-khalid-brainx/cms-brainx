@@ -48,6 +48,17 @@ export class PublicController {
     return this.publicSite.getListing(subdomain, prefix);
   }
 
+  // A category or tag and a page of its published entries, newest first (TAX-02).
+  @Get('terms/:kind/:slug')
+  getTermArchive(
+    @Param('subdomain') subdomain: string,
+    @Param('kind') kind: string,
+    @Param('slug') slug: string,
+    @Query('page') page?: string,
+  ) {
+    return this.publicSite.getTermArchive(subdomain, kind, slug, page);
+  }
+
   // A draft behind a secret link: never cached by anything in between, never
   // indexed even if the link leaks (CNT-09).
   @Get('preview/:token')

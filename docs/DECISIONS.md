@@ -8,6 +8,50 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-061 — 2026-10-12 — Archives and related posts: noindex, one site tag, category first (`TAX-02`)
+
+**Options considered:**
+
+1. **Index the archives.** More pages for search engines, but a thin list of titles that duplicates the entries and competes with them.
+2. **`noindex, follow` by default** (chosen, as WordPress does): crawlers still follow the links, so entries are found, and the
+   archives stay out of results and the sitemap.
+3. **Related by shared terms of both kinds, scored.** Better matches, needs a ranking nobody asked for.
+
+**Decision:**
+
+- **Archives:** `GET /public/sites/:subdomain/terms/:kind/:slug?page=` returns the term and a page (20) of its published entries,
+  newest first (`publishedAt`, then `updatedAt`, then `id`, so paging never repeats), in the type listing's item shape. Only entries of
+  types that still have that kind switched on (D-060: switching off hides, keeps the links). Unknown kind, term, another site's term,
+  `page` that is not a whole number from 1, or a page past the end: the same 404 as a missing page. An existing term with no entries is an
+  empty first page. The type listing never paged (a 50 cap); only archives do for now (B-34).
+- **Web:** `/category/<slug>` and `/tag/<slug>`, pages after the first at `/category/<slug>/page/N` (`page/1` is a 404: one address
+  per page). In the path, not `?page=`: reading `searchParams` makes a route dynamic and uncacheable per host (D-039). `robots: noindex,
+  follow`, no canonical, never in the sitemap (the sitemap builds from entries and listings only). Static `category` and `tag`
+  segments win over the `[[...path]]` catch-all.
+- **Reserved:** `category`, `tag` (and `categories`, `tags`) were already in `RESERVED_PREFIXES` since `TYP-01`, which both the page-slug
+  rule and the type-prefix rule read; `TAX-02` adds specs for it. Checked `cms_wk4` and the seed: no page, entry slug or type uses them,
+  so nothing to migrate. Anyone with older data that does would have a page the archive shadows; there is none here.
+- **Entry response:** `categories` and `tags` (`{name, slug}`, only the kinds its type has on) and `related`. **Related** = up to 3
+  newest published entries of the **same type**, never itself: first those sharing a category; only if fewer than 3, the newest sharing
+  a tag fill the rest; no entry twice. Two queries at most, none for a type with neither kind. Empty list when none; the web renders
+  nothing then. Items are the listing's (title, path, date, summary, image).
+- **Revalidation:** the site's tag (D-058) is refreshed when an entry of a type with categories or tags goes live or off (publish,
+  unpublish, archive; deleting needs archiving first), when a live entry is retagged, and when a term is renamed or deleted. Archives
+  are fetched with the site tag. Not done on purpose: refreshing on every save of a live entry (an autosave would re-render the whole
+  site each time); such edits and type opt-in changes arrive within the 60 s timer. No per-term tag: the revalidate endpoint knows only
+  a site or a path (B-34).
+- **Rename:** a term rename still changes the slug (D-060), so the old archive address becomes a 404 with no redirect. Accepted: archives
+  are noindex, so nothing indexed breaks; revisit if menus link to them (B-34).
+- **Design:** chips are outlined pills in `--site-line` and `--site-accent`, tags with a `#` so the kinds differ without colour; related
+  entries are cards in a 3-column grid; the archive reuses the listing's ruled list (`EntryRows`). Colours only through `--site-*`
+  (tested for hex and palette classes).
+
+**Checked live (production build, two hosts):** archive MISS then HIT; retagging a live entry, unpublishing and republishing it, renaming
+and deleting a term each refreshed archive and the entry's Related on the next request; another site's archive stayed HIT; kestrel
+could not see Corrick's terms (404).
+
+---
+
 ## D-060 — 2026-10-12 — Categories and tags: flat site-wide lists, opt-in per type, slug is the identity (`TAX-01`)
 
 **Options considered:**

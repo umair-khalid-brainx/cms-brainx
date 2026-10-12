@@ -44,7 +44,7 @@ import { TermsService } from '../taxonomy/terms.service.js';
     JwtAuthGuard,
     PermissionsGuard,
   ],
-  // For PublicModule's live-page, preview, redirect and menu reads.
-  exports: [ContentRepository, ContentTypeRepository, PreviewLinkRepository, RedirectRepository, MenuRepository],
+  // For PublicModule's live-page, preview, redirect, menu and term reads.
+  exports: [ContentRepository, ContentTypeRepository, PreviewLinkRepository, RedirectRepository, MenuRepository, TermRepository],
 })
 export class ContentModule {}

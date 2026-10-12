@@ -8,6 +8,7 @@ import type { ContentTypeRepository } from '../content-types/content-type.reposi
 import type { MediaRepository } from '../media/media.repository.js';
 import type { SubmissionRepository } from '../submissions/submission.repository.js';
 import type { MenuRepository } from '../menus/menu.repository.js';
+import type { TermRepository } from '../taxonomy/term.repository.js';
 import type { RedirectRepository } from '../redirects/redirect.repository.js';
 import { PublicService } from './public.service.js';
 
@@ -66,6 +67,7 @@ function setup() {
     { get: () => undefined } as unknown as ConfigService,
     {} as RedirectRepository,
     {} as MenuRepository,
+    {} as TermRepository,
   );
   return { service, previewLinks };
 }
@@ -147,6 +149,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
     return { service, media };
   }
@@ -186,6 +189,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
 
     const page = await service.getPreview('alpha', TOKEN);
@@ -245,6 +249,7 @@ describe('PublicService entries and listings (TYP-03)', () => {
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
     return { service, content, media };
   }
@@ -325,6 +330,7 @@ describe('PublicService.getRedirect (GOV-05)', () => {
     { get: () => undefined } as unknown as ConfigService,
     redirects as unknown as RedirectRepository,
     {} as MenuRepository,
+    {} as TermRepository,
   );
 
   it('answers where an old address goes, normalising the path it is asked about', async () => {
@@ -378,6 +384,7 @@ describe('PublicService.getPage SEO (SEO-01)', () => {
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
   }
 
@@ -428,6 +435,7 @@ describe('PublicService.getSitemap (SEO-02)', () => {
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
     return { service, content };
   }
@@ -465,6 +473,7 @@ describe('PublicService.getSitemap past the limit (SEO-02)', () => {
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
     const { entries } = await service.getSitemap('alpha');
     expect(entries).toHaveLength(50_000);
@@ -499,6 +508,7 @@ describe('PublicService.getSite branding (GOV-04)', () => {
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
   }
 
@@ -575,6 +585,7 @@ describe('PublicService.getPage looks the logo up only when it would be the pict
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
       {} as MenuRepository,
+      {} as TermRepository,
     );
     return { service, media };
   }
@@ -621,6 +632,7 @@ describe('PublicService.getMenus (GOV-03)', () => {
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
       menus as unknown as MenuRepository,
+      {} as TermRepository,
     );
     return { service, menus, content };
   }
@@ -648,3 +660,183 @@ describe('PublicService.getMenus (GOV-03)', () => {
   });
 });
 
+
+describe('PublicService term archives and related entries (TAX-02)', () => {
+  const POSTS = {
+    id: 'type-posts',
+    siteId: 'site-a',
+    name: 'Posts',
+    singularName: 'Post',
+    prefix: 'blog',
+    hasCategories: true,
+    hasTags: true,
+    fields: [{ key: 'excerpt', label: 'Excerpt', kind: 'text', required: false }],
+  };
+  type Row = { id: string; siteId: string; title: string; path: string; status: string; typeId: string; publishedAt: Date; data: unknown; terms: string[]; type: typeof POSTS };
+  const day = (n: number) => new Date(Date.UTC(2026, 9, n));
+  const post = (id: string, n: number, terms: string[], extra: Partial<Row> = {}): Row => ({
+    id, siteId: 'site-a', title: id.toUpperCase(), path: `/blog/${id}`, status: 'published', typeId: 'type-posts', publishedAt: day(n), data: { excerpt: `About ${id}` }, terms, type: POSTS, ...extra,
+  });
+  const TERMS = [
+    { id: 'cat-news', siteId: 'site-a', kind: 'category', name: 'News', slug: 'news' },
+    { id: 'tag-launch', siteId: 'site-a', kind: 'tag', name: 'Launch', slug: 'launch' },
+    { id: 'cat-theirs', siteId: 'site-b', kind: 'category', name: 'News', slug: 'news' },
+  ];
+
+  /** An in-memory content table that filters the way the real queries do: site, status, type, terms, newest first. */
+  function setup(rows: Row[], postsType: Partial<typeof POSTS> = {}) {
+    const type = { ...POSTS, ...postsType };
+    const table = rows.map((row) => ({ ...row, type }));
+    const newest = (a: Row, b: Row) => b.publishedAt.getTime() - a.publishedAt.getTime();
+    const content = {
+      findPublishedByTerm: vi.fn(async (siteId: string, term: { id: string; kind: 'category' | 'tag' }, skip: number, take: number) => {
+        const optedIn = (row: Row) => (term.kind === 'category' ? row.type.hasCategories : row.type.hasTags);
+        const all = table.filter((r) => r.siteId === siteId && r.status === 'published' && optedIn(r) && r.terms.includes(term.id)).sort(newest);
+        return { rows: all.slice(skip, skip + take), total: all.length };
+      }),
+      findRelated: vi.fn(async (siteId: string, typeId: string, termIds: string[], excludeIds: string[], take: number) =>
+        termIds.length === 0
+          ? []
+          : table
+              .filter((r) => r.siteId === siteId && r.typeId === typeId && r.status === 'published' && !excludeIds.includes(r.id) && r.terms.some((t) => termIds.includes(t)))
+              .sort(newest)
+              .slice(0, take),
+      ),
+      findLiveByPath: vi.fn(async (siteId: string, path: string) => table.find((r) => r.siteId === siteId && r.path === path && r.status === 'published') ?? null),
+    };
+    const terms = {
+      findBySlug: vi.fn(async (siteId: string, kind: string, slug: string) => TERMS.find((t) => t.siteId === siteId && t.kind === kind && t.slug === slug) ?? null),
+      findForContent: vi.fn(async (siteId: string, contentId: string) => {
+        const row = table.find((r) => r.id === contentId);
+        return TERMS.filter((t) => t.siteId === siteId && row?.terms.includes(t.id));
+      }),
+    };
+    const media = { findByFilenames: vi.fn(async () => []), findAltsByFilenames: vi.fn(async () => []) };
+    const service = new PublicService(
+      sites,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async (sub: string) => ({ alpha: 'site-a', beta: 'site-b' })[sub] ?? null) } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      media as unknown as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
+      {} as MenuRepository,
+      terms as unknown as TermRepository,
+    );
+    return { service, content, terms };
+  }
+
+  describe('archive', () => {
+    it('lists the term and its published entries, newest first, in the listing’s item shape', async () => {
+      const { service } = setup([post('old', 1, ['cat-news']), post('new', 3, ['cat-news']), post('other', 2, ['tag-launch'])]);
+      const archive = await service.getTermArchive('alpha', 'category', 'news', undefined);
+      expect(archive.term).toEqual({ name: 'News', slug: 'news', kind: 'category' });
+      expect(archive.entries.map((e) => e.title)).toEqual(['NEW', 'OLD']);
+      expect(archive.entries[0]).toEqual({ title: 'NEW', path: '/blog/new', publishedAt: day(3).toISOString(), summary: 'About new', image: null });
+      expect(archive).toMatchObject({ page: 1, pageCount: 1, total: 2 });
+    });
+
+    it('leaves out drafts and archived entries, and entries of a type that no longer uses the kind', async () => {
+      const rows = [post('live', 3, ['cat-news']), post('draft', 2, ['cat-news'], { status: 'draft' }), post('gone', 1, ['cat-news'], { status: 'archived' })];
+      expect((await setup(rows).service.getTermArchive('alpha', 'category', 'news', undefined)).entries.map((e) => e.title)).toEqual(['LIVE']);
+      const off = await setup(rows, { hasCategories: false }).service.getTermArchive('alpha', 'category', 'news', undefined);
+      expect(off.entries).toEqual([]);
+    });
+
+    it('shows a site only its own terms and entries', async () => {
+      const { service, content } = setup([post('mine', 1, ['cat-news']), post('theirs', 2, ['cat-theirs'], { siteId: 'site-b' })]);
+      expect((await service.getTermArchive('beta', 'category', 'news', undefined)).entries.map((e) => e.title)).toEqual(['THEIRS']);
+      expect(content.findPublishedByTerm).toHaveBeenCalledWith('site-b', expect.objectContaining({ id: 'cat-theirs' }), 0, 20);
+      // a term of one kind is not found under the other
+      await expect(service.getTermArchive('beta', 'tag', 'news', undefined)).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('is a 404 for an unknown term, kind or site, a NUL character and a bad page', async () => {
+      const { service } = setup([post('a', 1, ['cat-news'])]);
+      await expect(service.getTermArchive('alpha', 'category', 'nope', undefined)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getTermArchive('alpha', 'author', 'news', undefined)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getTermArchive('nobody', 'category', 'news', undefined)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getTermArchive('alpha', 'category', 'news\u0000', undefined)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getTermArchive('alpha', 'category', 'News', undefined)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getTermArchive('alpha', 'category', 'news', '0')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.getTermArchive('alpha', 'category', 'news', 'x')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('pages by 20: the second page holds the rest, and a page past the end is a 404', async () => {
+      const rows = Array.from({ length: 23 }, (_, i) => post(`p${i}`, i + 1, ['cat-news']));
+      const { service } = setup(rows);
+      const first = await service.getTermArchive('alpha', 'category', 'news', undefined);
+      expect(first.entries).toHaveLength(20);
+      expect(first).toMatchObject({ page: 1, pageCount: 2, total: 23 });
+      const second = await service.getTermArchive('alpha', 'category', 'news', '2');
+      expect(second.entries.map((e) => e.title)).toEqual(['P2', 'P1', 'P0']);
+      await expect(service.getTermArchive('alpha', 'category', 'news', '3')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('an existing term with no entries is an empty first page, not a 404', async () => {
+      const { service } = setup([]);
+      expect(await service.getTermArchive('alpha', 'category', 'news', undefined)).toMatchObject({ entries: [], total: 0, pageCount: 1 });
+    });
+  });
+
+  describe('entry page', () => {
+    const entry = (rows: Row[], postsType?: Partial<typeof POSTS>) => setup(rows, postsType).service.getPage('alpha', '/blog/me');
+
+    it('carries its categories and tags as name and slug only', async () => {
+      const page = await entry([post('me', 5, ['cat-news', 'tag-launch'])]);
+      expect(page.entry?.categories).toEqual([{ name: 'News', slug: 'news' }]);
+      expect(page.entry?.tags).toEqual([{ name: 'Launch', slug: 'launch' }]);
+    });
+
+    it('shows only the kinds its type has on', async () => {
+      const page = await entry([post('me', 5, ['cat-news', 'tag-launch'])], { hasTags: false });
+      expect(page.entry?.categories).toHaveLength(1);
+      expect(page.entry?.tags).toEqual([]);
+    });
+
+    it('relates the newest entries sharing a category, never itself, in the listing’s item shape', async () => {
+      const page = await entry([post('me', 5, ['cat-news']), post('a', 1, ['cat-news']), post('b', 3, ['cat-news']), post('c', 2, ['tag-launch'])]);
+      expect(page.entry?.related.map((r) => r.title)).toEqual(['B', 'A']);
+      expect(page.entry?.related[0]).toEqual({ title: 'B', path: '/blog/b', publishedAt: day(3).toISOString(), summary: 'About b', image: null });
+    });
+
+    it('tops up with tag matches only when fewer than three share a category, without repeats', async () => {
+      const rows = [
+        post('me', 9, ['cat-news', 'tag-launch']),
+        post('c1', 1, ['cat-news', 'tag-launch']),
+        post('t1', 8, ['tag-launch']),
+        post('t2', 7, ['tag-launch']),
+        post('t3', 6, ['tag-launch']),
+      ];
+      const { service, content } = setup(rows);
+      const related = (await service.getPage('alpha', '/blog/me')).entry?.related.map((r) => r.title);
+      // the category match comes first although it is the oldest; then the newest tag matches
+      expect(related).toEqual(['C1', 'T1', 'T2']);
+      // the tag pass asks only for what is left, and never for the entry itself or a chosen one
+      expect(content.findRelated).toHaveBeenLastCalledWith('site-a', 'type-posts', ['tag-launch'], ['me', 'c1'], 2);
+    });
+
+    it('does not look at tags once three share a category', async () => {
+      const rows = [post('me', 9, ['cat-news']), post('a', 1, ['cat-news']), post('b', 2, ['cat-news']), post('c', 3, ['cat-news'])];
+      const { service, content } = setup(rows);
+      expect((await service.getPage('alpha', '/blog/me')).entry?.related).toHaveLength(3);
+      expect(content.findRelated).toHaveBeenCalledTimes(1);
+    });
+
+    it('is empty with nothing in common, with no terms, and when the type uses none', async () => {
+      expect((await entry([post('me', 5, ['cat-news']), post('x', 1, [])])).entry?.related).toEqual([]);
+      expect((await entry([post('me', 5, [])])).entry?.related).toEqual([]);
+      const { service, terms } = setup([post('me', 5, ['cat-news']), post('a', 1, ['cat-news'])], { hasCategories: false, hasTags: false });
+      expect((await service.getPage('alpha', '/blog/me')).entry).toMatchObject({ categories: [], tags: [], related: [] });
+      expect(terms.findForContent).not.toHaveBeenCalled();
+    });
+
+    it('relates only entries of the same type', async () => {
+      const other = post('event', 4, ['cat-news'], { typeId: 'type-events' });
+      const page = await entry([post('me', 5, ['cat-news']), other]);
+      expect(page.entry?.related).toEqual([]);
+    });
+  });
+});

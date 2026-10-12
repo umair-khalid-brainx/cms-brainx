@@ -5,6 +5,28 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Term archives, term links and related posts (`TAX-02` built; reviewer and verifier still to run)
+
+Decision in D-061.
+
+- `api`: `GET /public/sites/:subdomain/terms/:kind/:slug?page=` (`PublicService.getTermArchive`, `ContentRepository.findPublishedByTerm`);
+  entry response gains `categories`, `tags`, `related` (`findRelated`, `public/term-view.ts` with `parsePage` and `mergeRelated`, +spec).
+  `ContentService.update` refreshes the site tag for an entry of a type with terms when it goes live or off or a live one is retagged;
+  `TermsService` rename and delete refresh it too (now takes `RevalidationService`). `ContentModule` exports `TermRepository`.
+- `cms-blocks`: `TermArchive`, `RelatedEntries`, term chips in `EntryHeader`, `EntryRows` split out of `EntryList`, types and `termHref`.
+- `web`: routes `sites/[subdomain]/category|tag/[slug]/[[...rest]]` (shared `site/archiveRoute.tsx`), `lib/archive.ts`
+  (`archivePage`), `archiveMetadata` in `seo.ts`, `getTermArchive`; related section on the entry and preview pages.
+- Tests: api 608, admin 164, web 26 pass; lint, typecheck and admin build clean.
+- Verified live (cms_wk4): dev server curl of archives, unknown term (404, themed), `noindex, follow`, chips and related on an entry,
+  paging with 22 temporary entries (20 + 2, page 3 a 404; removed after), sitemap has no archives. Production build on :3011 with `*.localhost`:
+  `x-nextjs-cache` MISS then HIT; retag, unpublish and republish, rename and delete a term each refreshed the archive and Related; kestrel
+  stayed HIT and saw no Corrick term. Screenshots of an archive and an entry taken with headless Chrome.
+  (Writes for the production check went through a second API on :4012 pointed at :3011, since the wk4 API's revalidate URL is the dev server.)
+- Existing data: no page, entry or type in `cms_wk4` or the seed uses `category` or `tag`; they were already reserved.
+- Not done: see B-34 (type listing paging, instant refresh of text edits, per-term tags, menu picker, rename redirect).
+
+---
+
 ## 2026-10-12 — Categories and tags (`TAX-01` built; reviewer and verifier still to run)
 
 Decision in D-060.

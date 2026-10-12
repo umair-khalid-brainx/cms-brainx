@@ -21,7 +21,13 @@ export function siteOrigin(subdomain: string): string {
   return template.replace('{subdomain}', subdomain).replace(/\/+$/, '');
 }
 
-export function pageMetadata(input: { seo: PublicSeo; origin: string; path: string; siteName: string; article: boolean }): Metadata {
+export function pageMetadata(input: {
+  seo: PublicSeo;
+  origin: string;
+  path: string;
+  siteName: string;
+  article: boolean;
+}): Metadata {
   const { seo, origin, path, siteName, article } = input;
   const url = `${origin}${path}`;
   const image = seo.social.image;
@@ -64,8 +70,33 @@ export function listingMetadata(input: {
   return {
     title,
     alternates: { canonical: url },
-    openGraph: { type: 'website', siteName: input.siteName, url, title, ...(logo && { images: [{ url: logo, alt: input.siteName }] }) },
+    openGraph: {
+      type: 'website',
+      siteName: input.siteName,
+      url,
+      title,
+      ...(logo && { images: [{ url: logo, alt: input.siteName }] }),
+    },
     twitter: { card: logo ? 'summary_large_image' : 'summary', title, ...(logo && { images: [logo] }) },
+  };
+}
+
+/**
+ * A category or tag archive (TAX-02): hidden from search results by default, as WordPress does, but its
+ * links are still followed so the entries on it are found. No canonical address or card of its own: the
+ * page is not meant to be found or shared, and a second page of it is just another list.
+ */
+export function archiveMetadata(input: {
+  kind: 'category' | 'tag';
+  termName: string;
+  siteName: string;
+  page: number;
+}): Metadata {
+  const label = input.kind === 'category' ? 'Category' : 'Tag';
+  const paged = input.page > 1 ? ` (page ${input.page})` : '';
+  return {
+    title: `${label}: ${input.termName}${paged} · ${input.siteName}`,
+    robots: { index: false, follow: true },
   };
 }
 

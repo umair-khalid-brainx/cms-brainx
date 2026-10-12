@@ -1,17 +1,19 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import type { RevalidationService } from '../revalidation/revalidation.service.js';
 import type { UserRepository } from '../users/user.repository.js';
 import { fakeTermRepository } from './term-test-kit.js';
 import { TermsService } from './terms.service.js';
 
 const members: Record<string, string> = { alice: 'site-a', bob: 'site-b' };
 const users = {
-  findByIdWithMemberships: vi.fn(async (id: string) => ({ id, memberships: [{ siteId: members[id] }] })),
+  findByIdWithMemberships: vi.fn(async (id: string) => ({ id, memberships: [{ siteId: members[id], site: { subdomain: members[id].replace('site-', 'sub-') } }] })),
 };
 
 function setup() {
   const kit = fakeTermRepository();
-  const service = new TermsService(kit.repo, users as unknown as UserRepository);
-  return { service, ...kit };
+  const revalidation = { site: vi.fn(async () => {}) };
+  const service = new TermsService(kit.repo, users as unknown as UserRepository, revalidation as unknown as RevalidationService);
+  return { service, revalidation, ...kit };
 }
 
 const posts = { name: 'Posts', hasCategories: true, hasTags: true };
@@ -79,6 +81,27 @@ describe('TermsService lists (TAX-01)', () => {
     await service.remove('alice', term.id);
     expect(links).toEqual([]);
     expect(await service.list('alice')).toEqual([]);
+  });
+});
+
+describe('TermsService refreshes the public site (TAX-02)', () => {
+  it('renaming and deleting a term refresh its own site, once each', async () => {
+    const { service, revalidation } = setup();
+    const term = await service.create('alice', { kind: 'category', name: 'News' });
+    expect(revalidation.site).not.toHaveBeenCalled();
+    await service.rename('alice', term.id, { name: 'Company News' });
+    expect(revalidation.site).toHaveBeenLastCalledWith('sub-a');
+    await service.remove('alice', term.id);
+    expect(revalidation.site).toHaveBeenCalledTimes(2);
+    expect(revalidation.site).toHaveBeenLastCalledWith('sub-a');
+  });
+
+  it('refreshes nothing when the change is refused', async () => {
+    const { service, revalidation } = setup();
+    const term = await service.create('alice', { kind: 'category', name: 'News' });
+    await expect(service.rename('bob', term.id, { name: 'Mine' })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.remove('bob', term.id)).rejects.toBeInstanceOf(NotFoundException);
+    expect(revalidation.site).not.toHaveBeenCalled();
   });
 });
 

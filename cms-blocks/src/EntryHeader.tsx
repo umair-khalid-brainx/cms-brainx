@@ -1,6 +1,6 @@
 import { richTextClass } from './RichText';
 import { ActionLink, Heading, Section } from './ui';
-import { formatDate, type EntryField, type EntryView } from './entry';
+import { formatDate, termHref, type EntryField, type EntryTerm, type EntryView, type TermKind } from './entry';
 
 // The top of a content type's entry page (TYP-03): the title, who and when, its
 // picture, and the type's fields laid out by what they are. It follows the site's
@@ -58,6 +58,12 @@ export function EntryHeader({ title, entry }: { title: string; entry: EntryView 
             {published ? <time dateTime={entry.publishedAt ?? undefined}>{published}</time> : null}
           </p>
         ) : null}
+        {entry.categories?.length || entry.tags?.length ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            <TermChips kind="category" label="Categories" terms={entry.categories} />
+            <TermChips kind="tag" label="Tags" terms={entry.tags} />
+          </div>
+        ) : null}
         {ledes.map((field) =>
           field.kind === 'text' ? (
             <p key={field.key} className="mt-6 text-[1.1875rem] leading-[1.6] text-[var(--site-muted)]">
@@ -93,6 +99,27 @@ export function EntryHeader({ title, entry }: { title: string; entry: EntryView 
         <div className="mt-12 max-w-[var(--site-measure)]">{sidebar}</div>
       ) : null}
     </Section>
+  );
+}
+
+// An entry's categories or tags as links to their archives (TAX-02). Quiet, outlined chips in the site's
+// own line and accent colours; a tag carries a # so the two kinds read differently without colour.
+function TermChips({ kind, label, terms }: { kind: TermKind; label: string; terms: EntryTerm[] | undefined }) {
+  if (!terms || terms.length === 0) return null;
+  return (
+    <ul aria-label={label} className="flex flex-wrap gap-2">
+      {terms.map((term) => (
+        <li key={term.slug}>
+          <a
+            href={termHref(kind, term.slug)}
+            className="inline-flex items-center rounded-[var(--site-radius-pill)] border border-[var(--site-line)] px-3.5 py-1 font-[family-name:var(--site-font-utility)] text-sm text-[var(--site-ink)] transition-colors hover:border-[var(--site-accent)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
+          >
+            {kind === 'tag' ? <span aria-hidden="true" className="mr-0.5 text-[var(--site-muted)]">#</span> : null}
+            {term.name}
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 

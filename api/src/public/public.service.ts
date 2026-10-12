@@ -6,6 +6,8 @@ import { SITEMAP_LIMIT as SITEMAP_ROWS } from './sitemap-view.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import { parseStoredFields, type FieldDefinition } from '../content-types/field-definitions.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { TermRepository } from '../taxonomy/term.repository.js';
+import type { TermKind } from '../taxonomy/term-rules.js';
 import { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import { MediaRepository } from '../media/media.repository.js';
 import { MenuRepository } from '../menus/menu.repository.js';
@@ -29,6 +31,7 @@ import {
   type ListingItem,
   type PublicField,
 } from './entry-view.js';
+import { ARCHIVE_PAGE_SIZE, mergeRelated, pageCount, parsePage, RELATED_LIMIT } from './term-view.js';
 import { filenamesNeedingAlt, withLibraryAlt } from './image-alt.js';
 
 export type PublicSite = {
@@ -49,7 +52,13 @@ export type PublicEntry = {
   author: string | null;
   publishedAt: Date | null;
   fields: PublicField[];
+  /** Only the kinds its type has switched on (TAX-02); each links to `/category/<slug>` or `/tag/<slug>`. */
+  categories: PublicTerm[];
+  tags: PublicTerm[];
+  /** Up to 3 newest published entries of the same type that share a category, else a tag; empty when none. */
+  related: ListingItem[];
 };
+export type PublicTerm = { name: string; slug: string };
 export type PublicPage = {
   title: string;
   path: string;
@@ -63,8 +72,17 @@ export type PublicListing = {
   type: { name: string; singularName: string; prefix: string };
   entries: ListingItem[];
 };
+/** A category or tag and one page of the published entries that carry it, newest first (TAX-02). */
+export type PublicTermArchive = {
+  term: { name: string; slug: string; kind: TermKind };
+  entries: ListingItem[];
+  page: number;
+  pageCount: number;
+  total: number;
+};
 
-// A listing shows this many, newest first. Paging comes with the archive pages (TAX-02).
+// A type's listing shows this many, newest first. Term archives are paged (ARCHIVE_PAGE_SIZE); the type
+// listing is not yet (B-34).
 const LISTING_LIMIT = 50;
 // A preview is never indexed (CNT-09), so it carries no search settings.
 export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' };
@@ -94,6 +112,7 @@ export class PublicService {
     private readonly config: ConfigService,
     private readonly redirects: RedirectRepository,
     private readonly menus: MenuRepository,
+    private readonly terms: TermRepository,
   ) {}
 
   async getSite(subdomain: string): Promise<PublicSite> {
@@ -188,6 +207,34 @@ export class PublicService {
   }
 
   /**
+   * The page at `/category/news` or `/tag/launch` (TAX-02): the term and a page of the published entries
+   * carrying it, newest first, only of types that still have that kind on. An unknown term or kind, another
+   * site's term, or a page past the end is the same 404 as a missing page (D-030).
+   */
+  async getTermArchive(subdomain: string, kind: string, slug: string, rawPage: string | undefined): Promise<PublicTermArchive> {
+    // Slugs and kinds are exact, like every address. A NUL can't be in one and Postgres refuses it.
+    if (!isTermKind(kind) || slug.includes('\u0000')) throw new NotFoundException('Page not found');
+    const page = parsePage(rawPage);
+    if (page === null) throw new NotFoundException('Page not found');
+    const siteId = await this.findSiteId(subdomain);
+    const term = await this.terms.findBySlug(siteId, kind, slug);
+    if (!term) throw new NotFoundException('Page not found');
+    const { rows, total } = await this.content.findPublishedByTerm(siteId, term, (page - 1) * ARCHIVE_PAGE_SIZE, ARCHIVE_PAGE_SIZE);
+    if (page > pageCount(total)) throw new NotFoundException('Page not found');
+    // Entries of different types have different fields: each is shaped by its own type's.
+    const fieldsOf = rows.map((row) => parseStoredFields(row.type?.fields));
+    const files = await this.filesForRows(siteId, rows.map((row, i) => ({ fields: fieldsOf[i], data: row.data })));
+    const origin = this.apiOrigin();
+    return {
+      term: { name: term.name, slug: term.slug, kind: term.kind },
+      entries: rows.map((row, i) => listingItem(row, fieldsOf[i], files, origin)),
+      page,
+      pageCount: pageCount(total),
+      total,
+    };
+  }
+
+  /**
    * A page behind a preview link (CNT-09): its latest saved blocks, draft or
    * published. Unknown, revoked, another site's, or archived → the same 404,
    * so a guessed token learns nothing. Live pages still come only from
@@ -244,24 +291,66 @@ export class PublicService {
 
   /** The library's details for every file the given entries' media fields name, in one query. */
   private async filesFor(siteId: string, fields: readonly FieldDefinition[], datas: unknown[]): Promise<Map<string, FileInfo>> {
-    const names = [...new Set(datas.flatMap((data) => mediaFilenames(fields, data)))];
+    return this.filesForRows(siteId, datas.map((data) => ({ fields, data })));
+  }
+
+  /** The same lookup for rows that each have their own type's fields. */
+  private async filesForRows(siteId: string, rows: { fields: readonly FieldDefinition[]; data: unknown }[]): Promise<Map<string, FileInfo>> {
+    const names = [...new Set(rows.flatMap((row) => mediaFilenames(row.fields, row.data)))];
     if (names.length === 0) return new Map();
-    const rows = await this.media.findByFilenames(siteId, names);
-    return new Map(rows.map((row) => [row.filename, { mimetype: row.mimetype, alt: row.alt, title: row.title }]));
+    const found = await this.media.findByFilenames(siteId, names);
+    return new Map(found.map((row) => [row.filename, { mimetype: row.mimetype, alt: row.alt, title: row.title }]));
   }
 
   private async entryOf(
     siteId: string,
-    page: { data: unknown; publishedAt: Date | null; author: { name: string } | null },
-    type: { name: string; singularName: string; prefix: string; fields: unknown },
+    page: { id: string; data: unknown; publishedAt: Date | null; author: { name: string } | null },
+    type: { id: string; name: string; singularName: string; prefix: string; fields: unknown; hasCategories?: boolean; hasTags?: boolean },
   ): Promise<PublicEntry> {
     const fields = parseStoredFields(type.fields);
     const files = await this.filesFor(siteId, fields, [page.data]);
+    const { categories, tags, related } = await this.termsOf(siteId, page, type, fields);
     return {
       type: { name: type.name, singularName: type.singularName, prefix: type.prefix },
       author: page.author?.name ?? null,
       publishedAt: page.publishedAt,
       fields: buildEntryFields(fields, page.data, files, this.apiOrigin()),
+      categories,
+      tags,
+      related,
+    };
+  }
+
+  /**
+   * An entry's categories and tags (only the kinds its type has on) and its related entries (TAX-02):
+   * the newest published ones of the same type sharing a category, then, only if fewer than three,
+   * ones sharing a tag. No lookup at all for a type that uses neither.
+   */
+  private async termsOf(
+    siteId: string,
+    page: { id: string },
+    type: { id: string; hasCategories?: boolean; hasTags?: boolean },
+    typeFields: readonly FieldDefinition[],
+  ) {
+    const none = { categories: [] as PublicTerm[], tags: [] as PublicTerm[], related: [] as ListingItem[] };
+    if (!type.hasCategories && !type.hasTags) return none;
+    const own = await this.terms.findForContent(siteId, page.id);
+    const categoryRows = type.hasCategories ? own.filter((term) => term.kind === 'category') : [];
+    const tagRows = type.hasTags ? own.filter((term) => term.kind === 'tag') : [];
+    const shown = ({ name, slug }: { name: string; slug: string }): PublicTerm => ({ name, slug });
+
+    const byCategory = await this.content.findRelated(siteId, type.id, categoryRows.map((t) => t.id), [page.id], RELATED_LIMIT);
+    const byTag =
+      byCategory.length < RELATED_LIMIT
+        ? await this.content.findRelated(siteId, type.id, tagRows.map((t) => t.id), [page.id, ...byCategory.map((r) => r.id)], RELATED_LIMIT - byCategory.length)
+        : [];
+    const picked = mergeRelated(byCategory, byTag);
+    const files = await this.filesFor(siteId, typeFields, picked.map((row) => row.data));
+    const origin = this.apiOrigin();
+    return {
+      categories: categoryRows.map(shown),
+      tags: tagRows.map(shown),
+      related: picked.map((row) => listingItem(row, typeFields, files, origin)),
     };
   }
 
@@ -308,6 +397,8 @@ export class PublicService {
     return siteId;
   }
 }
+
+const isTermKind = (value: string): value is TermKind => value === 'category' || value === 'tag';
 
 /** `undefined`, `''` and `/` are the home page; `/wholesale/` matches `/wholesale`. */
 function normalisePath(raw: string | undefined): string {

@@ -296,6 +296,17 @@ export class ContentService {
         }
       });
     }
+    // An entry of a type with categories or tags also sits in its terms' archives and in other entries'
+    // "Related" lists (TAX-02): going live or off, or being retagged or moved to a new address while live, refreshes the site (by
+    // tag, D-058). An edit to a live entry's own text reaches them within the 60 s backstop instead,
+    // because an autosave of a live post must not refresh the whole site each time (D-061).
+    const liveAtAll = existing.status === 'published' || updated?.status === 'published';
+    if (existing.typeId && (wentLiveOrOff || ((checkedLinks !== null || moves.length > 0) && liveAtAll))) {
+      await this.afterWrite('term archive refresh', async () => {
+        const type = await this.types.findById(membership.siteId, existing.typeId as string);
+        if (type?.hasCategories || type?.hasTags) await this.revalidation.site(membership.site.subdomain);
+      });
+    }
     // Live pages below a moved one changed address too (CNT-06): gone from the old, new at the new.
     for (const below of moves) {
       if (below.id === existing.id || below.status !== 'published') continue;
@@ -421,7 +432,7 @@ export class ContentService {
     try {
       await work();
     } catch (error) {
-      this.logger.error(`Redirects not updated after a ${what}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`Follow-up work after a ${what} failed (the save itself stands): ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

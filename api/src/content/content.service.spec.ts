@@ -148,7 +148,7 @@ function fakeContent(
     layouts as unknown as StarterLayoutRepository,
     redirects as unknown as RedirectsService,
     menus as unknown as MenuRepository,
-    new TermsService(termKit.repo, users as unknown as UserRepository),
+    new TermsService(termKit.repo, users as unknown as UserRepository, revalidation as unknown as RevalidationService),
   );
   return { service, table, content, revalidation, types, layouts, redirects, menus, termKit };
 }
@@ -967,6 +967,9 @@ describe('ContentService slug changes (CNT-04)', () => {
     const { service } = setup();
     await expect(service.update('alice', 'about', { slug: 'home' })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.update('alice', 'about', { slug: 'sitemap' })).rejects.toBeInstanceOf(BadRequestException);
+    // the archive addresses (TAX-02)
+    await expect(service.update('alice', 'about', { slug: 'category' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'about', { slug: 'tag' })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.update('alice', 'about', { slug: 'events' })).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -1374,5 +1377,61 @@ describe('ContentService categories and tags (TAX-01)', () => {
     expect(await service.getForEdit('alice', 'hello')).toMatchObject({ tags: [] });
     types[0].hasTags = true;
     expect(await service.getForEdit('alice', 'hello')).toMatchObject({ tags: [{ name: 'Launch' }] });
+  });
+});
+
+describe('ContentService refreshes term archives and related lists (TAX-02)', () => {
+  const types = [
+    { id: 'type-posts', siteId: 'site-a', prefix: 'blog', name: 'Posts', hasCategories: true, hasTags: true },
+    { id: 'type-events', siteId: 'site-a', prefix: 'events', name: 'Events', hasCategories: false, hasTags: false },
+  ];
+
+  function setup() {
+    const termKit = fakeTermRepository([{ id: 'cat-a', siteId: 'site-a', kind: 'category', name: 'News', slug: 'news' }]);
+    return fakeContent(
+      [
+        { siteId: 'site-a', title: 'Draft post', slug: 'draft-post', path: '/blog/draft-post', status: 'draft', blocks, typeId: 'type-posts' },
+        { siteId: 'site-a', title: 'Live post', slug: 'live-post', path: '/blog/live-post', status: 'published', blocks, typeId: 'type-posts' },
+        { siteId: 'site-a', title: 'Draft gala', slug: 'draft-gala', path: '/events/draft-gala', status: 'draft', blocks, typeId: 'type-events' },
+        { siteId: 'site-a', title: 'Live gala', slug: 'live-gala', path: '/events/live-gala', status: 'published', blocks, typeId: 'type-events' },
+      ],
+      { owner: { siteId: 'site-a', role: 'owner' } },
+      {},
+      types,
+      termKit,
+    );
+  }
+
+  it.each([
+    ['publishing', 'draft-post', { status: 'published' as const }],
+    ['unpublishing', 'live-post', { status: 'draft' as const }],
+    ['archiving', 'live-post', { status: 'archived' as const }],
+  ])('refreshes the whole site when %s an entry of a type with terms', async (_name, slug, dto) => {
+    const { service, revalidation } = setup();
+    await service.update('owner', slug, dto);
+    expect(revalidation.site).toHaveBeenCalledExactlyOnceWith('a');
+  });
+
+  it('refreshes when a live entry is retagged, and not when a draft is', async () => {
+    const live = setup();
+    await live.service.update('owner', 'live-post', { categoryIds: ['cat-a'], tags: ['Launch'] });
+    expect(live.revalidation.site).toHaveBeenCalledExactlyOnceWith('a');
+
+    const draft = setup();
+    await draft.service.update('owner', 'draft-post', { categoryIds: ['cat-a'], tags: ['Launch'] });
+    expect(draft.revalidation.site).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh the site for a plain save of a live entry, only its own pages', async () => {
+    const { service, revalidation } = setup();
+    await service.update('owner', 'live-post', { title: 'Live post, edited' });
+    expect(revalidation.site).not.toHaveBeenCalled();
+    expect(revalidation.page).toHaveBeenCalledWith('a', '/blog/live-post');
+  });
+
+  it('does nothing extra for an entry of a type without terms', async () => {
+    const { service, revalidation } = setup();
+    await service.update('owner', 'draft-gala', { status: 'published' });
+    expect(revalidation.site).not.toHaveBeenCalled();
   });
 });

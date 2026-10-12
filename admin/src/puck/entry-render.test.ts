@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { EntryHeader, EntryList, formatDate, type EntryView, type TypeListing } from 'cms-blocks';
+import { EntryHeader, EntryList, RelatedEntries, TermArchive, formatDate, termHref, type EntryView, type TermArchiveView, type TypeListing } from 'cms-blocks';
 
 // The public site's entry header and listing (TYP-03) live in cms-blocks, which has no
 // test runner of its own; they are rendered here the way `web` renders them.
@@ -114,5 +114,107 @@ describe('EntryList', () => {
 
   it('says so when nothing is published', () => {
     expect(render(listing([]))).toContain('Nothing has been published here yet.');
+  });
+});
+
+describe('termHref (TAX-02)', () => {
+  it('is /category/<slug> or /tag/<slug>, with /page/N after the first page', () => {
+    expect(termHref('category', 'news')).toBe('/category/news');
+    expect(termHref('tag', 'q4-report', 1)).toBe('/tag/q4-report');
+    expect(termHref('tag', 'q4-report', 3)).toBe('/tag/q4-report/page/3');
+  });
+});
+
+describe('EntryHeader terms (TAX-02)', () => {
+  it('shows categories and tags as links to their archives, in lists named for what they are', () => {
+    const html = header(entry([], { categories: [{ name: 'News', slug: 'news' }], tags: [{ name: 'Q4 Report', slug: 'q4-report' }, { name: 'Launch', slug: 'launch' }] }));
+    expect(html).toContain('aria-label="Categories"');
+    expect(html).toContain('href="/category/news"');
+    expect(html).toContain('aria-label="Tags"');
+    expect(html).toContain('href="/tag/q4-report"');
+    expect(html).toContain('href="/tag/launch"');
+    expect(html).toContain('Q4 Report');
+  });
+
+  it('shows no empty list when there are none, or when the answer predates terms', () => {
+    for (const html of [header(entry([], { categories: [], tags: [] })), header(entry([]))]) {
+      expect(html).not.toContain('aria-label="Categories"');
+      expect(html).not.toContain('aria-label="Tags"');
+    }
+  });
+
+  it('takes colours only from the site’s theme variables', () => {
+    const html = header(entry([], { categories: [{ name: 'News', slug: 'news' }], tags: [{ name: 'Launch', slug: 'launch' }] }));
+    expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(html).not.toMatch(/(?:bg|text|border|outline|decoration)-(?:red|blue|gray|slate|zinc|neutral|stone|white|black)/);
+  });
+});
+
+describe('RelatedEntries (TAX-02)', () => {
+  const related = [
+    { title: 'Next one', path: '/blog/next-one', publishedAt: '2026-10-02T00:00:00Z', summary: 'S1', image: { url: 'http://api/a.jpg', alt: 'A' } },
+    { title: 'Another', path: '/blog/another', publishedAt: null, summary: null, image: null },
+  ];
+  const render = (entries: Parameters<typeof RelatedEntries>[0]['entries']) => renderToStaticMarkup(createElement(RelatedEntries, { entries }));
+
+  it('shows a Related heading and a card per entry, each linking to it, in the order given', () => {
+    const html = render(related);
+    expect(html).toContain('>Related<');
+    expect(html.indexOf('Next one')).toBeLessThan(html.indexOf('Another'));
+    expect(html).toContain('href="/blog/next-one"');
+    expect(html).toContain('October 2, 2026');
+    expect(html).toContain('src="http://api/a.jpg"');
+  });
+
+  it('is absent when there is nothing related', () => {
+    expect(render([])).toBe('');
+    expect(render(undefined)).toBe('');
+  });
+
+  it('takes colours only from the site’s theme variables', () => {
+    expect(render(related)).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+});
+
+describe('TermArchive (TAX-02)', () => {
+  const archive = (extra: Partial<TermArchiveView> = {}): TermArchiveView => ({
+    term: { name: 'News', slug: 'news', kind: 'category' },
+    entries: [{ title: 'Newest', path: '/blog/newest', publishedAt: '2026-10-02T00:00:00Z', summary: 'S1', image: null }],
+    page: 1,
+    pageCount: 1,
+    total: 1,
+    ...extra,
+  });
+  const render = (a: TermArchiveView) => renderToStaticMarkup(createElement(TermArchive, { archive: a }));
+
+  it('names the term in the heading and lists its entries as the type listing does', () => {
+    const html = render(archive());
+    expect(html).toMatch(/<h1[^>]*>Category: (<!-- -->)?News/);
+    expect(html).toContain('href="/blog/newest"');
+    expect(html).toContain('S1');
+    expect(html).not.toContain('aria-label="Pages"');
+  });
+
+  it('says Tag for a tag, and says so when nothing is published under it', () => {
+    const html = render(archive({ term: { name: 'Launch', slug: 'launch', kind: 'tag' }, entries: [], total: 0 }));
+    expect(html).toMatch(/Tag: (<!-- -->)?Launch/);
+    expect(html).toContain('Nothing has been published under this tag yet.');
+  });
+
+  it('pages: the middle page links both ways, the first only onward, the last only back', () => {
+    const middle = render(archive({ page: 2, pageCount: 3 }));
+    expect(middle).toContain('href="/category/news"'); // newer: page 1 has no /page/1
+    expect(middle).toContain('href="/category/news/page/3"');
+    expect(middle).toContain('Page 2 of 3');
+    const first = render(archive({ page: 1, pageCount: 2 }));
+    expect(first).toContain('href="/category/news/page/2"');
+    expect(first).not.toContain('rel="prev"');
+    const last = render(archive({ page: 2, pageCount: 2 }));
+    expect(last).toContain('rel="prev"');
+    expect(last).not.toContain('rel="next"');
+  });
+
+  it('takes colours only from the site’s theme variables', () => {
+    expect(render(archive({ pageCount: 2 }))).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 });
