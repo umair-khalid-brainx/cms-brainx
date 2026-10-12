@@ -8,6 +8,42 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-055 — 2026-10-12 — Redirects: flat, a page always wins, automatic on a move (`GOV-05`)
+
+**Decision (the week 4 plan's defaults, D-052; built as planned):**
+
+- **A `redirects` table per site**: from a path on the site to a path on the site or a full `http(s)` address,
+  marked `auto` or `manual`. Paths are stored normalised (lowercase, no trailing slash, no query).
+- **Never a chain, never a loop.** Adding B → C re-points every A → B to A → C, and A → B when B → C exists is
+  stored as A → C, so every redirect is one hop. One that would lead back to its own address is refused. The rules
+  are pure functions (`api/src/redirects/redirect-rules.ts`); every change runs under a per-site lock and writes
+  only the differences.
+- **A page always wins.** A manual redirect can't start at an address a page has (any status) or a type's listing;
+  when a page takes an address (create, copy, move), any redirect from it is removed. So renaming a page back to an
+  old slug never loops: the page reclaims the address first.
+- **Automatic on a move** (`CNT-06`'s `moved` list): every address that changed, for pages that were ever
+  published (`publishedAt` set or live now). A draft's old address was never public, so it gets none.
+- **The public site asks last**: `web` looks for a page, then a type listing, and only then a redirect, answering
+  with Next's `permanentRedirect` — a **308**, which search engines treat like the ticket's 301. Every address whose
+  answer changed is revalidated, since `web` caches 404s and redirects alike.
+- **Managing needs `content:publish`** (it changes where public addresses go); anyone who can read content can see
+  the list. Redirects live in `ContentModule` rather than a module of their own: a move makes them and they check page
+  addresses, so two modules would import each other.
+
+- **"A page wins" is checked against the pages as they are when redirects change**, read under the redirects lock,
+  not against what a move remembered: two quick moves whose redirect updates land in the wrong order still end right.
+- **Addresses are plain printable ASCII** after percent-decoding, like page addresses. Redirect lookups ignore case
+  (old links typed with capitals still land); page addresses are always lowercase slugs, so `/About` is a 404 when only
+  the page `/about` exists. Deliberate, not an oversight.
+
+**Costs and limits:** no hit counts, no wildcard or regex redirects, no 410 Gone (out of scope, plan). The content write
+and the redirect update are two transactions: if the redirect update fails after a move, the move still succeeds, the
+failure is logged, and staff can add the redirect by hand. A draft that never went live gets no redirect when it moves,
+so a manual redirect that pointed at its old address now leads to a 404. A content type created later with a prefix
+equal to an existing redirect's address wins on the public site; the redirect row stays until someone deletes it.
+
+---
+
 ## D-054 — 2026-10-12 — Parent pages: paths rebuilt from parent links, one transaction per move (`CNT-05`, `CNT-06`)
 
 **Decision (the week 4 plan's defaults, D-052; built as planned):**

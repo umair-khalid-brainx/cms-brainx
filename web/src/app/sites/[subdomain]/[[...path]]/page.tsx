@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { BlockRenderer, ContactFormProvider, EntryHeader, EntryList } from 'cms-blocks';
-import { getListing, getPage, getSite } from '@/lib/publicApi';
+import { getListing, getPage, getRedirect, getSite } from '@/lib/publicApi';
 import { submitContactForm } from '@/site/contactFormAction';
 
 // ISR (CNT-08): every page is rendered on its first visit, cached, and
@@ -42,8 +42,12 @@ export default async function SitePage({ params }: PageProps<'/sites/[subdomain]
     // `/events` is no page of its own but a content type's address: its listing (TYP-03).
     // A page can never take a type's address, so the two can't clash.
     const listing = path?.length === 1 ? await getListing(subdomain, path[0]) : null;
-    if (!listing) notFound();
-    return <EntryList listing={listing} />;
+    if (listing) return <EntryList listing={listing} />;
+    // An old address: sent on for good (GOV-05). A 308, Next's permanent redirect, which
+    // search engines treat like a 301 (D-052). Only after the page and listing, so a page always wins.
+    const redirect = await getRedirect(subdomain, toPath(path));
+    if (redirect) permanentRedirect(redirect.to);
+    notFound();
   }
 
   // The provider is how a ContactForm block on this page finds its server

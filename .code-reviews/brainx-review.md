@@ -1,40 +1,33 @@
 ---
-diff_hash: ca5afc62cf9bc920b99bc2500129ea4c2461c61d200b8eb136582570d6923ef4
-reviewed_at: 2026-10-12T09:38:28Z
+diff_hash: 13fffcbc5e3cd5c96b52a4d9cb34985f30215bfe347a9737b0be9bb77deddbd3
+reviewed_at: 2026-10-12T10:01:48Z
 ---
 
 ## Summary
 
-CNT-05 and CNT-06: pages can sit under a parent page, and moving a page recomputes the address of every page
-below it.
+GOV-05: per-site redirects, made automatically when a page that was ever published moves, and added or deleted by
+hand on a new Redirects screen (D-055).
 
-- **api** (NestJS + Prisma): adds a `parent_id` column (self-relation, `ON DELETE RESTRICT`, index on
-  `(site_id, parent_id)`). A new pure module, `page-tree.ts`, holds `planMove` and `depthUnder`. They rebuild paths
-  from the parent links and refuse loops, a home-page parent, a parent from another site or an entry, nesting deeper
-  than 3 levels, and address clashes. `PATCH /content/:slug` accepts `parentId`. `planRename` became `planMove`,
-  and a page move runs in `ContentRepository.updateInTree`: one transaction under a per-site advisory lock, where the
-  page and all its descendants are written together (invariant 9). A create or duplicate under a parent uses
-  `createInTree` under the same lock. Reserved words only apply at the top level. A draft that has live pages below
-  it needs publish rights to move. Old and new addresses are revalidated for every live page that moved. A page
-  with children can't be permanently deleted (409). P2028 (transaction timeout) maps to 409.
-- **admin** (React): `pageTree.ts` (tree ordering plus parent choices with the reason each disabled one is refused),
-  the Pages list shows children indented under their parent, and Page settings gets a "Parent page" picker with a
-  title filter, a live-page warning and focus kept on the picker after a move. `EditorPage` now follows a new URL
-  only when the slug actually changed.
+- **api** (NestJS + Prisma): new `redirects` table (`site_id`, `from_path`, `to_path`, `source` enum
+  `manual|auto`, unique `(site_id, from_path)`, cascade on site, set-null on creator). Pure rules in
+  `redirect-rules.ts` (path normalisation, target validation, `planRedirect` that flattens chains and refuses
+  loops). `RedirectRepository.change` applies a whole-list plan under a per-site advisory lock, re-reads page paths
+  inside the transaction and always drops a redirect from an address a page has. `RedirectsService` +
+  `RedirectsController` (`GET` at `content:read`, `POST`/`DELETE` at `content:publish`). `ContentService` calls
+  `pathTaken` after create/duplicate and `pagesMoved` after a move, both through `afterWrite`, which logs instead of
+  failing the already-committed page write. `planMove` now carries `everPublished`. Public `GET
+  /public/sites/:subdomain/redirect?path=`.
+- **web** (Next.js): after no page and no listing answers, asks for a redirect and answers with
+  `permanentRedirect` (308).
+- **admin** (React): Redirects page (list, add form, delete), nav item, route, and the live-page warnings in Page
+  settings now say the old address will redirect.
 
-Stack: no root marker (three independent projects, D-012). Reviewed `api/` against `resources/nestjs.md` and
-`admin/` against `resources/react.md`. Cross-repo contract checked: admin sends `{ parentId: string | null }` to
-the same PATCH route and reads `id`/`parentId` from the list and update responses, which now include them (the API
-returns full rows). The extra `moved` field on the update response is ignored by admin, which is harmless. `web`
-already serves nested paths through its `[[...path]]` catch-all.
+Cross-project contract check: `web`'s `getRedirect` expects `{ to }` / 404, which matches
+`PublicService.getRedirect`; `admin`'s `Redirect` type matches `RedirectsService.list`'s mapped shape, and the
+create response (raw Prisma row) carries the `fromPath`/`toPath` the page reads. No mismatch found.
 
-Verified: api content tests (286) pass, admin lib tests (81) pass, `tsc --noEmit` is clean in both. In a scratch
-transaction on the local Postgres, deleting a site still cascades through a three-level self-referential `RESTRICT`
-chain (0 rows left), so the new FK doesn't break site deletion (`api/test/submissions.e2e-spec.ts` relies on that).
-The descendant loop can't hit the `(site_id, path)` unique index partway through: slugs are unique site-wide, so a
-new path can only equal its own page's old path. Admin and API keep separate copies of `MAX_DEPTH` and the tree
-rules. That's deliberate (independent repos, no shared code apart from `cms-blocks`; the admin copy says the API is
-the authority), so it isn't a finding.
+Stacks: api → NestJS, admin → React, web → Next.js (React criteria applied). Specs reviewed for intent, not
+line-by-line.
 
 ## Findings
 
@@ -43,80 +36,73 @@ the authority), so it isn't a finding.
 ### High (0)
 
 ### Medium (1)
-- **admin/src/components/PageSettingsPanel.tsx:388** — A contributor moving a draft page that has live pages
-  under it gets a raw "Missing permission: content:publish" error. `mayMove` only looks at the page's own status, so
-  the parent picker (and the address field at :212) stays enabled and promises "any pages under it move with it."
-  Then the API refuses the move, correctly, because live pages would change address (`content.service.ts`
-  `planMove`, "A draft can have live pages below it"). *(correctness)*
+- **api/src/redirects/redirect.repository.ts:500** — `change()` runs `$transaction` with Prisma's defaults (2 s
+  maxWait, 5 s timeout) although it waits on a per-site advisory lock first; `ContentRepository` deliberately
+  passes `TREE_TRANSACTION` for exactly this reason ("waiting for the site's tree lock counts against the
+  transaction's time"). *(consistency / correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: The API enforces this correctly, so it isn't a security problem. Only the UI disagrees with it.
-    `ParentField` already loads every page with `status` and `parentId` (`choices`), so it can tell whether any
-    page below this one is published. When one is, it can disable the move and show the same "only someone who can
-    publish can move it" hint used for a live page. As it stands, the person picks a parent, sees the preview
-    address and presses Move, and only then gets a permission string with no explanation. `AddressField` has the
-    same gap for a rename.
+  - ai_reasoning: Several moves or page creates on one site in quick succession each queue a `change()` behind the
+    same lock. Once the wait passes 5 s the transaction times out (P2028). For `pagesMoved`, `afterWrite` swallows
+    the error and only logs it, so a published page's old address silently gets no redirect — while the editor
+    has just told the user "Its old address will send visitors to the new one". Pass the same kind of explicit
+    `{ maxWait, timeout }` the tree transactions use (or share the constant).
 
 ### Low (4)
-- **api/src/content/content.repository.ts:38** — `findPageTree` is never called by production code, only by the
-  test fake. The two real transactions (`updateInTree`, `createInTree`) each inline the same
-  `findMany({ where: { siteId, typeId: null }, select: TREE_FIELDS })` against `tx`. *(maintainability)*
+- **api/src/content/content.repository.ts:43** — `findByPath` is added but nothing calls it; `RedirectRepository.change`
+  reads page paths itself. *(maintainability)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Dead repository surface, plus the same query written three times. If the tree query changes
-    (e.g. to exclude something), the copies can drift apart, and the fake would keep testing the unused one. Use a
-    small private helper that takes the client (`tree(client, siteId)`) for both transactions, or remove
-    `findPageTree` and have the fake mirror the inline query.
-
-- **api/src/content/content.service.ts:301** — `remove` counts children and then deletes, outside the per-site
-  tree lock. If a page is created or moved under this archived page between the two calls (archived pages are
-  offered as parents), the FK's `RESTRICT` rejects the delete with a Prisma P2003. That error isn't mapped, so the
-  person gets a 500 instead of the 409 "Move or delete the pages under this one first." *(correctness)*
+  - ai_reasoning: Dead code on a repository that invariant 1 keeps deliberately small. Remove it, or use it.
+- **api/src/redirects/redirects.service.ts:645** — `create` re-reads the new row after the transaction and
+  asserts it with `!`. A concurrent `pathTaken`/`pagesMoved` (a page created at that address in between) can delete
+  it first, so the endpoint answers 201 with an empty body. *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: The data stays safe, because the database refuses the delete. Only the response is wrong, and the
-    window is narrow. Either catch a foreign-key violation (P2003) around `this.content.delete` and throw the same
-    `ConflictException`, or run the count and the delete under the same advisory lock.
-
-- **api/src/content/content.repository.ts:116** — Inside the locked transaction, descendant paths are written one
-  `updateMany` per page. A parent with many children makes N sequential round trips while holding the site's tree
-  lock and counting against the 20 s timeout. *(efficiency)*
+  - ai_reasoning: The admin page then reads `created.fromPath` on `null`, throws, and shows "Couldn't add the
+    redirect" for a request that did succeed and was then correctly overridden. Narrow window; return the row from
+    inside the transaction, or throw a clear 409 when the re-read is null.
+- **admin/src/pages/RedirectsPage.tsx:58** — after a successful `createRedirect`, the list re-read
+  (`await listRedirects()`) shares the same `try`; if only the re-read fails, the user is told the redirect could
+  not be added. *(correctness / UX)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: The result is correct, and depth is capped at 3, but breadth isn't. A single
-    `UPDATE content AS c SET path = v.path FROM (VALUES …) AS v(id, path) WHERE c.site_id = $1 AND c.id = v.id`
-    via `$executeRaw` (with `Prisma.join` for bound values) would write the whole subtree in one statement. At
-    current site sizes this can reasonably be deferred.
-
-- **api/prisma/schema.prisma:168** — The comment on `@@unique([siteId, path])` still says "path === slug for now
-  since hierarchy is deferred". This diff adds the hierarchy, and the new comment on `parentId` a few lines above
-  says the opposite. *(maintainability)*
+  - ai_reasoning: Retrying then fails with "already redirects somewhere. Delete that redirect first.", which is
+    confusing. Clear the form / announce success before the re-read, or catch the re-read separately.
+- **api/src/redirects/redirect.repository.ts:506** — every `change()` (which now runs after every page create and
+  duplicate via `pathTaken`, even when no redirect exists at that path) loads every content path on the site and
+  writes changed rows with one `upsert` per row. *(efficiency)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: A stale comment on the exact constraint the subtree recompute relies on. The project rule is that
-    when the code and a doc disagree, the doc is fixed in the same pass. Reword it to say `path` is derived from the
-    parent chain (invariant 9).
+  - ai_reasoning: Fine at demo scale, but it is a full-site scan plus a lock on the hot path of page creation. A
+    cheap early exit in `pathTaken` (skip when `findByFrom` finds nothing) avoids most of it.
 
 ## Reviewed files
-- .code-reviews/brainx-review.md (staged deletion of the previous review; replaced by this file)
-- admin/src/components/PageSettingsPanel.css
+- admin/src/App.tsx
 - admin/src/components/PageSettingsPanel.tsx
-- admin/src/lib/contentApi.ts
-- admin/src/lib/pageTree.test.ts
-- admin/src/lib/pageTree.ts
-- admin/src/pages/EditorPage.tsx
-- admin/src/pages/PagesListPage.css
-- admin/src/pages/PagesListPage.tsx
-- api/prisma/migrations/20261012090000_add_content_parent/migration.sql
+- admin/src/layouts/AdminLayout.tsx
+- admin/src/lib/redirectsApi.ts
+- admin/src/pages/RedirectsPage.css (skimmed)
+- admin/src/pages/RedirectsPage.tsx
+- api/prisma/migrations/20261012120000_add_redirects/migration.sql
 - api/prisma/schema.prisma
+- api/src/content/content.module.ts
 - api/src/content/content.repository.ts
-- api/src/content/content.service.spec.ts
+- api/src/content/content.service.spec.ts (skimmed)
 - api/src/content/content.service.ts
-- api/src/content/dto/content.dto.ts
-- api/src/content/page-tree.spec.ts
+- api/src/content/page-tree.spec.ts (skimmed)
 - api/src/content/page-tree.ts
-- docs/DECISIONS.md (not reviewed, docs only)
-- docs/WORKLOG.md (not reviewed, docs only)
-- tickets/CNT-05.md (not reviewed, docs only)
-- tickets/CNT-06.md (not reviewed, docs only)
-- tickets/STATUS.md (not reviewed, docs only)
+- api/src/public/public.controller.ts
+- api/src/public/public.service.spec.ts (skimmed)
+- api/src/public/public.service.ts
+- api/src/redirects/dto/redirect.dto.ts
+- api/src/redirects/redirect-rules.spec.ts (skimmed)
+- api/src/redirects/redirect-rules.ts
+- api/src/redirects/redirect.repository.ts
+- api/src/redirects/redirects.controller.ts
+- api/src/redirects/redirects.service.spec.ts (skimmed)
+- api/src/redirects/redirects.service.ts
+- web/src/app/sites/[subdomain]/[[...path]]/page.tsx
+- web/src/lib/publicApi.ts
+- docs/DECISIONS.md, docs/WORKLOG.md, tickets/GOV-05.md, tickets/STATUS.md (docs, checked against code)
+- .code-reviews/brainx-review.md (previous review, deleted in this diff — skipped)

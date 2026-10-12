@@ -47,6 +47,14 @@ export const getListing = cache((subdomain: string, prefix: string) =>
 );
 
 /**
+ * Where an old address sends visitors (GOV-05): a path on this site or a full URL, or
+ * `null` when it redirects nowhere. Asked only after no page or listing answered.
+ */
+export const getRedirect = cache((subdomain: string, path: string) =>
+  getJson<{ to: string }>(`/public/sites/${encodeURIComponent(subdomain)}/redirect?path=${encodeURIComponent(path)}`),
+);
+
+/**
  * A page behind a preview link (CNT-09): its latest saved blocks, draft or
  * not. Never cached — a revoked link must stop working on the next request,
  * and an edit must show on the next reload.

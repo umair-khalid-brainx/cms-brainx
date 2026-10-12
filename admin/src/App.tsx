@@ -13,6 +13,7 @@ import TypesPage from './pages/TypesPage.tsx'
 import { CreateEntryPage, TypeEntriesPage } from './pages/TypeEntriesPage.tsx'
 import { ContentTypesProvider } from './lib/ContentTypesContext.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
+import RedirectsPage from './pages/RedirectsPage.tsx'
 import TeamPage from './pages/TeamPage.tsx'
 import SubmissionsPage from './pages/SubmissionsPage.tsx'
 import SubmissionDetailPage from './pages/SubmissionDetailPage.tsx'
@@ -45,6 +46,7 @@ function App() {
           <Route path="/submissions" element={<SubmissionsPage />} />
           <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
           <Route path="/team" element={<TeamPage />} />
+          <Route path="/redirects" element={<RedirectsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 

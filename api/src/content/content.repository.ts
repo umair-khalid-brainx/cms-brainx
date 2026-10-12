@@ -2,16 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-const TREE_FIELDS = { id: true, parentId: true, slug: true, path: true, status: true } as const;
+const TREE_FIELDS = { id: true, parentId: true, slug: true, path: true, status: true, publishedAt: true } as const;
 // Waiting for the site's tree lock counts against the transaction's time, so allow more
 // than Prisma's 5 s: moves queue behind each other instead of failing.
-const TREE_TRANSACTION = { maxWait: 10_000, timeout: 20_000 };
+export const TREE_TRANSACTION = { maxWait: 10_000, timeout: 20_000 };
 /** Every page of the site (never entries), just what the page tree needs (CNT-05). */
 function pageTree(client: Prisma.TransactionClient, siteId: string): Promise<TreePageRow[]> {
   return client.content.findMany({ where: { siteId, typeId: null }, select: TREE_FIELDS });
 }
 
-export type TreePageRow = { id: string; parentId: string | null; slug: string; path: string; status: string };
+export type TreePageRow = { id: string; parentId: string | null; slug: string; path: string; status: string; publishedAt: Date | null };
 
 // Every method takes `siteId` as a required parameter (invariant 1) — there
 // is no method here that can read or write across tenants by accident.

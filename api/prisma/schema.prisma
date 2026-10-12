@@ -35,6 +35,7 @@ model Site {
   content      Content[]
   invites      Invite[]
   media        Media[]
+  redirects    Redirect[]
   previewLinks PreviewLink[]
   submissions  Submission[]
   contentTypes ContentType[]
@@ -54,6 +55,7 @@ model User {
   sentInvites     Invite[]
   uploadedMedia   Media[]
   authoredContent Content[]
+  redirects       Redirect[]
 
   @@map("users")
 }
@@ -289,4 +291,33 @@ model Submission {
 
   @@index([siteId, createdAt])
   @@map("submissions")
+}
+
+// Where an old address sends visitors (GOV-05). `auto` ones are made when a page that was
+// ever published moves (CNT-06); `manual` ones by staff. Never chained: adding B → C
+// rewrites A → B to A → C. A page always wins: when a page takes an address, any redirect
+// from it goes. The rules live in api/src/redirects/redirect-rules.ts.
+enum RedirectSource {
+  manual
+  auto
+
+  @@map("redirect_source")
+}
+
+model Redirect {
+  id          String         @id @default(cuid())
+  siteId      String         @map("site_id")
+  // A path on this site, `/old-page`: lowercase, no trailing slash, no query.
+  fromPath    String         @map("from_path")
+  // A path on this site, or a full http(s) URL elsewhere.
+  toPath      String         @map("to_path")
+  source      RedirectSource
+  createdById String?        @map("created_by_id")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  site      Site  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([siteId, fromPath])
+  @@map("redirects")
 }

@@ -7,6 +7,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { MediaRepository } from '../media/media.repository.js';
 import type { SubmissionRepository } from '../submissions/submission.repository.js';
+import type { RedirectRepository } from '../redirects/redirect.repository.js';
 import { PublicService } from './public.service.js';
 
 const TOKEN_A = 'a'.repeat(43);
@@ -62,6 +63,7 @@ function setup() {
     {} as MediaRepository,
     {} as ContentTypeRepository,
     { get: () => undefined } as unknown as ConfigService,
+    {} as RedirectRepository,
   );
   return { service, previewLinks };
 }
@@ -138,6 +140,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       media as unknown as MediaRepository,
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
     );
     return { service, media };
   }
@@ -175,6 +178,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       media as unknown as MediaRepository,
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
     );
 
     const page = await service.getPreview('alpha', TOKEN);
@@ -232,6 +236,7 @@ describe('PublicService entries and listings (TYP-03)', () => {
       media as unknown as MediaRepository,
       types as unknown as ContentTypeRepository,
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
+      {} as RedirectRepository,
     );
     return { service, content, media };
   }
@@ -294,3 +299,33 @@ describe('PublicService entries and listings (TYP-03)', () => {
     await expect(service.getPage('alpha', '/x\u0000')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('PublicService.getRedirect (GOV-05)', () => {
+  const redirects = {
+    findByFrom: vi.fn(async (siteId: string, fromPath: string) =>
+      siteId === 'site-a' && fromPath === '/old' ? { toPath: '/new' } : null,
+    ),
+  };
+  const service = new PublicService(
+    {} as SiteRepository,
+    {} as ContentRepository,
+    {} as PreviewLinkRepository,
+    { resolve: vi.fn(async (sub: string) => ({ alpha: 'site-a', beta: 'site-b' })[sub] ?? null) } as unknown as SubdomainCache,
+    {} as SubmissionRepository,
+    {} as MediaRepository,
+    {} as ContentTypeRepository,
+    { get: () => undefined } as unknown as ConfigService,
+    redirects as unknown as RedirectRepository,
+  );
+
+  it('answers where an old address goes, normalising the path it is asked about', async () => {
+    expect(await service.getRedirect('alpha', '/Old/')).toEqual({ to: '/new' });
+  });
+
+  it('is a 404 on another site, for an unknown address, or a path that isn’t one', async () => {
+    await expect(service.getRedirect('beta', '/old')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getRedirect('alpha', '/nowhere')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getRedirect('alpha', 'old?x=1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+

@@ -24,6 +24,12 @@ export class PublicController {
     return this.publicSite.getPage(subdomain, path);
   }
 
+  // Where an old address sends visitors (GOV-05); `web` asks only after no page answered.
+  @Get('redirect')
+  getRedirect(@Param('subdomain') subdomain: string, @Query('path') path?: string) {
+    return this.publicSite.getRedirect(subdomain, path);
+  }
+
   // The page at a content type's address, `/events`: its published entries, newest first (TYP-03).
   @Get('types/:prefix')
   getListing(@Param('subdomain') subdomain: string, @Param('prefix') prefix: string) {

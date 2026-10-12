@@ -25,6 +25,8 @@ describe('planMove: recursive path recomputation (CNT-06, invariant 9)', () => {
       ['/about/team/leads', '/company/team/leads'],
       ['/about/history', '/company/history'],
     ]);
+    // about, team and history are live; leads is a draft that never went live.
+    expect(plan.ok && plan.moves.map((m) => m.everPublished)).toEqual([true, true, false, true]);
   });
 
   it('moving a subtree under another parent rebuilds its paths there', () => {
@@ -34,7 +36,9 @@ describe('planMove: recursive path recomputation (CNT-06, invariant 9)', () => {
 
   it('moving a child to the top level', () => {
     const plan = planMove(pages, 'history', 'history', null);
-    expect(plan.ok && plan.moves).toEqual([{ id: 'history', oldPath: '/about/history', newPath: '/history', status: 'published' }]);
+    expect(plan.ok && plan.moves).toEqual([
+      { id: 'history', oldPath: '/about/history', newPath: '/history', status: 'published', everPublished: true },
+    ]);
   });
 
   it('touches nothing outside the subtree: siblings and other pages are not in the plan', () => {
@@ -45,7 +49,9 @@ describe('planMove: recursive path recomputation (CNT-06, invariant 9)', () => {
   it('rebuilds from the parent links, so a stale stored path is corrected', () => {
     const stale = pages.map((p) => (p.id === 'leads' ? { ...p, path: '/old/leads' } : p));
     const plan = planMove(stale, 'about', 'about', null);
-    expect(plan.ok && plan.moves).toEqual([{ id: 'leads', oldPath: '/old/leads', newPath: '/about/team/leads', status: 'draft' }]);
+    expect(plan.ok && plan.moves).toEqual([
+      { id: 'leads', oldPath: '/old/leads', newPath: '/about/team/leads', status: 'draft', everPublished: false },
+    ]);
   });
 });
 

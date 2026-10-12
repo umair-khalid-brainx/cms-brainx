@@ -7,6 +7,8 @@ import { parseStoredFields, type FieldDefinition } from '../content-types/field-
 import type { Prisma } from '../generated/prisma/client.js';
 import { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import { MediaRepository } from '../media/media.repository.js';
+import { RedirectRepository } from '../redirects/redirect.repository.js';
+import { normaliseRedirectPath } from '../redirects/redirect-rules.js';
 import { SiteRepository } from '../sites/site.repository.js';
 import { SubdomainCache } from '../sites/subdomain-cache.js';
 import type { CreateSubmissionDto, SubmissionAnswer } from '../submissions/dto/submission.dto.js';
@@ -61,6 +63,7 @@ export class PublicService {
     private readonly media: MediaRepository,
     private readonly types: ContentTypeRepository,
     private readonly config: ConfigService,
+    private readonly redirects: RedirectRepository,
   ) {}
 
   async getSite(subdomain: string): Promise<PublicSite> {
@@ -68,6 +71,17 @@ export class PublicService {
     const site = await this.sites.findById(await this.findSiteId(subdomain));
     if (!site) throw new NotFoundException('Site not found');
     return { name: site.name, subdomain: site.subdomain, theme: site.themeJson };
+  }
+
+  /**
+   * Where an old address sends visitors (GOV-05), asked by `web` only after no page or
+   * listing answered, so a page always wins. 404 when it redirects nowhere.
+   */
+  async getRedirect(subdomain: string, rawPath: string | undefined): Promise<{ to: string }> {
+    const path = normaliseRedirectPath(rawPath ?? '');
+    const redirect = path ? await this.redirects.findByFrom(await this.findSiteId(subdomain), path) : null;
+    if (!redirect) throw new NotFoundException('No redirect');
+    return { to: redirect.toPath };
   }
 
   async getPage(subdomain: string, rawPath: string | undefined): Promise<PublicPage> {

@@ -351,7 +351,7 @@ function AddressField({
 
           {live ? (
             <p id={`${id}-live`} className="page-settings-warning">
-              This {thing} is live. Links to the old address will stop working once you save.
+              This {thing} is live. Its old address will send visitors to the new one (see Redirects).
             </p>
           ) : null}
 
@@ -499,7 +499,7 @@ function ParentField({
       </p>
       {changed && live ? (
         <p id={`${id}-parent-live`} className="page-settings-warning">
-          This page is live. Links to its old address, and to pages under it, will stop working once you move it.
+          This page is live. Its old address, and those of pages under it, will send visitors to the new ones (see Redirects).
         </p>
       ) : null}
       {error ? (

@@ -63,6 +63,16 @@ const navItems = [
     requiresSiteManage: true,
   },
   {
+    // Where old addresses go (GOV-05). Everyone can look; the page itself limits editing.
+    to: '/redirects',
+    label: 'Redirects',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M4 4.75A.75.75 0 0 1 4.75 4h6.5a4.75 4.75 0 0 1 0 9.5H6.56l1.72 1.72a.75.75 0 1 1-1.06 1.06l-3-3a.75.75 0 0 1 0-1.06l3-3a.75.75 0 0 1 1.06 1.06L6.56 12h4.69a3.25 3.25 0 0 0 0-6.5h-6.5A.75.75 0 0 1 4 4.75Z" />
+      </svg>
+    ),
+  },
+  {
     to: '/settings',
     label: 'Settings',
     icon: (

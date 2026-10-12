@@ -6,10 +6,18 @@
 /** Top level is depth 1, so `/a/b/c` is as deep as a page can sit. */
 export const MAX_DEPTH = 3;
 
-export type TreePage = { id: string; parentId: string | null; slug: string; path: string; status: string };
+export type TreePage = {
+  id: string;
+  parentId: string | null;
+  slug: string;
+  path: string;
+  status: string;
+  /** Set once it first went live; a page that was ever public needs a redirect when it moves (GOV-05). */
+  publishedAt?: Date | null;
+};
 
 /** One page whose address changes in a move: the page itself or one below it. */
-export type PathMove = { id: string; oldPath: string; newPath: string; status: string };
+export type PathMove = { id: string; oldPath: string; newPath: string; status: string; everPublished: boolean };
 
 /** `conflict` marks a clash with another page's address (a 409), the rest are bad requests. */
 export type MovePlan = { ok: true; path: string; moves: PathMove[] } | { ok: false; problem: string; conflict?: boolean };
@@ -46,7 +54,10 @@ export function planMove(pages: readonly TreePage[], pageId: string, slug: strin
   const path = `${parentPath}/${slug}`;
   const moves: PathMove[] = [];
   const visit = (current: TreePage, newPath: string) => {
-    if (current.path !== newPath) moves.push({ id: current.id, oldPath: current.path, newPath, status: current.status });
+    if (current.path !== newPath) {
+      const everPublished = current.status === 'published' || Boolean(current.publishedAt);
+      moves.push({ id: current.id, oldPath: current.path, newPath, status: current.status, everPublished });
+    }
     for (const child of children.get(current.id) ?? []) visit(child, `${newPath}/${child.slug}`);
   };
   visit(page, path);

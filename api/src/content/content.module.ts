@@ -10,6 +10,9 @@ import { ContentService } from './content.service.js';
 import { StarterLayoutsModule } from '../starter-layouts/starter-layouts.module.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
+import { RedirectRepository } from '../redirects/redirect.repository.js';
+import { RedirectsController } from '../redirects/redirects.controller.js';
+import { RedirectsService } from '../redirects/redirects.service.js';
 
 @Module({
   // AuthModule import brings in JwtModule (re-exported by AuthModule) so
@@ -17,9 +20,20 @@ import { PreviewLinkRepository } from './preview-link.repository.js';
   // JwtAuthGuard/PermissionsGuard also need to be listed as this module's own
   // providers.
   imports: [UsersModule, AuthModule, RevalidationModule, StarterLayoutsModule],
-  controllers: [ContentController],
-  providers: [ContentRepository, ContentTypeRepository, PreviewLinkRepository, ContentService, JwtAuthGuard, PermissionsGuard],
-  // For PublicModule's live-page and preview reads.
-  exports: [ContentRepository, ContentTypeRepository, PreviewLinkRepository],
+  // Redirects live here rather than in a module of their own: moving a page makes them
+  // (GOV-05), and they check page addresses, so the two would otherwise import each other.
+  controllers: [ContentController, RedirectsController],
+  providers: [
+    ContentRepository,
+    ContentTypeRepository,
+    PreviewLinkRepository,
+    RedirectRepository,
+    RedirectsService,
+    ContentService,
+    JwtAuthGuard,
+    PermissionsGuard,
+  ],
+  // For PublicModule's live-page, preview and redirect reads.
+  exports: [ContentRepository, ContentTypeRepository, PreviewLinkRepository, RedirectRepository],
 })
 export class ContentModule {}

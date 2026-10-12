@@ -1,0 +1,221 @@
+/* The Redirects screen (GOV-05). The header and table borrow the Pages list's classes
+   (PagesListPage.css); only the add form and the labels are its own. */
+
+.redirects-intro {
+  max-width: 60ch;
+  margin: -0.5rem 0 1.25rem;
+  font-size: 0.8125rem;
+  color: #50575e;
+}
+
+.redirects-announcer,
+.redirects-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* One row on a wide screen: old address, arrow, new address, button. */
+.redirects-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}
+
+.redirects-field label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.redirects-field input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e1e1e;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.875rem;
+}
+
+.redirects-field input[aria-invalid='true'] {
+  border-color: #b32d2e;
+}
+
+.redirects-field input:focus-visible,
+.redirects-add:focus-visible,
+.redirects-delete:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+.redirects-arrow {
+  display: grid;
+  place-items: center;
+  height: 2.5rem;
+  color: #8c8f94;
+}
+
+.redirects-add {
+  min-height: 2.5rem;
+  padding: 0 0.9rem;
+  border: none;
+  border-radius: 4px;
+  background: #2271b1;
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.redirects-add:hover:not(:disabled) {
+  background: #135e96;
+}
+
+.redirects-add:disabled {
+  background: #72aee6;
+  cursor: default;
+}
+
+.redirects-hint,
+.redirects-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.redirects-hint {
+  color: #50575e;
+}
+
+.redirects-error {
+  color: #b32d2e;
+  font-weight: 500;
+}
+
+.redirects-delete-error {
+  margin: 0 0 0.75rem;
+}
+
+.redirects-empty {
+  font-size: 0.8125rem;
+  color: #50575e;
+}
+
+.redirects-table-wrap {
+  overflow-x: auto;
+}
+
+.redirects-made {
+  color: #50575e;
+}
+
+/* Says how it got here, not a status: automatic ones came from a page moving. */
+.redirects-badge {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #f0f6fc;
+  color: #135e96;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.redirects-badge-manual {
+  background: #f0f0f1;
+  color: #3c434a;
+}
+
+.redirects-actions {
+  text-align: right;
+}
+
+.redirects-delete {
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: #b32d2e;
+  font: inherit;
+  cursor: pointer;
+}
+
+.redirects-delete:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* Tablet and narrower: the two addresses stack, the arrow points down. */
+@media (max-width: 52rem) {
+  .redirects-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .redirects-arrow {
+    height: auto;
+    transform: rotate(90deg);
+    justify-self: start;
+  }
+
+  .redirects-add {
+    justify-self: start;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .redirects-intro,
+  .redirects-hint,
+  .redirects-empty,
+  .redirects-made {
+    color: #b0b0b0;
+  }
+
+  .redirects-form {
+    background: #18191b;
+    border-color: #3c434a;
+  }
+
+  .redirects-field label {
+    color: #ededed;
+  }
+
+  .redirects-field input {
+    background: #1d2327;
+    border-color: #646970;
+    color: #ededed;
+  }
+
+  .redirects-badge {
+    background: #1d3a52;
+    color: #9ec2e6;
+  }
+
+  .redirects-badge-manual {
+    background: #2c3338;
+    color: #c3c4c7;
+  }
+
+  .redirects-delete,
+  .redirects-error {
+    color: #f86368;
+  }
+
+  .redirects-field input[aria-invalid='true'] {
+    border-color: #f86368;
+  }
+}

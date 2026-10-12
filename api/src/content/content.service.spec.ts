@@ -12,6 +12,7 @@ import type { StarterLayoutRepository } from '../starter-layouts/starter-layout.
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { PreviewLinkRepository } from './preview-link.repository.js';
 import { Prisma } from '../generated/prisma/client.js';
+import type { RedirectsService } from '../redirects/redirects.service.js';
 import { ContentService } from './content.service.js';
 
 type Row = {
@@ -110,6 +111,8 @@ function fakeContent(
     ),
   };
   const revalidation = { page: vi.fn(async () => {}) };
+  // Redirect rules are tested in api/src/redirects; here only that the content service hands them each move.
+  const redirects = { pagesMoved: vi.fn(async () => {}), pathTaken: vi.fn(async () => {}) };
   // Scoped like the real repository: a site only finds its own types.
   const types = {
     findByPrefix: vi.fn(async (siteId: string, prefix: string) =>
@@ -132,8 +135,9 @@ function fakeContent(
     revalidation as unknown as RevalidationService,
     types as unknown as ContentTypeRepository,
     layouts as unknown as StarterLayoutRepository,
+    redirects as unknown as RedirectsService,
   );
-  return { service, table, content, revalidation, types, layouts };
+  return { service, table, content, revalidation, types, layouts, redirects };
 }
 
 const blocks = [{ type: 'hero', headline: 'Hello' }];
@@ -1106,5 +1110,55 @@ describe('ContentService page tree (CNT-05, CNT-06)', () => {
   it('puts a copy next to the original, under the same parent', async () => {
     const { service } = setup();
     expect(await service.duplicate('alice', 'team')).toMatchObject({ path: '/about/team-copy', parentId: 'about' });
+  });
+});
+
+describe('ContentService hands moves to redirects (GOV-05)', () => {
+  function setup() {
+    return fakeContent(
+      [
+        { id: 'about', siteId: 'site-a', title: 'About', slug: 'about', path: '/about', status: 'published', blocks },
+        { id: 'team', siteId: 'site-a', title: 'Team', slug: 'team', path: '/about/team', status: 'draft', blocks, parentId: 'about' },
+        { id: 'fair', siteId: 'site-a', title: 'Fair', slug: 'fair', path: '/events/fair', status: 'draft', blocks, typeId: 't-a' },
+      ],
+      { alice: { siteId: 'site-a', role: 'owner' } },
+      {},
+      [{ id: 't-a', siteId: 'site-a', prefix: 'events' }],
+    );
+  }
+
+  it('passes every moved address, saying which were ever public', async () => {
+    const { service, redirects } = setup();
+    await service.update('alice', 'about', { slug: 'company' });
+    expect(redirects.pagesMoved).toHaveBeenCalledWith(
+      'site-a',
+      'a',
+      [
+        { from: '/about', to: '/company', everPublished: true },
+        { from: '/about/team', to: '/company/team', everPublished: false },
+      ],
+      'alice',
+    );
+  });
+
+  it('passes an entry’s move too', async () => {
+    const { service, redirects } = setup();
+    await service.update('alice', 'fair', { slug: 'summer-fair' });
+    expect(redirects.pagesMoved).toHaveBeenCalledWith('site-a', 'a', [{ from: '/events/fair', to: '/events/summer-fair', everPublished: false }], 'alice');
+  });
+
+  it('tells redirects when a new page or a copy takes an address', async () => {
+    const { service, redirects } = setup();
+    await service.create('alice', { title: 'Old page', blocks: [] });
+    await service.duplicate('alice', 'about');
+    expect(redirects.pathTaken).toHaveBeenCalledWith('site-a', 'a', '/old-page');
+    expect(redirects.pathTaken).toHaveBeenCalledWith('site-a', 'a', '/about-copy');
+  });
+
+  it('still reports a move as saved when updating redirects fails afterwards', async () => {
+    const { service, redirects, table } = setup();
+    redirects.pagesMoved.mockRejectedValueOnce(new Error('lock timeout'));
+    await expect(service.update('alice', 'about', { slug: 'company' })).resolves.toMatchObject({ path: '/company' });
+    expect(table.find((r) => r.id === 'about')?.path).toBe('/company');
   });
 });

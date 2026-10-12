@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { ContentTypeRepository } from '../content-types/content-type.repository.
 import { parseStoredFields, visibleFields, type FieldDefinition } from '../content-types/field-definitions.js';
 import { mergeEntryData, missingRequired, parseEntryData } from '../content-types/field-values.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
+import { RedirectsService } from '../redirects/redirects.service.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
 import { normaliseSlug, slugProblem } from './slug.js';
@@ -26,6 +28,8 @@ import { RESERVED_PREFIXES } from '../content-types/prefix.js';
 
 @Injectable()
 export class ContentService {
+  private readonly logger = new Logger(ContentService.name);
+
   constructor(
     private readonly content: ContentRepository,
     private readonly users: UserRepository,
@@ -33,6 +37,7 @@ export class ContentService {
     private readonly revalidation: RevalidationService,
     private readonly types: ContentTypeRepository,
     private readonly layouts: StarterLayoutRepository,
+    private readonly redirects: RedirectsService,
   ) {}
 
   /** Pages, or with `typePrefix` the entries of that content type (TYP-01). */
@@ -64,7 +69,14 @@ export class ContentService {
   }
 
   async create(userId: string, dto: CreateContentDto) {
-    const siteId = await this.resolveSiteId(userId);
+    const { siteId, site } = await this.resolveMembership(userId);
+    const created = await this.createRow(userId, siteId, dto);
+    // A page always wins over a redirect from its address (GOV-05).
+    await this.afterWrite('create', () => this.redirects.pathTaken(siteId, site.subdomain, created.path));
+    return created;
+  }
+
+  private async createRow(userId: string, siteId: string, dto: CreateContentDto) {
     const type = await this.resolveType(siteId, dto.type);
     // A starter layout is copied on the server from the platform's own table, never taken from the
     // request, so a page can only start from what was seeded (TYP-04).
@@ -193,7 +205,10 @@ export class ContentService {
         moves = (await this.content.updateInTree(membership.siteId, slug, write, move.inTree)).moves;
       } else {
         await this.content.update(membership.siteId, slug, { ...write, ...(move && { path: move.path }) });
-        if (move) moves = [{ id: existing.id, oldPath: existing.path, newPath: move.path, status: existing.status }];
+        if (move) {
+          const everPublished = existing.status === 'published' || Boolean(existing.publishedAt);
+          moves = [{ id: existing.id, oldPath: existing.path, newPath: move.path, status: existing.status, everPublished }];
+        }
       }
     } catch (error) {
       // Two pages moved to the same free address at the same moment: planMove's checks
@@ -226,7 +241,16 @@ export class ContentService {
       await this.revalidation.page(membership.site.subdomain, below.oldPath);
       await this.revalidation.page(membership.site.subdomain, below.newPath);
     }
-    // A move also says which addresses changed, old → new, for the editor and for redirects (GOV-05).
+    // Old addresses that were ever public now redirect to the new ones; new ones lose any redirect (GOV-05).
+    await this.afterWrite('move', () =>
+      this.redirects.pagesMoved(
+        membership.siteId,
+        membership.site.subdomain,
+        moves.map((m) => ({ from: m.oldPath, to: m.newPath, everPublished: m.everPublished })),
+        userId,
+      ),
+    );
+    // A move also says which addresses changed, old → new, for the editor.
     return move ? { ...updated, moved: moves.map((m) => ({ from: m.oldPath, to: m.newPath })) } : updated;
   }
 
@@ -236,7 +260,13 @@ export class ContentService {
   // `<slug>-copy`, then `-copy-2`, ... via uniqueSlug, next to the original —
   // same parent path, so this stays right once hierarchy (CNT-05) exists.
   async duplicate(userId: string, slug: string) {
-    const siteId = await this.resolveSiteId(userId);
+    const { siteId, site } = await this.resolveMembership(userId);
+    const copy = await this.duplicateRow(userId, siteId, slug);
+    await this.afterWrite('duplicate', () => this.redirects.pathTaken(siteId, site.subdomain, copy.path));
+    return copy;
+  }
+
+  private async duplicateRow(userId: string, siteId: string, slug: string) {
     const source = await this.content.findBySlug(siteId, slug);
     if (!source) throw new NotFoundException('Page not found');
     if (source.status === 'archived') throw new ConflictException('Restore this page before duplicating it');
@@ -309,6 +339,19 @@ export class ContentService {
         throw new ConflictException('Move or delete the pages under this one first.');
       }
       throw error;
+    }
+  }
+
+  /**
+   * Redirect bookkeeping after a page write that has already committed (GOV-05). A failure
+   * here mustn't report the save itself as failed: it's logged, and the redirect can be
+   * added by hand on the Redirects screen.
+   */
+  private async afterWrite(what: string, work: () => Promise<void>): Promise<void> {
+    try {
+      await work();
+    } catch (error) {
+      this.logger.error(`Redirects not updated after a ${what}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

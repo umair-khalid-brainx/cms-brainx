@@ -5,6 +5,30 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Redirects, automatic on a move (`GOV-05` done)
+
+Decision in D-055.
+
+- `api`: `Redirect` model + `RedirectSource` (migration `20261012120000_add_redirects`). New `api/src/redirects/`
+  (registered in `ContentModule`): `redirect-rules.ts` (normalising, `planRedirect`: one hop, no loops),
+  `redirect.repository.ts` (`change()` plans from the current list and the site's page paths under an advisory lock,
+  drops any redirect from a page's address, writes only differences), `redirects.service.ts` (manual create/delete,
+  `pagesMoved`, `pathTaken`), `GET/POST/DELETE /redirects` (`content:publish` to change). `ContentService` hands
+  every move and every create/copy to it; a failure there is logged, never fails the save. `GET
+  /public/sites/:subdomain/redirect?path=`.
+- `web`: after the page and the type listing miss, `getRedirect` then `permanentRedirect` (308).
+- `admin`: Redirects screen (`pages/RedirectsPage.tsx/.css`, nav item, route): add with the API's messages, delete,
+  Automatic/By hand with date and who. Page settings' live warnings now say the old address will redirect.
+- Tests: `redirect-rules.spec.ts`, `redirects.service.spec.ts` (incl. two moves whose updates land reversed),
+  `PublicService.getRedirect`, content hand-off tests. api 428, admin 111 pass; typecheck, lint, build clean.
+- Verified on `cms_wk4`: curl for each rule on two tenants; `curl -I` 308 + Location on corrick, 404 on kestrel,
+  cold and cached; rename and rename back; chains collapsing; a new page taking over a redirected address; external
+  targets; browser: light/dark, desktop/tablet (fixed a table overflowing at 768px).
+
+**Not done:** no hit counts, wildcard redirects or 410 (out of scope). ISR revalidation isn't wired locally.
+
+---
+
 ## 2026-10-12 — Parent pages, and addresses that follow a move (`CNT-05`, `CNT-06` done)
 
 Decision in D-054.
