@@ -5,6 +5,29 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Sitemap and robots.txt for each site (`SEO-02` done)
+
+Decision in D-057.
+
+- `api`: `ContentRepository.findSitemapRows` (live rows only, one over the 50,000 cap so an overflow is noticed);
+  `public/sitemap-view.ts` (+spec) `buildSitemap`: indexable pages and entries with `lastModified`, a listing per type
+  with an indexable entry, trimmed to the limit with the listings kept; `PublicService.getSitemap` (logs when a site
+  reaches the cap) and `GET /public/sites/:subdomain/sitemap`.
+- `web`: `proxy.ts` matcher gains exactly `/sitemap.xml` and `/robots.txt`; `app/sites/[subdomain]/sitemap.xml/route.ts` and
+  `robots.txt/route.ts`, `force-dynamic`, `Cache-Control: no-cache`, each refusing a host that isn't its tenant
+  (`isOwnHost`); `lib/sitemap.ts` (XML with escaping, robots text); `getSitemap` reads with `no-store`.
+- `web` now has `npm test` (`node --test`, no new dependency, Node 22.6+): `sitemap.test.ts`, `seo.test.ts` (the SEO-01 tag
+  mapping), `tenant.test.ts`; `allowImportingTsExtensions` in its tsconfig. 17 tests.
+- Tests: api 464, admin 116, web 17 pass; typecheck, lint, builds clean.
+- Verified on `cms_wk4` with curl: lists per host, no drafts/archived/noindex, valid XML (`xmllint`), 404 on non-tenant
+  hosts, other extensions still bypassing the proxy, the sitemap right on the very next request after a publish, noindex,
+  rename, unpublish and archive; cross-host access to `/sites/<other>/...` now 404.
+
+**Not done:** an nginx cache and a sitemap index (B-30). Found along the way: `revalidatePath` doesn't clear a route
+file's cached answer (it does for pages), so the plan to cache and refresh these two was dropped, not worked around.
+
+---
+
 ## 2026-10-12 — Search and sharing settings, real meta tags (`SEO-01` done)
 
 Decision in D-056.

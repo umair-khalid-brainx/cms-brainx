@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { SITEMAP_LIMIT } from '../public/sitemap-view.js';
 
 const TREE_FIELDS = { id: true, parentId: true, slug: true, path: true, status: true, publishedAt: true } as const;
 // Waiting for the site's tree lock counts against the transaction's time, so allow more
@@ -54,6 +55,20 @@ export class ContentRepository {
       where: { siteId, path, status: 'published' },
       // The author's name only (never their email) and the type, for an entry's public header (TYP-03).
       include: { author: { select: { name: true } }, type: true },
+    });
+  }
+
+  /**
+   * Every live page and entry of a site, just what the sitemap needs (SEO-02). Never a draft or an
+   * archived one. Capped at the 50,000 addresses a sitemap file may hold; `take` is one more
+   * than that, so a caller can tell a site has more than fits.
+   */
+  findSitemapRows(siteId: string) {
+    return this.prisma.content.findMany({
+      where: { siteId, status: 'published' },
+      select: { path: true, typeId: true, seo: true, updatedAt: true },
+      orderBy: { path: 'asc' },
+      take: SITEMAP_LIMIT + 1,
     });
   }
 

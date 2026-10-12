@@ -8,6 +8,51 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-057 — 2026-10-12 — Sitemap and robots.txt: per tenant, built on every request (`SEO-02`)
+
+**Decision (the week 4 plan, D-052; one part changed after testing):**
+
+- **Each tenant host serves its own `/sitemap.xml` and `/robots.txt`.** The proxy's matcher, which skips every path
+  with a file extension, gained exactly those two entries, so nothing else with an extension is let through; the
+  rewrite sends them to `/sites/<subdomain>/sitemap.xml` and `/robots.txt`, so the host picks the tenant as for pages.
+  On a host that isn't a tenant they are a 404.
+- **What the sitemap lists** (`api/src/public/sitemap-view.ts`, from `GET /public/sites/:subdomain/sitemap`): the site's
+  live pages and entries that aren't switched to noindex (`SEO-01`), with when each last changed, plus a listing
+  (`/blog`) for each type that has an indexable entry, as new as its newest. Drafts and archived pages never come back
+  from the query, and category and tag archives (`TAX-02`) are noindex, so they never get here. A page whose parent is
+  unpublished is still listed: each page's own status decides (D-054). Capped at the 50,000 addresses a file may hold.
+- **`robots.txt` allows everything and names that host's sitemap**; the address is built from
+  `PUBLIC_SITE_URL_TEMPLATE` (D-056).
+- **Both are built on every request, not cached.** The plan was to cache them like pages and refresh them from `api`.
+  Tested in `next dev` and in a production build, `revalidatePath` clears a route file's cached output but not the API
+  answer behind it, so the sitemap stayed behind a publish. A page's cache entry is tied to the page's path; a route
+  file's fetch is not. So the routes are `force-dynamic` and read the API with `no-store`: never stale, one indexed
+  query per fetch, and crawlers fetch a sitemap a few times a day. The refresh calls that were added on the `api` side
+  were removed again rather than kept as dead code.
+- **`web` gets `npm test`** (Node's built-in runner, `node --test`, on `src/lib/*.test.ts`; Node 24 runs TypeScript
+  directly), because the XML builder and the tag mapping (`SEO-01`) are logic. `allowImportingTsExtensions` in its
+  tsconfig lets the tests import `./x.ts`; the project never emits files, so it is safe.
+
+- **Each route refuses a host that isn't its tenant.** A path with a file extension skips the proxy, so
+  `/sites/<x>/sitemap.xml` could be asked for on any host and would have returned `<x>`'s sitemap (found in review,
+  confirmed with `curl`). The route now checks the request's `Host` (`isOwnHost`) against the tenant in its path, and
+  answers 404 otherwise: invariant 6 holds for the new files too.
+- **A page whose canonical address is another one isn't listed** (a sitemap names canonical addresses; listing a page whose
+  own `<link rel="canonical">` points elsewhere sends conflicting signals). `api` sends each entry's canonical address and
+  `web`, which knows the origin, drops the entry unless it names the page itself (ignoring a trailing slash).
+- **The 50,000-address limit** of a sitemap file is kept: past it, the last pages by address are dropped and the type
+  listings stay (so the file stays valid), and a warning is logged. **`Cache-Control: no-cache`** on both files says it
+  plainly: a copy may be kept, but ask again before using it.
+- **Node 22.6 or later is needed to run `web`'s tests** (`npm test`), not to run the site.
+
+**Costs and limits:** an unauthenticated request reads a site's live rows each time (fine at this scale; an nginx
+`proxy_cache` of a minute would cap it, a deploy decision for `DEP-01b`, B-30). Past the limit a site's last pages are
+left out of the sitemap, noindex rows count toward the read cap, and there is no sitemap index. No image or video
+sitemaps, no `hreflang`. `robots.txt` reads the site through the 60-second cached `getSite`, so a deleted site's
+`robots.txt` can outlive it by a minute.
+
+---
+
 ## D-056 — 2026-10-12 — SEO: one validated object, fallbacks resolved in `api`, tags built in `web` (`SEO-01`)
 
 **Decision (the week 4 plan's choices, D-052: the full req. 5 list; built as planned):**

@@ -30,8 +30,8 @@ export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'publish
  */
 export const PUBLIC_REVALIDATE_SECONDS = 60;
 
-async function getJson<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${API_URL}${path}`, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
+async function getJson<T>(path: string, { fresh = false }: { fresh?: boolean } = {}): Promise<T | null> {
+  const response = await fetch(`${API_URL}${path}`, fresh ? { cache: 'no-store' } : { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`API ${response.status} for ${path}`);
   return (await response.json()) as T;
@@ -53,6 +53,15 @@ export const getPage = cache((subdomain: string, path: string) =>
  */
 export const getListing = cache((subdomain: string, prefix: string) =>
   getJson<TypeListing>(`/public/sites/${encodeURIComponent(subdomain)}/types/${encodeURIComponent(prefix)}`),
+);
+
+/** The addresses a site wants search engines to find (SEO-02); `null` for a site that doesn't exist. */
+export type SitemapEntry = { path: string; lastModified: string; canonicalUrl: string | null };
+
+// Read fresh, never cached: a sitemap file is not a page, so a path refresh doesn't clear the
+// API answer behind it, and a crawler that fetches it a few times a day costs one read of the site's live rows.
+export const getSitemap = cache((subdomain: string) =>
+  getJson<{ entries: SitemapEntry[] }>(`/public/sites/${encodeURIComponent(subdomain)}/sitemap`, { fresh: true }),
 );
 
 /**

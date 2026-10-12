@@ -24,6 +24,12 @@ export class PublicController {
     return this.publicSite.getPage(subdomain, path);
   }
 
+  // The addresses for this site's sitemap.xml (SEO-02).
+  @Get('sitemap')
+  getSitemap(@Param('subdomain') subdomain: string) {
+    return this.publicSite.getSitemap(subdomain);
+  }
+
   // Where an old address sends visitors (GOV-05); `web` asks only after no page answered.
   @Get('redirect')
   getRedirect(@Param('subdomain') subdomain: string, @Query('path') path?: string) {

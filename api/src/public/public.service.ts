@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 import { ConfigService } from '@nestjs/config';
 import { ContentRepository } from '../content/content.repository.js';
+import { SITEMAP_LIMIT as SITEMAP_ROWS } from './sitemap-view.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import { parseStoredFields, type FieldDefinition } from '../content-types/field-definitions.js';
 import type { Prisma } from '../generated/prisma/client.js';
@@ -10,6 +11,7 @@ import { MediaRepository } from '../media/media.repository.js';
 import { RedirectRepository } from '../redirects/redirect.repository.js';
 import { readSeo } from '../content/seo.js';
 import { buildSeo, type PublicSeo, type SeoImage } from './seo-view.js';
+import { buildSitemap, type Sitemap } from './sitemap-view.js';
 import { normaliseRedirectPath } from '../redirects/redirect-rules.js';
 import { SiteRepository } from '../sites/site.repository.js';
 import { SubdomainCache } from '../sites/subdomain-cache.js';
@@ -65,6 +67,8 @@ const TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/;
  */
 @Injectable()
 export class PublicService {
+  private readonly logger = new Logger(PublicService.name);
+
   constructor(
     private readonly sites: SiteRepository,
     private readonly content: ContentRepository,
@@ -82,6 +86,21 @@ export class PublicService {
     const site = await this.sites.findById(await this.findSiteId(subdomain));
     if (!site) throw new NotFoundException('Site not found');
     return { name: site.name, subdomain: site.subdomain, theme: site.themeJson };
+  }
+
+  /**
+   * The addresses this site wants search engines to find (SEO-02): live pages and entries that
+   * aren't noindex, and a listing per type. Another site's pages never appear: the rows are
+   * read for this site only.
+   */
+  async getSitemap(subdomain: string): Promise<Sitemap> {
+    const siteId = await this.findSiteId(subdomain);
+    const rows = await this.content.findSitemapRows(siteId);
+    const sitemap = buildSitemap(rows.slice(0, SITEMAP_ROWS));
+    if (rows.length > SITEMAP_ROWS || sitemap.truncated) {
+      this.logger.warn(`${subdomain} has more live addresses than one sitemap holds; the last ones are left out`);
+    }
+    return sitemap;
   }
 
   /**

@@ -390,3 +390,71 @@ describe('PublicService.getPage SEO (SEO-01)', () => {
     expect((await pdf.getPage('alpha', '/about')).seo.social.image).toBeNull();
   });
 });
+
+describe('PublicService.getSitemap (SEO-02)', () => {
+  const row = (path: string, extra: Record<string, unknown> = {}) => ({
+    path,
+    typeId: null,
+    seo: {},
+    updatedAt: new Date('2026-10-12T08:00:00.000Z'),
+    ...extra,
+  });
+
+  function setup() {
+    const content = {
+      findSitemapRows: vi.fn(async (siteId: string) =>
+        siteId === 'site-a' ? [row('/'), row('/hidden', { seo: { noindex: true } }), row('/blog/a', { typeId: 't' })] : [row('/other')],
+      ),
+    };
+    const service = new PublicService(
+      sites,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async (sub: string) => ({ alpha: 'site-a', beta: 'site-b' })[sub] ?? null) } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      {} as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
+    );
+    return { service, content };
+  }
+
+  it('lists only this site’s indexable addresses, with a listing for the type', async () => {
+    const { service, content } = setup();
+    const { entries } = await service.getSitemap('alpha');
+    expect(entries.map((e) => e.path)).toEqual(['/', '/blog', '/blog/a']);
+    expect(content.findSitemapRows).toHaveBeenCalledWith('site-a');
+  });
+
+  it('never mixes two sites, and an unknown site is a 404', async () => {
+    const { service } = setup();
+    expect((await service.getSitemap('beta')).entries.map((e) => e.path)).toEqual(['/other']);
+    await expect(service.getSitemap('nobody')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('PublicService.getSitemap past the limit (SEO-02)', () => {
+  it('stops at the limit and leaves the extra row out', async () => {
+    const rows = Array.from({ length: 50_001 }, (_, i) => ({
+      path: `/p${String(i).padStart(5, '0')}`,
+      typeId: null,
+      seo: {},
+      updatedAt: new Date('2026-10-12T08:00:00.000Z'),
+    }));
+    const service = new PublicService(
+      sites,
+      { findSitemapRows: vi.fn(async () => rows) } as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async () => 'site-a') } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      {} as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
+    );
+    const { entries } = await service.getSitemap('alpha');
+    expect(entries).toHaveLength(50_000);
+    expect(entries.at(-1)?.path).toBe('/p49999');
+  });
+});

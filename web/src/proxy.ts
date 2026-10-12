@@ -49,7 +49,14 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next's own assets and files with an extension
-  // (favicon.ico, images in public/).
-  matcher: ['/((?!_next/static|_next/image|.*\\.[a-zA-Z0-9]+$).*)'],
+  matcher: [
+    // Everything except Next's own assets and files with an extension
+    // (favicon.ico, images in public/).
+    '/((?!_next/static|_next/image|.*\\.[a-zA-Z0-9]+$).*)',
+    // The two files with an extension that belong to a tenant (SEO-02): the rewrite above
+    // sends them to `/sites/<subdomain>/sitemap.xml` and `/robots.txt`, so each host serves
+    // its own. Exactly these two, so nothing else with an extension is let through.
+    '/sitemap.xml',
+    '/robots.txt',
+  ],
 };

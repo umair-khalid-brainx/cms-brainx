@@ -6,6 +6,9 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // The tests in src/lib import their subject as `./x.ts`, which Node needs to run them
+    // directly (`npm test`); this project never emits, so TypeScript can allow it.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

@@ -1,4 +1,13 @@
 /**
+ * Whether this request really came in on `subdomain`'s own host. Files with an extension skip the
+ * proxy, so `/sites/<x>/sitemap.xml` can be asked for on any host; the route that answers it checks
+ * here, so a host only ever serves its own tenant (invariant 6, D-030).
+ */
+export function isOwnHost(host: string | null, rootDomain: string, subdomain: string): boolean {
+  return subdomainFromHost(host, rootDomain) === subdomain;
+}
+
+/**
  * Which tenant a request is for, from its Host header (D-030).
  *
  * The host must be exactly one label under the configured root domain:
