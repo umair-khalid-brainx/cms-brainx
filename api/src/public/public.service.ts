@@ -85,7 +85,8 @@ export type PublicTermArchive = {
 // listing is not yet (B-34).
 const LISTING_LIMIT = 50;
 // A preview is never indexed (CNT-09), so it carries no search settings.
-export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' };
+// Any status but archived (that is a 404): a reviewer previews a page in review, or a scheduled one (GOV-07).
+export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' | 'in_review' | 'scheduled' };
 
 // What `randomBytes(32).toString('base64url')` produces; anything else is
 // refused before touching the database.

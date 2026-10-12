@@ -137,7 +137,6 @@
   border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 600;
-  text-transform: capitalize;
 }
 
 .pages-status-published {
@@ -147,6 +146,25 @@
 
 .pages-status-draft {
   background: #f0f0f1;
+  color: #646970;
+}
+
+/* The review workflow's two waiting states (GOV-07): amber for "a person has to act", violet for "the
+   clock will act". Neither is the primary blue, which stays for actions. */
+.pages-status-in_review {
+  background: #fcf3dc;
+  color: #7a5300;
+}
+
+.pages-status-scheduled {
+  background: #efecfd;
+  color: #5333b8;
+}
+
+.pages-status-when {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
   color: #646970;
 }
 
@@ -326,6 +344,20 @@
   .pages-status-draft {
     background: #2c3338;
     color: #b0b0b0;
+  }
+
+  .pages-status-in_review {
+    background: #33270a;
+    color: #f0c33c;
+  }
+
+  .pages-status-scheduled {
+    background: #241a47;
+    color: #b8a6ff;
+  }
+
+  .pages-status-when {
+    color: #9ca3af;
   }
 
   .pages-row-duplicate,

@@ -1,0 +1,312 @@
+/* The review workflow's strip under the editor's top bar, and its dialogs (GOV-07).
+   Amber means a person has to act (in review); violet means the clock will (scheduled); the same two hues
+   as the status chips on the Pages list. The primary blue stays for actions. */
+
+.wf-strip {
+  --wf-edge: #8c8f94;
+  --wf-bg: #f6f7f7;
+  --wf-text: #1d2327;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.25rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #dcdcde;
+  border-left: 4px solid var(--wf-edge);
+  background: var(--wf-bg);
+  color: var(--wf-text);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+
+.wf-strip-review {
+  --wf-edge: #dba617;
+  --wf-bg: #fcf9e8;
+}
+
+.wf-strip-scheduled {
+  --wf-edge: #7c5ce0;
+  --wf-bg: #f5f3fe;
+}
+
+.wf-strip-note {
+  --wf-edge: #d63638;
+  --wf-bg: #fcf0f1;
+}
+
+.wf-strip-text {
+  flex: 1 1 24rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.wf-strip-text p {
+  margin: 0;
+}
+
+.wf-strip-text strong {
+  font-weight: 600;
+}
+
+/* The reviewer's own words, set apart as a quotation: it's what the writer came to read. */
+.wf-note {
+  margin: 0.35rem 0 0;
+  padding: 0.1rem 0 0.1rem 0.75rem;
+  border-left: 2px solid currentColor;
+  max-width: 70ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-style: italic;
+}
+
+.wf-strip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.wf-button {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  background: #fff;
+  color: #1d2327;
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wf-button:hover:not(:disabled) {
+  border-color: #2271b1;
+  color: #2271b1;
+}
+
+.wf-button-primary {
+  border-color: #2271b1;
+  background: #2271b1;
+  color: #fff;
+}
+
+.wf-button-primary:hover:not(:disabled) {
+  background: #135e96;
+  color: #fff;
+}
+
+.wf-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.wf-button:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+/* Dialogs: centred, like Restore's confirm. */
+.wf-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid #c3c4c7;
+  border-radius: 6px;
+  background: #fff;
+  color: #1d2327;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.3);
+  font-size: 0.8125rem;
+}
+
+.wf-dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.wf-dialog-inner {
+  padding: 1.25rem;
+}
+
+.wf-dialog h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.wf-when {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+}
+
+.wf-choice {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.wf-choice:has(input:checked) {
+  border-color: #2271b1;
+  background: #f0f6fc;
+}
+
+.wf-choice input {
+  margin-top: 0.15rem;
+  accent-color: #2271b1;
+}
+
+.wf-choice-hint {
+  display: block;
+  color: #646970;
+}
+
+.wf-field {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+}
+
+.wf-field label {
+  font-weight: 600;
+}
+
+.wf-field input,
+.wf-field textarea {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  background: #fff;
+  color: #1d2327;
+  font: inherit;
+}
+
+.wf-field textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+.wf-field input:focus,
+.wf-field textarea:focus {
+  outline: 2px solid #2271b1;
+  outline-offset: 0;
+  border-color: #2271b1;
+}
+
+.wf-hint {
+  margin: 0;
+  color: #646970;
+}
+
+/* A dialog's intro line, under its heading: room before the first field. */
+.wf-dialog-inner > .wf-hint {
+  margin-bottom: 0.9rem;
+}
+
+.wf-count {
+  text-align: right;
+}
+
+.wf-error {
+  margin: 0.25rem 0 0;
+  color: #b32d2e;
+  font-weight: 500;
+}
+
+.wf-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.wf-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wf-strip {
+    --wf-edge: #646970;
+    --wf-bg: #18191b;
+    --wf-text: #ededed;
+    border-bottom-color: #2c3338;
+  }
+
+  .wf-strip-review {
+    --wf-edge: #f0c33c;
+    --wf-bg: #2a2209;
+  }
+
+  .wf-strip-scheduled {
+    --wf-edge: #b8a6ff;
+    --wf-bg: #1d1736;
+  }
+
+  .wf-strip-note {
+    --wf-edge: #f86368;
+    --wf-bg: #2e1214;
+  }
+
+  .wf-button {
+    background: #1d2327;
+    border-color: #646970;
+    color: #ededed;
+  }
+
+  .wf-button:hover:not(:disabled) {
+    border-color: #6ab6f2;
+    color: #6ab6f2;
+  }
+
+  .wf-button-primary {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+  }
+
+  .wf-dialog {
+    background: #18191b;
+    border-color: #3c434a;
+    color: #ededed;
+  }
+
+  .wf-choice {
+    border-color: #3c434a;
+  }
+
+  .wf-choice:has(input:checked) {
+    border-color: #6ab6f2;
+    background: #12304a;
+  }
+
+  .wf-choice-hint,
+  .wf-hint {
+    color: #9ca3af;
+  }
+
+  .wf-field input,
+  .wf-field textarea {
+    background: #101214;
+    border-color: #646970;
+    color: #ededed;
+    color-scheme: dark;
+  }
+
+  .wf-error {
+    color: #f87171;
+  }
+}

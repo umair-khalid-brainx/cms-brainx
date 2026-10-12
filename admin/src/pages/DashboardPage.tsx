@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { createPage, listPages, type PageSummary } from '../lib/contentApi'
 import { siteUrl } from '../data/site'
 import { getSession } from '../lib/auth'
+import { canWriteContent } from '../lib/roles'
 import { ApiError } from '../lib/api'
 import './DashboardPage.css'
 
@@ -19,6 +20,8 @@ const activity = [
 
 function DashboardPage() {
   const siteName = getSession()?.memberships[0]?.siteName ?? '—'
+  // A Viewer gets no way to create anything (GOV-07); affordance only, the API refuses too.
+  const canWrite = canWriteContent(getSession()?.memberships[0]?.role)
   const [pages, setPages] = useState<PageSummary[]>([])
   const [loaded, setLoaded] = useState(false)
   const [title, setTitle] = useState('')
@@ -73,9 +76,11 @@ function DashboardPage() {
             Visit Site
             <span aria-hidden="true">&#8599;</span>
           </a>
-          <Link to="/pages/new" className="dash-new-page">
-            Open Page Builder
-          </Link>
+          {canWrite && (
+            <Link to="/pages/new" className="dash-new-page">
+              Open Page Builder
+            </Link>
+          )}
         </div>
       </div>
 
@@ -117,34 +122,36 @@ function DashboardPage() {
         </div>
 
         <div className="dash-col">
-          <section className="dash-widget">
-            <h2 className="dash-widget-title">Quick Draft</h2>
-            <form className="dash-quick-draft" onSubmit={handleQuickDraft}>
-              <input
-                type="text"
-                placeholder="Title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                disabled={submitting}
-              />
-              <textarea
-                placeholder="What's on your mind?"
-                rows={4}
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-                disabled={submitting}
-              />
-              <button type="submit" disabled={submitting}>
-                {submitting ? 'Saving…' : 'Save Draft'}
-              </button>
-            </form>
-            {error ? <p className="dash-quick-draft-error">{error}</p> : null}
-            {savedSlug ? (
-              <p className="dash-quick-draft-note">
-                Saved as a draft page — <Link to={`/editor/${savedSlug}`}>open it in the editor</Link>.
-              </p>
-            ) : null}
-          </section>
+          {canWrite && (
+            <section className="dash-widget">
+              <h2 className="dash-widget-title">Quick Draft</h2>
+              <form className="dash-quick-draft" onSubmit={handleQuickDraft}>
+                <input
+                  type="text"
+                  placeholder="Title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  disabled={submitting}
+                />
+                <textarea
+                  placeholder="What's on your mind?"
+                  rows={4}
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                  disabled={submitting}
+                />
+                <button type="submit" disabled={submitting}>
+                  {submitting ? 'Saving…' : 'Save Draft'}
+                </button>
+              </form>
+              {error ? <p className="dash-quick-draft-error">{error}</p> : null}
+              {savedSlug ? (
+                <p className="dash-quick-draft-note">
+                  Saved as a draft page — <Link to={`/editor/${savedSlug}`}>open it in the editor</Link>.
+                </p>
+              ) : null}
+            </section>
+          )}
 
           <section className="dash-widget">
             <h2 className="dash-widget-title">Site Health</h2>

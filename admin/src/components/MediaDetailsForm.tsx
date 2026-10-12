@@ -15,8 +15,11 @@ export function MediaDetailsForm({
   item,
   onSaved,
   onDirtyChange,
+  readOnly = false,
 }: {
   item: MediaItem
+  /** A Viewer reads the details but can't change them (GOV-07). */
+  readOnly?: boolean
   onSaved: (updated: MediaItem) => void
   /** Lets the panel ask before closing over text that hasn't been saved. */
   onDirtyChange?: (dirty: boolean) => void
@@ -71,6 +74,7 @@ export function MediaDetailsForm({
             type="text"
             value={alt}
             maxLength={500}
+            readOnly={readOnly}
             aria-describedby={`${id}-alt-hint`}
             onChange={edit(setAlt)}
           />
@@ -82,7 +86,7 @@ export function MediaDetailsForm({
 
       <div className="media-details-field">
         <label htmlFor={`${id}-title`}>Title</label>
-        <input id={`${id}-title`} type="text" value={title} maxLength={200} onChange={edit(setTitle)} />
+        <input id={`${id}-title`} type="text" value={title} maxLength={200} readOnly={readOnly} onChange={edit(setTitle)} />
       </div>
 
       <div className="media-details-field">
@@ -92,6 +96,7 @@ export function MediaDetailsForm({
           rows={3}
           value={description}
           maxLength={2000}
+          readOnly={readOnly}
           aria-describedby={`${id}-description-hint`}
           onChange={edit(setDescription)}
         />
@@ -100,14 +105,16 @@ export function MediaDetailsForm({
         </p>
       </div>
 
-      <div className="media-details-actions">
-        <button type="submit" className="media-details-save" disabled={!dirty || save.status === 'saving'}>
-          {save.status === 'saving' ? 'Saving…' : 'Save details'}
-        </button>
-        <span className="media-details-status" role="status">
-          {save.status === 'saved' && !dirty && 'Saved'}
-        </span>
-      </div>
+      {!readOnly && (
+        <div className="media-details-actions">
+          <button type="submit" className="media-details-save" disabled={!dirty || save.status === 'saving'}>
+            {save.status === 'saving' ? 'Saving…' : 'Save details'}
+          </button>
+          <span className="media-details-status" role="status">
+            {save.status === 'saved' && !dirty && 'Saved'}
+          </span>
+        </div>
+      )}
       {save.status === 'error' && (
         <p className="media-details-error" role="alert">
           {save.message}

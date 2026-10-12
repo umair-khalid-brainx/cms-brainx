@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -54,15 +54,18 @@ describe('MediaService', () => {
   };
   let revalidation: { page: ReturnType<typeof vi.fn>; site: ReturnType<typeof vi.fn> };
   let content: { findReferencing: ReturnType<typeof vi.fn> };
+  // Who is calling: an owner unless a spec says otherwise (GOV-07's live-file rule).
+  let role: string;
 
   beforeEach(async () => {
+    role = 'owner';
     uploadsRoot = await mkdtemp(join(tmpdir(), 'media-spec-'));
     await mkdir(join(uploadsRoot, SITE));
     await writeFile(join(uploadsRoot, SITE, RECORD.filename), 'old');
     await writeFile(join(uploadsRoot, SITE, THUMB), 'old thumb');
 
     const users = {
-      findByIdWithMemberships: vi.fn(async () => ({ memberships: [{ siteId: SITE, site: { subdomain: 'alpha' } }] })),
+      findByIdWithMemberships: vi.fn(async () => ({ memberships: [{ siteId: SITE, role, site: { subdomain: 'alpha' } }] })),
     };
     media = {
       // Scoped like the real repository: another site's id finds nothing.
@@ -247,6 +250,42 @@ describe('MediaService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(await readFile(join(uploadsRoot, SITE, 'doc.pdf'), 'utf8')).toBe('%PDF-old');
       expect(media.updateSize).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a file on the live site (GOV-07)', () => {
+    it('refuses a contributor replacing a file a live page uses, and leaves it untouched', async () => {
+      role = 'contributor';
+      await expect(service.replace('user-1', RECORD.id, await imageFile())).rejects.toBeInstanceOf(ForbiddenException);
+      expect(await readFile(join(uploadsRoot, SITE, RECORD.filename), 'utf8')).toBe('old');
+      expect(media.updateSize).not.toHaveBeenCalled();
+    });
+
+    it('refuses a contributor replacing the site’s logo', async () => {
+      role = 'contributor';
+      content.findReferencing.mockResolvedValueOnce([]);
+      media.isSiteLogo.mockResolvedValueOnce(true);
+      await expect(service.replace('user-1', RECORD.id, await imageFile())).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('refuses a contributor replacing a file a page in review uses', async () => {
+      role = 'contributor';
+      content.findReferencing.mockResolvedValueOnce([{ id: 'c3', title: 'Waiting', path: '/waiting', status: 'in_review' }]);
+      await expect(service.replace('user-1', RECORD.id, await imageFile())).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('lets a contributor replace a file only drafts use', async () => {
+      role = 'contributor';
+      content.findReferencing.mockResolvedValueOnce([{ id: 'c2', title: 'Draft', path: '/draft', status: 'draft' }]);
+      await expect(service.replace('user-1', RECORD.id, await imageFile())).resolves.toMatchObject({ url: RECORD.url });
+    });
+
+    it('refuses a contributor’s alt text on a live file, but not its title', async () => {
+      role = 'contributor';
+      await expect(service.updateDetails('user-1', RECORD.id, { alt: 'New words' })).rejects.toBeInstanceOf(ForbiddenException);
+      expect(media.updateDetails).not.toHaveBeenCalled();
+      await service.updateDetails('user-1', RECORD.id, { title: 'Library name' });
+      expect(media.updateDetails).toHaveBeenCalledWith(SITE, RECORD.id, { title: 'Library name' });
     });
   });
 

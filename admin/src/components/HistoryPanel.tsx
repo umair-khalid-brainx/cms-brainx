@@ -9,6 +9,7 @@ import {
   STATUS_LABEL,
   timeLabel,
   titleChanges,
+  previousStatuses,
   whenLabel,
   type RevisionSummary,
 } from '../lib/revisions';
@@ -24,6 +25,8 @@ type Props = {
   kind: string;
   /** Restoring a live page needs publish rights, like publishing it (the API enforces; this only disables). */
   canRestoreLive: boolean;
+  /** Why no version can be restored right now (in review, scheduled, or read-only for this person), or null (GOV-07). */
+  restoreBlocked?: string | null;
   /** Saves whatever the editor hasn't autosaved yet, so the list and a restore start from what the person sees. */
   flushPending: () => Promise<void>;
   /** The restore went through: the editor reloads the page. */
@@ -37,7 +40,7 @@ type ListState = { status: 'loading' } | { status: 'error' } | { status: 'ready'
  * Restore. A native modal <dialog> like Page settings: the browser traps focus, closes it on Esc and hands
  * focus back to the button that opened it. Restore asks first in a second modal dialog.
  */
-function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flushPending, onRestored }: Props) {
+function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, restoreBlocked = null, flushPending, onRestored }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const confirmRef = useRef<HTMLDialogElement>(null);
   const pressedOnBackdropRef = useRef(false);
@@ -109,8 +112,10 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
   const items = list.status === 'ready' ? list.items : [];
   const days = groupByDay(items);
   const titles = titleChanges(items);
+  const previous = previousStatuses(items);
   const latestId = items[0]?.id;
-  const needsPublishRight = status === 'published' && !canRestoreLive;
+  const blockedNote =
+    restoreBlocked ?? (status === 'published' && !canRestoreLive ? `This ${kind.toLowerCase()} is live. Only people who can publish can restore a version of it.` : null);
 
   return (
     <dialog
@@ -149,9 +154,9 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
               Your latest edits couldn’t be saved, so they aren’t in this list.
             </p>
           )}
-          {needsPublishRight && (
+          {blockedNote && (
             <p className="history-note" role="status">
-              This {kind.toLowerCase()} is live. Only people who can publish can restore a version of it.
+              {blockedNote}
             </p>
           )}
 
@@ -185,7 +190,7 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
                           <time className="history-time" dateTime={revision.savedAt}>
                             {timeLabel(revision.savedAt)}
                           </time>
-                          <span className={`history-badge history-badge-${revision.reason}`}>{reasonLabel(revision)}</span>
+                          <span className={`history-badge history-badge-${revision.reason}`}>{reasonLabel(revision, previous.get(revision.id))}</span>
                           <span className="history-status">{STATUS_LABEL[revision.status]}</span>
                         </div>
                         <p className="history-author">{authorName(revision)}</p>
@@ -197,7 +202,7 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
                         <button
                           type="button"
                           className="history-button"
-                          disabled={needsPublishRight}
+                          disabled={blockedNote !== null}
                           aria-label={`Restore the version from ${whenLabel(revision.savedAt)}`}
                           onClick={() => {
                             setRestoreError(null);

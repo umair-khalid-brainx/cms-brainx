@@ -5,6 +5,36 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Review workflow, scheduling and the Viewer role (`GOV-07`)
+
+Decisions in D-064 (scope) and D-065.
+
+- **API:** migration `20261012171511_add_review_and_scheduling` (`in_review`, `scheduled`, `viewer`, review and schedule
+  columns on `content`); `content:review` for Owner/Administrator/Editor; `content/workflow-rules.ts` (pure rules),
+  `content/workflow.service.ts` (submit, withdraw, approve now or later, reject with a note, schedule, unschedule,
+  publish now, the scheduler's publish), routes under `/content/:slug/…` and `GET /content/review-queue`;
+  `scheduler/` (a once-a-minute timer, `SCHEDULER_DISABLED`). Saves, moves and restores of a page in review or
+  scheduled answer 409, in the write itself; a live page (and a file it uses, or the logo) needs `content:publish`.
+  `ContentService.refreshPublic` extracted from `update` so approve and the scheduler refresh exactly like Publish.
+  `api` 758 tests.
+- **Admin:** Review screen with a red count in the sidebar; a state strip under the editor's top bar with Approve /
+  Send back / Back to draft, Withdraw, Publish now / Unschedule and the reviewer's note; Schedule… and Submit for
+  review in the top bar; the time and send-back dialogs; read-only Puck while locked, for a live page a Contributor
+  can't publish, and for a Viewer; In review and Scheduled chips and an In review tab on Pages; Viewer in the Team
+  picker with a line on what each role does; Media, Dashboard and create screens hide writes from a Viewer.
+  `admin` 187 tests. **Web:** the preview banner says when a page is in review or scheduled.
+- **Checked live** (api :4051, admin :5181, DB `cms_wk5`; test members Contributor, Editor, Author, Viewer made
+  through invites): Contributor submits → Editor sends back with a note → Contributor sees it, resubmits → Editor
+  approves for 70 s ahead; the page stayed 404 until then and went live 17 s after its time, history credited to the
+  Editor. Approve dialog, Send back dialog, Publish now, the locked canvas, the Viewer's read-only editor, dark and
+  light. Reviewer and verifier (general-purpose agents) found: Viewer write buttons still showing, the lock checked
+  before the write rather than in it, approve publishing a version newer than the one checked, a two-call Publish now,
+  no warnings before Approve, and a Contributor changing a live page's files; all fixed with tests.
+
+**Not done:** B-36 (notifications, proposing changes to a live page, two shadowed entry slugs).
+
+---
+
 ## 2026-10-12 — Page revisions: snapshot, list, restore (`GOV-01` built; reviewer and verifier still to run)
 
 Decision in D-062.

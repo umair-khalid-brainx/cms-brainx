@@ -9,8 +9,12 @@ import PageSettingsPanel from '../components/PageSettingsPanel';
 import HistoryPanel from '../components/HistoryPanel';
 import PublishChecksPanel from '../components/PublishChecksPanel';
 import SharePreview from '../components/SharePreview';
+import WorkflowStrip from '../components/WorkflowStrip';
+import WhenDialog from '../components/WhenDialog';
+import SendBackDialog from '../components/SendBackDialog';
 import { ApiError } from '../lib/api';
-import { canPublishContent } from '../lib/roles';
+import { canPublishContent, canReviewContent, canWriteContent } from '../lib/roles';
+import { editorAccess, isLocked } from '../lib/workflow';
 import type { RestoreResult } from '../lib/revisionsApi';
 import { whenLabel, type RevisionSummary } from '../lib/revisions';
 import { getSession } from '../lib/auth';
@@ -21,6 +25,13 @@ import {
   publishChecksFromError,
   publishPage,
   saveDraft,
+  approvePage,
+  schedulePage,
+  sendBackPage,
+  submitForReview,
+  unschedulePage,
+  publishScheduledNow,
+  withdrawFromReview,
   type Page,
   type PageSummary,
   type PublishChecks,
@@ -57,6 +68,12 @@ function EditorPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [checks, setChecks] = useState<PublishChecks | null>(null);
   const [publishing, setPublishing] = useState(false);
+  // The review workflow (GOV-07): which checks panel step is waiting, which dialog is open, a step in flight.
+  const [checksFor, setChecksFor] = useState<'publish' | 'submit' | 'schedule' | 'approve'>('publish');
+  // Where focus goes after a step whose button just disappeared (the strip changes with the status).
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const [dialog, setDialog] = useState<'approve' | 'schedule' | 'sendBack' | null>(null);
+  const [stepping, setStepping] = useState(false);
   const timeoutRef = useRef<number | undefined>(undefined);
   // An edit made since the last save started: what flushPending must still save.
   const dirtyRef = useRef(false);
@@ -130,12 +147,26 @@ function EditorPage() {
   }, [slug]);
 
   if (load.status === 'notFound') return <Navigate to="/pages" replace />;
+  // Before the early returns below would skip it: what this person may do with this page (GOV-07).
+  const role = getSession()?.memberships[0]?.role;
+  const canWrite = canWriteContent(role);
   if (load.status === 'loading' || !page) return <div className="editor-loading">Loading…</div>;
   if (load.status === 'error') return <div className="editor-loading">Couldn&rsquo;t load this page: {load.message}</div>;
+
+  const access = editorAccess(page, {
+    userId: getSession()?.user.id,
+    canWrite,
+    canPublish: canPublishContent(role),
+    canReview: canReviewContent(role),
+  });
+  const kindName = (type?.singularName ?? 'Page').toLowerCase();
 
   function handleChange(data: Data<EditorComponents>) {
     // After a restore whose reload failed, the editor holds the old content: never save it over the restored one.
     if (staleAfterRestoreRef.current) return;
+    // Read-only (in review, scheduled, a live page this person can't publish, a Viewer): nothing to save,
+    // and the API would refuse it anyway (GOV-07).
+    if (access.readOnly) return;
     latestDataRef.current = data;
     dirtyRef.current = true;
     window.clearTimeout(timeoutRef.current);
@@ -183,6 +214,7 @@ function EditorPage() {
         await saveDraft(page!.slug, latestDataRef.current, fieldKeys);
         const result = await getPublishChecks(page!.slug);
         if (result.errors.length > 0 || result.warnings.length > 0) {
+          setChecksFor('publish');
           setChecks(result);
           return;
         }
@@ -194,6 +226,8 @@ function EditorPage() {
       setChecks(null);
       setSavedAt(new Date());
       setSaveError(null);
+      // "Published" replaces whatever the line said before, an "Unscheduled" from Publish now included.
+      setNotice(null);
       setPublished(true);
       setPage((current) => current && { ...current, status: 'published' });
       window.setTimeout(() => setPublished(false), 2500);
@@ -206,6 +240,81 @@ function EditorPage() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  /**
+   * One review or scheduling step (GOV-07): the page the API answers with replaces the editor's, and the
+   * status line says what happened. A refusal with publish checks opens the checks panel; anything else is
+   * thrown again for a dialog to show, or shown in the status line when no dialog is open.
+   */
+  async function runStep(step: () => Promise<Page>, done: string, fromDialog = false): Promise<boolean> {
+    setStepping(true);
+    setSaveError(null);
+    try {
+      const fresh = await step();
+      latestDataRef.current = fresh.data;
+      setPage(fresh);
+      setChecks(null);
+      setDialog(null);
+      setNotice(done);
+      setPublished(false);
+      // The button that started it has usually gone with the old status: say where we are instead.
+      window.setTimeout(() => statusRef.current?.focus(), 0);
+      return true;
+    } catch (error) {
+      const refused = publishChecksFromError(error);
+      if (refused) {
+        setDialog(null);
+        setChecksFor('publish');
+        setChecks(refused);
+        return false;
+      }
+      const message = error instanceof ApiError ? error.message : 'That didn’t work — check your connection';
+      if (fromDialog) throw new Error(message);
+      setSaveError(message);
+      return false;
+    } finally {
+      setStepping(false);
+    }
+  }
+
+  /**
+   * Before submitting or scheduling: save what is on screen, then show the publish checks when there is
+   * anything to say. Errors stop the step; warnings offer "anyway". Returns true when the step can go ahead.
+   */
+  async function checkBefore(stepName: 'submit' | 'schedule' | 'approve'): Promise<boolean> {
+    setSaveError(null);
+    try {
+      // A reviewer's page is locked: nothing of theirs to save first.
+      if (stepName !== 'approve') await flushPending();
+      const result = await getPublishChecks(page!.slug);
+      if (result.errors.length === 0 && result.warnings.length === 0) return true;
+      setChecksFor(stepName);
+      setChecks(result);
+      return false;
+    } catch (error) {
+      setSaveError(error instanceof FieldValuesError ? `Fields not saved: ${error.message}` : 'Could not save — check your connection');
+      return false;
+    }
+  }
+
+  async function submitNow(skipWarnings = false) {
+    if (stepping) return;
+    if (!skipWarnings && !(await checkBefore('submit'))) return;
+    await runStep(() => submitForReview(page!.slug), 'Submitted for review');
+  }
+
+  async function openSchedule(skipWarnings = false) {
+    if (!skipWarnings && !(await checkBefore('schedule'))) return;
+    setChecks(null);
+    setDialog('schedule');
+  }
+
+  // A reviewer reads the publish checks' warnings before approving, as a publisher does before Publish.
+  async function openApprove(skipWarnings = false) {
+    if (!skipWarnings && !(await checkBefore('approve'))) return;
+    setChecks(null);
+    setDialog('approve');
   }
 
   // Saves an edit not yet saved (still on the autosave timer, or whose save failed), at
@@ -268,18 +377,30 @@ function EditorPage() {
         <Link to={type ? `/content/${type.prefix}` : '/pages'} className="editor-back">
           &larr; {type?.name ?? 'Pages'}
         </Link>
-        <span className="editor-title">Editing: {page.title}</span>
-        <span className="editor-status" role="status">
+        <span className="editor-title">{access.readOnly ? 'Viewing' : 'Editing'}: {page.title}</span>
+        <span ref={statusRef} tabIndex={-1} className="editor-status" role="status">
           {saveError ?? notice ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
         </span>
         <span className="editor-site">{getSession()?.memberships[0]?.siteName ?? 'No site'}</span>
-        <button type="button" className="editor-secondary" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
-          {type?.singularName ?? 'Page'} settings
-        </button>
+        {!access.readOnly && (
+          <button type="button" className="editor-secondary" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
+            {type?.singularName ?? 'Page'} settings
+          </button>
+        )}
         <button type="button" className="editor-secondary" aria-haspopup="dialog" onClick={() => setHistoryOpen(true)}>
           History
         </button>
-        <SharePreview slug={page.slug} />
+        {canWrite && <SharePreview slug={page.slug} />}
+        {access.schedule && (
+          <button type="button" className="editor-secondary" aria-haspopup="dialog" disabled={publishing || stepping} onClick={() => openSchedule()}>
+            Schedule…
+          </button>
+        )}
+        {access.submit && (
+          <button type="button" className="editor-publish" disabled={stepping || staleAfterRestoreRef.current} onClick={() => submitNow()}>
+            {stepping ? 'Submitting…' : 'Submit for review'}
+          </button>
+        )}
         {/* This is the only Publish button — Puck's own native one (rendered
             in its header via `overrides.headerActions`) is suppressed below.
             D-019 originally found Puck's button didn't render at all in this
@@ -287,22 +408,77 @@ function EditorPage() {
             live Publish buttons stacked on top of each other. `onPublish`
             stays wired on <Puck> below regardless, so Puck's suppressed
             button would still work if the override were ever removed. */}
-        <button
-          ref={publishButtonRef}
-          type="button"
-          className="editor-publish"
-          disabled={publishing || staleAfterRestoreRef.current}
-          onClick={() => publishNow()}
-        >
-          {publishing ? 'Publishing…' : 'Publish'}
-        </button>
+        {access.publish && (
+          <button
+            ref={publishButtonRef}
+            type="button"
+            className="editor-publish"
+            disabled={publishing || stepping || staleAfterRestoreRef.current}
+            onClick={() => publishNow()}
+          >
+            {publishing ? 'Publishing…' : 'Publish'}
+          </button>
+        )}
       </header>
+
+      <WorkflowStrip
+        page={page}
+        kind={kindName}
+        access={access}
+        busy={stepping || publishing}
+        onApprove={() => openApprove()}
+        onSendBack={() => setDialog('sendBack')}
+        onWithdraw={() => runStep(() => withdrawFromReview(page.slug), 'Withdrawn: back to draft')}
+        onPublishNow={() => runStep(() => publishScheduledNow(page.slug), 'Published')}
+        onUnschedule={() => runStep(() => unschedulePage(page.slug), 'Unscheduled: back to draft')}
+      />
 
       {checks && (
         <div className="editor-checks">
-          <PublishChecksPanel checks={checks} onClose={() => setChecks(null)} onPublishAnyway={() => publishNow(true)} />
+          <PublishChecksPanel
+            checks={checks}
+            onClose={() => setChecks(null)}
+            action={
+              checksFor === 'submit'
+                ? { verb: 'submitting', anyway: 'Submit anyway' }
+                : checksFor === 'schedule'
+                  ? { verb: 'scheduling', anyway: 'Schedule anyway' }
+                  : checksFor === 'approve'
+                    ? { verb: 'approving', anyway: 'Approve anyway' }
+                    : undefined
+            }
+            onPublishAnyway={() =>
+              checksFor === 'submit'
+                ? submitNow(true)
+                : checksFor === 'schedule'
+                  ? openSchedule(true)
+                  : checksFor === 'approve'
+                    ? openApprove(true)
+                    : publishNow(true)
+            }
+          />
         </div>
       )}
+
+      <WhenDialog
+        open={dialog === 'approve' || dialog === 'schedule'}
+        title={dialog === 'approve' ? `Approve “${page.title}”` : `Schedule “${page.title}”`}
+        allowNow={dialog === 'approve'}
+        onClose={() => setDialog(null)}
+        onConfirm={(publishAt) =>
+          dialog === 'approve'
+            ? runStep(() => approvePage(page.slug, page.updatedAt, publishAt), publishAt ? 'Approved and scheduled' : 'Approved and published', true)
+            : runStep(() => schedulePage(page.slug, publishAt!), 'Scheduled', true)
+        }
+      />
+
+      <SendBackDialog
+        open={dialog === 'sendBack'}
+        kind={kindName}
+        submitter={page.submittedBy?.name ?? null}
+        onClose={() => setDialog(null)}
+        onSend={(note) => runStep(() => sendBackPage(page.slug, note), 'Sent back to draft', true)}
+      />
 
       <PageSettingsPanel
         open={settingsOpen}
@@ -322,7 +498,8 @@ function EditorPage() {
         slug={page.slug}
         status={page.status}
         kind={type?.singularName ?? 'Page'}
-        canRestoreLive={canPublishContent(getSession()?.memberships[0]?.role)}
+        canRestoreLive={canPublishContent(role)}
+        restoreBlocked={isLocked(page.status) || !canWrite ? access.readOnlyNote : null}
         flushPending={flushPending}
         onRestored={handleRestored}
       />
@@ -332,10 +509,12 @@ function EditorPage() {
             internal state and won't otherwise notice a new page. Keyed by the
             slug it loaded under, so changing this page's address doesn't. */}
         <Puck
-          key={`${puckKey}:${reloads}`}
+          key={`${puckKey}:${reloads}:${access.readOnly ? 'read' : 'edit'}`}
           config={puckConfig}
           data={page.data}
           iframe={{ waitForStyles: true }}
+          // Read-only: nothing can be added, moved, removed or edited (GOV-07).
+          permissions={access.readOnly ? { drag: false, duplicate: false, delete: false, edit: false, insert: false } : undefined}
           onChange={handleChange}
           onPublish={() => publishNow()}
           // Suppresses Puck's own native Publish button (see D-028) so only

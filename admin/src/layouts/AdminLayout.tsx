@@ -1,8 +1,9 @@
-import { useSyncExternalStore } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router'
 import { clearSession, getSession, subscribeSession } from '../lib/auth'
 import { useContentTypes } from '../lib/contentTypesContext'
-import { canManageSite, canManageTeam, canReadSubmissions } from '../lib/roles'
+import { canManageSite, canManageTeam, canReadSubmissions, canReviewContent } from '../lib/roles'
+import { listReviewQueue } from '../lib/contentApi'
 import './AdminLayout.css'
 
 const navItems = [
@@ -23,6 +24,17 @@ const navItems = [
         <path d="M5 2h7l3 3v13H5V2Zm7 1.5V6h2.5L12 3.5ZM7 10h6v1.5H7V10Zm0 3h6v1.5H7V13Z" />
       </svg>
     ),
+  },
+  {
+    // Pages waiting for review (GOV-07), with how many in a badge. Owner, Administrator and Editor only.
+    to: '/review',
+    label: 'Review',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M4 2.5h8.5L16 6v4.1a5 5 0 0 0-1.5-.6V7h-3V4H5.5v12h3.6c.24.55.57 1.06.97 1.5H4v-15Zm10.5 9a3.5 3.5 0 0 1 2.82 5.57l1.56 1.56-1.06 1.06-1.56-1.56A3.5 3.5 0 1 1 14.5 11.5Zm0 1.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
+      </svg>
+    ),
+    requiresReview: true,
   },
   {
     to: '/media',
@@ -128,13 +140,31 @@ function AdminLayout() {
     (item) =>
       (!item.requiresTeamManage || canManageTeam(role)) &&
       (!item.requiresSiteManage || canManageSite(role)) &&
-      (!item.requiresSubmissionsRead || canReadSubmissions(role)),
+      (!item.requiresSubmissionsRead || canReadSubmissions(role)) &&
+      (!item.requiresReview || canReviewContent(role)),
   )
+  // How many pages wait for review, read again on every move between screens so an approval elsewhere
+  // shows here without a reload. A failed read just shows no badge.
+  const location = useLocation()
+  const [waiting, setWaiting] = useState(0)
+  const reviews = canReviewContent(role)
+  useEffect(() => {
+    if (!reviews) return
+    let cancelled = false
+    listReviewQueue()
+      .then((items) => {
+        if (!cancelled) setWaiting(items.length)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [reviews, location.pathname])
   // Each content type the site has gets its own place in the navigation, right
   // under Pages, the moment it exists (TYP-01).
   const { types } = useContentTypes()
   const navEntries = visibleNavItems.flatMap((item) => [
-    { key: item.to, to: item.to, label: item.label, icon: item.icon, nested: false },
+    { key: item.to, to: item.to, label: item.label, icon: item.icon, nested: false, count: item.to === '/review' ? waiting : 0 },
     ...(item.to === '/pages'
       ? types.map((type) => ({
           key: `type-${type.id}`,
@@ -142,6 +172,7 @@ function AdminLayout() {
           label: type.name,
           icon: item.icon,
           nested: true,
+          count: 0,
         }))
       : []),
   ])
@@ -168,6 +199,12 @@ function AdminLayout() {
             >
               <span className="admin-nav-icon">{item.icon}</span>
               {item.label}
+              {item.count > 0 && (
+                <span className="admin-nav-count">
+                  {item.count}
+                  <span className="admin-visually-hidden"> waiting</span>
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

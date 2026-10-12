@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ContentRepository } from '../content/content.repository.js';
+import { hasPermission } from '../auth/permission.js';
 import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
 import type { UpdateMediaDto } from './dto/media.dto.js';
@@ -137,9 +138,11 @@ export class MediaService {
    * original extension, and a .png URL serving JPEG bytes is a lie (MED-02).
    */
   async replace(userId: string, id: string, file: Express.Multer.File) {
-    const siteId = await this.resolveSiteId(userId);
+    const membership = await this.resolveMembership(userId);
+    const { siteId } = membership;
     const record = await this.media.findById(siteId, id);
     if (!record) throw new NotFoundException('Media not found');
+    await this.assertMayChangeLive(membership, record.filename);
     if (file.mimetype !== record.mimetype) {
       throw new BadRequestException(`Replacement must be the same type as the original (${record.mimetype})`);
     }
@@ -205,6 +208,8 @@ export class MediaService {
     if (dto.alt !== undefined && dto.alt !== null && !record.mimetype.startsWith('image/')) {
       throw new BadRequestException('Alternative text is for images');
     }
+    // Only the alt text reaches the live site; title and description are the library's own.
+    if (dto.alt !== undefined && dto.alt !== record.alt) await this.assertMayChangeLive(membership, record.filename);
 
     const { count } = await this.media.updateDetails(siteId, id, dto);
     if (count === 0) throw new NotFoundException('Media not found');
@@ -261,6 +266,25 @@ export class MediaService {
   private siteDir(siteId: string): string {
     const uploadsRoot = this.config.get<string>('UPLOADS_DIR') ?? 'uploads';
     return join(process.cwd(), uploadsRoot, siteId);
+  }
+
+  /**
+   * A file on a live page, or the site's logo, changes the public site when it is replaced or its alt text
+   * changes, so that needs the same right as changing a live page (GOV-07, D-065): a Contributor's work
+   * reaches the site only through review. A page in review or scheduled counts too: its approved content
+   * would change without anyone checking it again.
+   */
+  private async assertMayChangeLive(
+    membership: { siteId: string; role: Parameters<typeof hasPermission>[0] },
+    filename: string,
+  ): Promise<void> {
+    if (hasPermission(membership.role, 'content:publish')) return;
+    const live = (await this.content.findReferencing(membership.siteId, `/uploads/${membership.siteId}/${filename}`)).some(
+      (page) => page.status === 'published' || page.status === 'in_review' || page.status === 'scheduled',
+    );
+    if (live || (await this.media.isSiteLogo(membership.siteId, filename))) {
+      throw new ForbiddenException('This file is on the live site or a page waiting to go live. Only people who can publish can change it.');
+    }
   }
 
   private async resolveSiteId(userId: string): Promise<string> {

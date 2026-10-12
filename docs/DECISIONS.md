@@ -8,6 +8,61 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-065 — 2026-10-12 — Review and scheduling: two statuses, a lock, one conditional write per step, an in-process scheduler (`GOV-07`)
+
+**Statuses.** `ContentStatus` gains `in_review` and `scheduled`, rather than a separate review table or flags beside
+`draft`. Every public read already filters on `status = published` (D-030), so neither can leak: the page, listings,
+archives, related posts, sitemap and menus needed no change. A page has one review at a time, so its fields live on
+`content`: `submittedById/At`, `reviewNote`, `reviewedById/At`, `publishAt`, `scheduledById`.
+
+**The lock.** A page in review or scheduled refuses every save to its content, address, status and terms, and every
+restore (409), so the reviewer approves exactly what was submitted and what goes live is what was approved. The lock
+is in the write itself (`WHERE status = <the status read>`), not only a check before it: a save that passed the check
+can't land after the page was submitted or published meanwhile. To change it, the submitter withdraws it (or a
+reviewer sends it back or takes it back to draft, or a publisher unschedules it). The editor opens it read-only
+through Puck's `permissions`. Two things still reach a locked page on purpose: a parent page's move carries it to
+its new address (its own slug doesn't change), and a deleted category or tag comes off it. Neither is its content.
+
+**Live pages need `content:publish` to change at all** (403 otherwise), and so does replacing a file, or changing its
+alt text, when a live page, a page in review or scheduled, or the site's logo uses it (a share image in a page's
+search settings counts as a use, here and in the media library's "used on"). Without this a Contributor's edit to a live
+page went public with no review, which made the workflow optional. The user chose this over a draft copy of a live
+page (WordPress's "pending revision"), which would be a new data model and about a day more.
+
+**Each step is one conditional write** (`ContentRepository.transition`: `UPDATE … WHERE status IN (from)`): two
+reviewers, or the scheduler racing an unschedule, can't both win; the loser gets 409 ("Someone else just changed
+this page"). Approve and schedule run the publish checks first (errors refuse with the same 422 as Publish; the
+editor shows warnings first and they can be passed), and then publish only the version the checks read (the write
+also matches `updatedAt`). Approve also carries the version the reviewer's editor loaded (`version`, required), and
+is refused if the page changed since: withdrawn, edited and resubmitted while the reviewer was reading. "Publish now"
+on a scheduled page is one step of its own, so a failure leaves it scheduled. `archived` and `review-queue` are
+reserved as slugs for every page and entry, since the admin's own `/content/…` routes use them. Each step records a `status` revision (approve-now a `publish` one) with
+who did it; the History panel names them ("Submitted for review", "Back to draft from review", "Unscheduled").
+
+**The scheduler is a timer inside `api`, once a minute** (`ScheduledPublisher`), not `@nestjs/schedule`, a cron entry
+or a queue: nothing new to install or run. It goes through sites one at a time with site-scoped reads (invariant 1),
+claims each due page with the same conditional write (so a second `api` process can't publish it twice), runs the
+publish checks again, and refreshes the public site exactly as a manual publish does (`ContentService.refreshPublic`,
+extracted from `update` for this). A page that fails the checks at its time goes back to draft with a note rather
+than going live broken or retrying every minute. The revision is credited to whoever scheduled it. A page is at most
+about a minute late; one that came due while `api` was down goes live at start. `SCHEDULER_DISABLED=true` turns it off.
+
+**Times** are entered in the browser's time zone (named next to the picker) and stored in UTC. A time must be in the
+future and within two years.
+
+**Roles.** `content:review` for Owner, Administrator, Editor. Author can publish its own work but not approve anyone's.
+Withdraw is allowed to the submitter or a reviewer. Viewer (`content:read` only) opens the editor read-only; the plan
+said it would see previews only, but reading the page in the editor is more useful and changes nothing.
+
+**UI.** A Review screen (a table like Pages, oldest first, whose one action opens the editor: a reviewer always reads
+the page before approving) with a red count in the sidebar; a state strip under the editor's top bar (amber in review,
+violet scheduled, red for a reviewer's note, quoted in full); "Submit for review" replaces Publish for a Contributor.
+
+**Not done:** notifications (email or in-app) when something is submitted or sent back; multi-step approval; review
+comment threads.
+
+---
+
 ## D-064 — 2026-10-12 — Week 5 scope: scheduling and Viewer in GOV-07, placeholder tenants, scripts-only deploy
 
 Agreed with the user in the week 5 ticket review (`docs/WEEK5_PLAN.md`).

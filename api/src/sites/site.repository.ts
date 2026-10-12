@@ -23,6 +23,14 @@ export class SiteRepository {
     return this.prisma.site.update({ where: { id }, data });
   }
 
+  /**
+   * Every site, just its id and subdomain: the scheduler goes through them one at a time, each with
+   * its own site-scoped content reads (GOV-07). Not a tenant read; the scheduler is the platform's.
+   */
+  findAllForScheduler() {
+    return this.prisma.site.findMany({ select: { id: true, subdomain: true }, orderBy: { id: 'asc' } });
+  }
+
   updateSubdomain(id: string, subdomain: string) {
     return this.prisma.site.update({ where: { id }, data: { subdomain } });
   }

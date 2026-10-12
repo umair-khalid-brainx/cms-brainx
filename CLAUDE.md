@@ -151,6 +151,11 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 - **Dev servers for a worktree:** run them with `npm --prefix <app> run dev`. `npx --prefix admin vite`
   runs from the repo root and serves a blank page.
 
+- **Scheduled pages are published by a timer inside `api`, once a minute** (D-065). Only a running `api` publishes
+  them; one that came due while it was down goes live at start. `SCHEDULER_DISABLED=true` turns the timer off (for
+  a second `api` process, say; two running is safe, just wasteful). A page in review or scheduled is locked: every
+  save answers 409 until it is withdrawn, sent back or unscheduled.
+
 - **`API_PUBLIC_URL` must be set to the API's public address in production** (D-050). `api` builds the full
   address of every picture and file on an entry page and in a listing from it, and falls back to
   `http://localhost:4001`; unset, every entry image points at localhost. (`DEP-01b`'s checklist.)

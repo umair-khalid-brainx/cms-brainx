@@ -12,7 +12,7 @@ import { hasPermission } from '../auth/permission.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { UserRepository } from '../users/user.repository.js';
-import { ContentRepository } from './content.repository.js';
+import { ContentRepository, PAGE_CHANGED } from './content.repository.js';
 import type { CreateContentDto, UpdateContentDto } from './dto/content.dto.js';
 import { StarterLayoutRepository } from '../starter-layouts/starter-layout.repository.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
@@ -23,12 +23,13 @@ import { MenuRepository } from '../menus/menu.repository.js';
 import { RedirectsService } from '../redirects/redirects.service.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
-import { normaliseSlug, slugProblem } from './slug.js';
+import { ADMIN_ROUTE_WORDS, normaliseSlug, slugProblem } from './slug.js';
 import { parseSeo, readSeo } from './seo.js';
 import { depthUnder, MAX_DEPTH, planMove, type PathMove, type TreePage } from './page-tree.js';
 import { RESERVED_PREFIXES } from '../content-types/prefix.js';
 import { TermsService, type CheckedAssignment } from '../taxonomy/terms.service.js';
 import { RevisionsService } from '../revisions/revisions.service.js';
+import { lockedBecause } from './workflow-rules.js';
 
 @Injectable()
 export class ContentService {
@@ -65,10 +66,19 @@ export class ContentService {
     return page;
   }
 
-  /** The editor's read: the page, and for an entry its categories and tags (TAX-01). */
+  /**
+   * The editor's read: the page, for an entry its categories and tags (TAX-01), and who submitted, reviewed
+   * and scheduled it, by name, for the review banners (GOV-07).
+   */
   async getForEdit(userId: string, slug: string) {
     const page = await this.get(userId, slug);
-    return this.withTerms(page);
+    const people = await this.content.findWorkflowPeople(page.siteId, page.id);
+    return {
+      ...(await this.withTerms(page)),
+      submittedBy: people?.submittedBy ?? null,
+      reviewedBy: people?.reviewedBy ?? null,
+      scheduledBy: people?.scheduledBy ?? null,
+    };
   }
 
   /** What would stop this content going live: the publish checks, for content that isn't saved yet (GOV-01 restore). */
@@ -154,6 +164,16 @@ export class ContentService {
     const membership = await this.resolveMembership(userId);
     const existing = await this.content.findBySlug(membership.siteId, slug);
     if (!existing) throw new NotFoundException('Page not found');
+
+    // A page in review or scheduled is locked (GOV-07): the reviewer approves exactly what was submitted, and
+    // what goes live is what was approved. Withdraw or unschedule it first.
+    const locked = lockedBecause(existing.status);
+    if (locked) throw new ConflictException(locked);
+    // A live page changes on the public site with every save, so changing it at all is publishing (GOV-07,
+    // D-065): a Contributor's work reaches the site only through review.
+    if (existing.status === 'published' && !hasPermission(membership.role, 'content:publish')) {
+      throw new ForbiddenException('This page is live. Only people who can publish can change it.');
+    }
 
     // content:write (checked by PermissionsGuard at the route) covers a plain
     // draft save; publishing is a step up, checked here because PATCH handles
@@ -254,9 +274,11 @@ export class ContentService {
     const links = await this.terms.materialise(membership.siteId, checkedLinks);
     try {
       if (move?.inTree) {
-        moves = (await this.content.updateInTree(membership.siteId, slug, write, move.inTree)).moves;
+        moves = (await this.content.updateInTree(membership.siteId, slug, write, move.inTree, existing.status)).moves;
       } else {
-        await this.content.update(membership.siteId, slug, { ...write, ...(move && { path: move.path }) }, links ?? undefined);
+        // Only while the page still has the status read above: the lock and the live-page rule hold for the write itself.
+        const written = await this.content.update(membership.siteId, slug, { ...write, ...(move && { path: move.path }) }, links ?? undefined, existing.status);
+        if (written.count === 0) throw new ConflictException(PAGE_CHANGED);
         if (move) {
           const everPublished = existing.status === 'published' || Boolean(existing.publishedAt);
           moves = [{ id: existing.id, oldPath: existing.path, newPath: move.path, status: existing.status, everPublished }];
@@ -287,45 +309,7 @@ export class ContentService {
       await this.afterWrite('revision', () => this.revisions.recordSave(membership.siteId, userId, existing.status, dto, updated));
     }
 
-    // Live before or after this write → the public page changed: publish,
-    // unpublish, archive, or a save to a live page. Refresh exactly that
-    // site + path in `web`'s cache (CNT-08). Draft-only edits aren't public.
-    if (existing.status === 'published' || updated?.status === 'published') {
-      await this.revalidation.page(membership.site.subdomain, existing.path);
-      // A moved page is also new at its new address (and gone from the old one, above).
-      const own = moves.find((m) => m.id === existing.id);
-      if (own) await this.revalidation.page(membership.site.subdomain, own.newPath);
-      // An entry also sits in its type's listing (`/events`), which changed with it (TYP-03).
-      if (existing.typeId) await this.revalidation.page(membership.site.subdomain, `/${existing.path.split('/')[1]}`);
-    }
-    // A menu points at pages (GOV-03): when one that is in a menu goes live or off, or moves, the header
-    // and footer of every page of the site change, so the whole site is refreshed.
-    const wentLiveOrOff = (existing.status === 'published') !== (updated?.status === 'published');
-    if (wentLiveOrOff || moves.length > 0) {
-      // After the save has committed, so a failure to ask is logged and never reported as a failed save.
-      await this.afterWrite('menu refresh', async () => {
-        if (await this.menus.usesPages(membership.siteId, [...new Set([existing.id, ...moves.map((m) => m.id)])])) {
-          await this.revalidation.site(membership.site.subdomain);
-        }
-      });
-    }
-    // An entry of a type with categories or tags also sits in its terms' archives and in other entries'
-    // "Related" lists (TAX-02): going live or off, or being retagged or moved to a new address while live, refreshes the site (by
-    // tag, D-058). An edit to a live entry's own text reaches them within the 60 s backstop instead,
-    // because an autosave of a live post must not refresh the whole site each time (D-061).
-    const liveAtAll = existing.status === 'published' || updated?.status === 'published';
-    if (existing.typeId && (wentLiveOrOff || ((checkedLinks !== null || moves.length > 0) && liveAtAll))) {
-      await this.afterWrite('term archive refresh', async () => {
-        const type = await this.types.findById(membership.siteId, existing.typeId as string);
-        if (type?.hasCategories || type?.hasTags) await this.revalidation.site(membership.site.subdomain);
-      });
-    }
-    // Live pages below a moved one changed address too (CNT-06): gone from the old, new at the new.
-    for (const below of moves) {
-      if (below.id === existing.id || below.status !== 'published') continue;
-      await this.revalidation.page(membership.site.subdomain, below.oldPath);
-      await this.revalidation.page(membership.site.subdomain, below.newPath);
-    }
+    await this.refreshPublic({ id: membership.siteId, subdomain: membership.site.subdomain }, existing, updated?.status, moves, checkedLinks !== null);
     // Old addresses that were ever public now redirect to the new ones; new ones lose any redirect (GOV-05).
     await this.afterWrite('move', () =>
       this.redirects.pagesMoved(
@@ -338,6 +322,60 @@ export class ContentService {
     // A move also says which addresses changed, old → new, for the editor.
     const result = updated ? await this.withTerms(updated) : updated;
     return move ? { ...result, moved: moves.map((m) => ({ from: m.oldPath, to: m.newPath })) } : result;
+  }
+
+  /**
+   * Refreshes what a change to a page changed on the public site (CNT-08): its own address, its type's
+   * listing, the whole site when it is in a menu or carries terms, and every live page below it that moved.
+   * Called after the write has committed, by a save (`update`) and by the workflow's publish (GOV-07):
+   * approving, and the scheduler. `statusAfter` is the page's status now; `retagged` says its terms changed.
+   */
+  async refreshPublic(
+    site: { id: string; subdomain: string },
+    existing: { id: string; path: string; status: string; typeId: string | null },
+    statusAfter: string | undefined,
+    moves: PathMove[] = [],
+    retagged = false,
+  ): Promise<void> {
+    // Live before or after this write → the public page changed: publish,
+    // unpublish, archive, or a save to a live page. Refresh exactly that
+    // site + path in `web`'s cache (CNT-08). Draft-only edits aren't public.
+    if (existing.status === 'published' || statusAfter === 'published') {
+      await this.revalidation.page(site.subdomain, existing.path);
+      // A moved page is also new at its new address (and gone from the old one, above).
+      const own = moves.find((m) => m.id === existing.id);
+      if (own) await this.revalidation.page(site.subdomain, own.newPath);
+      // An entry also sits in its type's listing (`/events`), which changed with it (TYP-03).
+      if (existing.typeId) await this.revalidation.page(site.subdomain, `/${existing.path.split('/')[1]}`);
+    }
+    // A menu points at pages (GOV-03): when one that is in a menu goes live or off, or moves, the header
+    // and footer of every page of the site change, so the whole site is refreshed.
+    const wentLiveOrOff = (existing.status === 'published') !== (statusAfter === 'published');
+    if (wentLiveOrOff || moves.length > 0) {
+      // After the save has committed, so a failure to ask is logged and never reported as a failed save.
+      await this.afterWrite('menu refresh', async () => {
+        if (await this.menus.usesPages(site.id, [...new Set([existing.id, ...moves.map((m) => m.id)])])) {
+          await this.revalidation.site(site.subdomain);
+        }
+      });
+    }
+    // An entry of a type with categories or tags also sits in its terms' archives and in other entries'
+    // "Related" lists (TAX-02): going live or off, or being retagged or moved to a new address while live, refreshes the site (by
+    // tag, D-058). An edit to a live entry's own text reaches them within the 60 s backstop instead,
+    // because an autosave of a live post must not refresh the whole site each time (D-061).
+    const liveAtAll = existing.status === 'published' || statusAfter === 'published';
+    if (existing.typeId && (wentLiveOrOff || ((retagged || moves.length > 0) && liveAtAll))) {
+      await this.afterWrite('term archive refresh', async () => {
+        const type = await this.types.findById(site.id, existing.typeId as string);
+        if (type?.hasCategories || type?.hasTags) await this.revalidation.site(site.subdomain);
+      });
+    }
+    // Live pages below a moved one changed address too (CNT-06): gone from the old, new at the new.
+    for (const below of moves) {
+      if (below.id === existing.id || below.status !== 'published') continue;
+      await this.revalidation.page(site.subdomain, below.oldPath);
+      await this.revalidation.page(site.subdomain, below.newPath);
+    }
   }
 
   // A copy is always a fresh draft (CNT-10): duplicating a live page must
@@ -585,8 +623,8 @@ export class ContentService {
   private async uniqueSlug(siteId: string, base: string, page: boolean): Promise<string> {
     const slugified = slugify(base);
     const taken = page
-      ? new Set([...(await this.types.prefixes(siteId)), ...[...RESERVED_PREFIXES].filter((word) => word !== 'home')])
-      : new Set<string>();
+      ? new Set([...(await this.types.prefixes(siteId)), ...[...RESERVED_PREFIXES].filter((word) => word !== 'home'), ...ADMIN_ROUTE_WORDS])
+      : new Set<string>(ADMIN_ROUTE_WORDS);
     let candidate = slugified;
     let suffix = 2;
     while (taken.has(candidate) || (await this.content.findBySlug(siteId, candidate))) {

@@ -77,6 +77,8 @@ function fakeContent(
       table.filter((r) => r.siteId === siteId && (r.typeId ?? null) === typeId && r.status !== 'archived'),
     ),
     countChildren: vi.fn(async (siteId: string, id: string) => table.filter((r) => r.siteId === siteId && r.parentId === id).length),
+    // Nobody has submitted, reviewed or scheduled anything in these specs (GOV-07 has its own).
+    findWorkflowPeople: vi.fn(async () => ({ submittedBy: null, reviewedBy: null, scheduledBy: null })),
     // Like the real ones: plan from the tree, then write the page and its descendants together.
     updateInTree: vi.fn(
       async (
@@ -1496,5 +1498,91 @@ describe('ContentService records revisions (GOV-01)', () => {
     revisionKit.repo.findLatest.mockRejectedValueOnce(new Error('revisions table down'));
     await expect(service.update('owner', 'about', { title: 'Still saved' })).resolves.toMatchObject({ title: 'Still saved' });
     expect(table.find((r) => r.slug === 'about')?.title).toBe('Still saved');
+  });
+});
+
+describe('ContentService locks pages in the review workflow (GOV-07)', () => {
+  function setup() {
+    return fakeContent(
+      [
+        { id: 'p-review', siteId: 'site-a', title: 'Review', slug: 'review', path: '/review', status: 'in_review', blocks },
+        { id: 'p-sched', siteId: 'site-a', title: 'Later', slug: 'later', path: '/later', status: 'scheduled', blocks },
+        { id: 'p-live', siteId: 'site-a', title: 'Live', slug: 'live', path: '/live', status: 'published', blocks },
+        { id: 'p-draft', siteId: 'site-a', title: 'Draft', slug: 'draft', path: '/draft', status: 'draft', blocks },
+      ],
+      {
+        owner: { siteId: 'site-a', role: 'owner' },
+        author: { siteId: 'site-a', role: 'author' },
+        contributor: { siteId: 'site-a', role: 'contributor' },
+      },
+    );
+  }
+
+  it('writes only while the page still has the status it read, and answers 409 when it changed meanwhile', async () => {
+    const { service, content, revisionKit } = setup();
+    // Read as a draft; by the write it was submitted, so the conditional write finds nothing.
+    content.update.mockResolvedValueOnce({ count: 0 });
+
+    await expect(service.update('contributor', 'draft', { title: 'Late save' })).rejects.toThrow(
+      new ConflictException('Someone else just changed this page. Reload it and try again.'),
+    );
+    expect(content.update).toHaveBeenCalledWith('site-a', 'draft', expect.objectContaining({ title: 'Late save' }), undefined, 'draft');
+    expect(revisionKit.rows).toHaveLength(0);
+  });
+
+  it('refuses a save to a page in review with 409, and writes nothing', async () => {
+    const { service, content, table, revisionKit } = setup();
+
+    await expect(service.update('owner', 'review', { title: 'Changed' })).rejects.toThrow(
+      new ConflictException('This page is waiting for review. Withdraw it to make changes.'),
+    );
+    expect(content.update).not.toHaveBeenCalled();
+    expect(content.updateInTree).not.toHaveBeenCalled();
+    expect(table.find((r) => r.slug === 'review')?.title).toBe('Review');
+    expect(revisionKit.rows).toHaveLength(0);
+  });
+
+  it('refuses a save to a scheduled page with 409, a status change included', async () => {
+    const { service, content } = setup();
+
+    await expect(service.update('owner', 'later', { title: 'Changed' })).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.update('owner', 'later', { status: 'draft' })).rejects.toBeInstanceOf(ConflictException);
+    expect(content.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses a contributor saving a live page with 403', async () => {
+    const { service, content } = setup();
+
+    await expect(service.update('contributor', 'live', { title: 'Changed' })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(content.update).not.toHaveBeenCalled();
+  });
+
+  it('lets an author save a live page', async () => {
+    const { service, table } = setup();
+    await service.update('author', 'live', { title: 'Changed' });
+    expect(table.find((r) => r.slug === 'live')?.title).toBe('Changed');
+  });
+
+  it('lets a contributor save a draft', async () => {
+    const { service, table } = setup();
+    await service.update('contributor', 'draft', { title: 'Changed' });
+    expect(table.find((r) => r.slug === 'draft')?.title).toBe('Changed');
+  });
+
+  it('getForEdit says who submitted, reviewed and scheduled the page', async () => {
+    const { service, content } = setup();
+    content.findWorkflowPeople.mockResolvedValueOnce({
+      submittedBy: { id: 'contributor', name: 'Cat' },
+      reviewedBy: { id: 'owner', name: 'Olu' },
+      scheduledBy: null,
+    } as never);
+
+    expect(await service.getForEdit('owner', 'review')).toMatchObject({
+      slug: 'review',
+      submittedBy: { id: 'contributor', name: 'Cat' },
+      reviewedBy: { id: 'owner', name: 'Olu' },
+      scheduledBy: null,
+    });
+    expect(content.findWorkflowPeople).toHaveBeenCalledWith('site-a', 'p-review');
   });
 });

@@ -9,6 +9,8 @@ type Props = {
   onClose: () => void;
   /** Offered only when there are warnings and no errors — warnings never block (CNT-12). */
   onPublishAnyway?: () => void;
+  /** What the step is, for the title and the "anyway" button: publishing (the default), scheduling or submitting (GOV-07). */
+  action?: { verb: string; anyway: string };
   /** Extra action, e.g. a link to the editor from the Pages list. */
   children?: ReactNode;
 };
@@ -50,7 +52,7 @@ function ProblemList({ problems, kind }: { problems: PublishProblem[]; kind: 'er
  * labelled region rather than `role="alert"`: moving focus already reads
  * it out, and an alert on top would announce it twice.
  */
-function PublishChecksPanel({ checks, pageTitle, onClose, onPublishAnyway, children }: Props) {
+function PublishChecksPanel({ checks, pageTitle, onClose, onPublishAnyway, action = { verb: 'publishing', anyway: 'Publish anyway' }, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const blocked = checks.errors.length > 0;
@@ -61,8 +63,8 @@ function PublishChecksPanel({ checks, pageTitle, onClose, onPublishAnyway, child
 
   const page = pageTitle ? ` in “${pageTitle}”` : '';
   const title = blocked
-    ? `Fix ${plural(checks.errors.length, 'problem', 'problems')}${page} before publishing`
-    : `${plural(checks.warnings.length, 'thing', 'things')} worth checking${page} before publishing`;
+    ? `Fix ${plural(checks.errors.length, 'problem', 'problems')}${page} before ${action.verb}`
+    : `${plural(checks.warnings.length, 'thing', 'things')} worth checking${page} before ${action.verb}`;
 
   return (
     <div
@@ -85,7 +87,7 @@ function PublishChecksPanel({ checks, pageTitle, onClose, onPublishAnyway, child
       <div className="publish-checks-actions">
         {!blocked && onPublishAnyway && (
           <button type="button" className="publish-checks-primary" onClick={onPublishAnyway}>
-            Publish anyway
+            {action.anyway}
           </button>
         )}
         {children}

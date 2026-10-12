@@ -1,0 +1,65 @@
+.review-intro,
+.review-empty {
+  margin: 0 0 1.25rem;
+  max-width: 40rem;
+  font-size: 0.8125rem;
+  color: #50575e;
+}
+
+.review-empty {
+  padding: 1.5rem 1rem;
+  background: #fff;
+  border: 1px dashed #c3c4c7;
+  border-radius: 4px;
+}
+
+.review-path {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: #646970;
+}
+
+/* The row's one action: a quiet outlined button, so a long queue doesn't turn into a column of blue blocks. */
+.review-open {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid #2271b1;
+  border-radius: 4px;
+  color: #2271b1;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.review-open:hover {
+  background: #2271b1;
+  color: #fff;
+}
+
+.review-open:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .review-intro,
+  .review-path {
+    color: #9ca3af;
+  }
+
+  .review-empty {
+    background: #18191b;
+    border-color: #3c434a;
+    color: #b0b0b0;
+  }
+
+  .review-open {
+    border-color: #6ab6f2;
+    color: #6ab6f2;
+  }
+
+  .review-open:hover {
+    background: #6ab6f2;
+    color: #101214;
+  }
+}

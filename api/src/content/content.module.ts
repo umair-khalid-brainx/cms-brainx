@@ -22,6 +22,7 @@ import { TermsService } from '../taxonomy/terms.service.js';
 import { RevisionRepository } from '../revisions/revision.repository.js';
 import { RevisionsController } from '../revisions/revisions.controller.js';
 import { RevisionsService } from '../revisions/revisions.service.js';
+import { WorkflowService } from './workflow.service.js';
 
 @Module({
   // AuthModule import brings in JwtModule (re-exported by AuthModule) so
@@ -46,10 +47,11 @@ import { RevisionsService } from '../revisions/revisions.service.js';
     RevisionRepository,
     RevisionsService,
     ContentService,
+    WorkflowService,
     JwtAuthGuard,
     PermissionsGuard,
   ],
-  // For PublicModule's live-page, preview, redirect, menu and term reads.
-  exports: [ContentRepository, ContentTypeRepository, PreviewLinkRepository, RedirectRepository, MenuRepository, TermRepository],
+  // For PublicModule's live-page, preview, redirect, menu and term reads; WorkflowService for the scheduler (GOV-07).
+  exports: [WorkflowService, ContentRepository, ContentTypeRepository, PreviewLinkRepository, RedirectRepository, MenuRepository, TermRepository],
 })
 export class ContentModule {}

@@ -17,7 +17,12 @@ import type { TermRef } from './terms';
 // exactly what D-015 already decided and documented; this is the first place
 // that decision is actually implemented, not just planned.
 
-export type PageStatus = 'draft' | 'published' | 'archived';
+// `in_review` and `scheduled` come from the review workflow (GOV-07): only its own routes move a page into or
+// out of them, never the status menu, and the API refuses any save while a page is in either.
+export type PageStatus = 'draft' | 'published' | 'archived' | 'in_review' | 'scheduled';
+
+/** Someone named on a page's review banners: who submitted, reviewed or scheduled it. */
+export type Person = { id: string; name: string };
 
 export type PageSummary = {
   id: string;
@@ -30,6 +35,13 @@ export type PageSummary = {
   path: string;
   status: PageStatus;
   archivedAt: string | null;
+  /** When a scheduled page goes live (GOV-07); null unless `scheduled`. */
+  publishAt: string | null;
+  /** A reviewer's reason for sending it back, or the scheduler's for not publishing it; cleared on resubmit. */
+  reviewNote: string | null;
+  submittedById: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
   /** An entry's categories and tags, of the kinds its type uses (TAX-01); empty for pages. */
   categories: TermRef[];
   tags: TermRef[];
@@ -51,6 +63,12 @@ export type Page = PageSummary & {
   data: Data<EditorComponents>;
   /** The content type this is an entry of; null for an ordinary page (TYP-01). */
   typeId: string | null;
+  /** When it was last saved, as loaded: a reviewer approves exactly this version (GOV-07). */
+  updatedAt: string;
+  /** Who submitted, reviewed and scheduled it, by name, for the editor's banners (GOV-07). */
+  submittedBy: Person | null;
+  reviewedBy: Person | null;
+  scheduledBy: Person | null;
 };
 
 type FlatBlock = { type: string } & Record<string, unknown>;
@@ -65,6 +83,15 @@ type ContentRecord = {
   status: PageStatus;
   blocks: FlatBlock[];
   archivedAt: string | null;
+  updatedAt: string;
+  publishAt?: string | null;
+  reviewNote?: string | null;
+  submittedById?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  submittedBy?: Person | null;
+  reviewedBy?: Person | null;
+  scheduledBy?: Person | null;
   typeId: string | null;
   /** Values of the type's custom fields, by key (TYP-02). */
   data: Record<string, unknown>;
@@ -164,6 +191,11 @@ function toSummary(record: ContentRecord): PageSummary {
     path: record.path,
     status: record.status,
     archivedAt: record.archivedAt,
+    publishAt: record.publishAt ?? null,
+    reviewNote: record.reviewNote ?? null,
+    submittedById: record.submittedById ?? null,
+    submittedAt: record.submittedAt ?? null,
+    reviewedAt: record.reviewedAt ?? null,
     categories: record.categories ?? [],
     tags: record.tags ?? [],
   };
@@ -194,12 +226,23 @@ export async function listArchivedPages(type?: string): Promise<PageSummary[]> {
 export async function getPage(slug: string): Promise<Page | undefined> {
   const session = requireSession();
   try {
-    const record = await apiGet<ContentRecord>(`/content/${slug}`, session.accessToken);
-    return { ...toSummary(record), data: blocksToPuckData(record.blocks, record.data), typeId: record.typeId };
+    return toPage(await apiGet<ContentRecord>(`/content/${slug}`, session.accessToken));
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return undefined;
     throw error;
   }
+}
+
+function toPage(record: ContentRecord): Page {
+  return {
+    ...toSummary(record),
+    data: blocksToPuckData(record.blocks, record.data),
+    typeId: record.typeId,
+    updatedAt: record.updatedAt,
+    submittedBy: record.submittedBy ?? null,
+    reviewedBy: record.reviewedBy ?? null,
+    scheduledBy: record.scheduledBy ?? null,
+  };
 }
 
 // The blocks and the custom field values are saved by separate requests, so a value
@@ -324,4 +367,40 @@ export async function revokePreviewLink(slug: string): Promise<void> {
 export async function deletePage(slug: string): Promise<void> {
   const session = requireSession();
   await apiDelete(`/content/${slug}`, session.accessToken);
+}
+
+// The review workflow and scheduling (GOV-07). Each step answers with the page as the editor reads it.
+function workflowStep(slug: string, step: string, body: object = {}): Promise<Page> {
+  return apiSend<ContentRecord>('POST', `/content/${slug}/${step}`, body, requireSession().accessToken).then(toPage);
+}
+
+export const submitForReview = (slug: string) => workflowStep(slug, 'submit');
+export const withdrawFromReview = (slug: string) => workflowStep(slug, 'withdraw');
+/**
+ * Publishes now, or with `publishAt` (an ISO moment) schedules it. `version` is the page's `updatedAt` as the
+ * reviewer loaded it: the API refuses (409) if the page changed since, so nobody approves what they didn't read.
+ */
+export const approvePage = (slug: string, version: string, publishAt?: string) =>
+  workflowStep(slug, 'approve', { version, ...(publishAt && { publishAt }) });
+export const sendBackPage = (slug: string, note: string) => workflowStep(slug, 'reject', { note });
+export const schedulePage = (slug: string, publishAt: string) => workflowStep(slug, 'schedule', { publishAt });
+export const unschedulePage = (slug: string) => workflowStep(slug, 'unschedule');
+/** A scheduled page, live now, in one step: a failure leaves it scheduled. */
+export const publishScheduledNow = (slug: string) => workflowStep(slug, 'publish-now');
+
+export type ReviewItem = {
+  id: string;
+  title: string;
+  slug: string;
+  path: string;
+  submittedAt: string | null;
+  updatedAt: string;
+  submittedBy: Person | null;
+  /** Null for an ordinary page. */
+  type: { name: string; singularName: string; prefix: string } | null;
+};
+
+/** The site's pages and entries waiting for review, oldest first. Needs `content:review`. */
+export async function listReviewQueue(): Promise<ReviewItem[]> {
+  return apiGet<ReviewItem[]>('/content/review-queue', requireSession().accessToken);
 }

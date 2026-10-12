@@ -26,14 +26,33 @@ export const REASON_LABEL: Record<RevisionReason, string> = {
   before_restore: 'Before a restore',
 };
 
-/** The row's badge: a status change names where the page went ("Unpublished", "Archived"). */
-export function reasonLabel(revision: Pick<RevisionSummary, 'reason' | 'status'>): string {
+/**
+ * The row's badge: a status change names where the page went ("Unpublished", "Archived"). A move back to draft
+ * says what it was by where it came from (`previous`, the next older revision's status): out of review, off the
+ * schedule, or off the live site (GOV-07).
+ */
+export function reasonLabel(revision: Pick<RevisionSummary, 'reason' | 'status'>, previous?: PageStatus): string {
   if (revision.reason === 'status') {
+    if (revision.status === 'draft' && previous === 'in_review') return 'Back to draft from review';
+    // Unscheduled by a person, or sent back by the scheduler because it failed the checks at its time.
+    if (revision.status === 'draft' && previous === 'scheduled') return 'Back to draft from the schedule';
     if (revision.status === 'draft') return 'Unpublished';
     if (revision.status === 'archived') return 'Archived';
+    if (revision.status === 'in_review') return 'Submitted for review';
+    if (revision.status === 'scheduled') return 'Scheduled';
     return 'Status changed to Live';
   }
   return REASON_LABEL[revision.reason];
+}
+
+/** Each revision's id mapped to the status of the next older one: what `reasonLabel` needs to name a move back to draft. */
+export function previousStatuses(revisions: readonly RevisionSummary[]): Map<string, PageStatus> {
+  const previous = new Map<string, PageStatus>();
+  revisions.forEach((revision, index) => {
+    const older = revisions[index + 1];
+    if (older) previous.set(revision.id, older.status);
+  });
+  return previous;
 }
 
 /** Ids of the revisions whose title differs from the next older one, mapped to that title. */
@@ -46,7 +65,7 @@ export function titleChanges(revisions: readonly RevisionSummary[]): Map<string,
   return changed;
 }
 
-export const STATUS_LABEL: Record<PageStatus, string> = { draft: 'Draft', published: 'Live', archived: 'Archived' };
+export const STATUS_LABEL: Record<PageStatus, string> = { draft: 'Draft', published: 'Live', archived: 'Archived', in_review: 'In review', scheduled: 'Scheduled' };
 
 export type RevisionDay = { key: string; heading: string; revisions: RevisionSummary[] };
 

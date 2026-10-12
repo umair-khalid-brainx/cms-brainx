@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { REVISION_LIMIT, revisionsToPrune, type RevisionReason, type Snapshot } from './revision-rules.js';
+import { REVISION_LIMIT, revisionsToPrune, type PageStatus, type RevisionReason, type Snapshot } from './revision-rules.js';
 
 export type RevisionRow = {
   id: string;
@@ -11,7 +11,7 @@ export type RevisionRow = {
   data: unknown;
   seo: unknown;
   terms: unknown;
-  status: 'draft' | 'published' | 'archived';
+  status: PageStatus;
   reason: RevisionReason;
   authorId: string | null;
   createdAt: Date;

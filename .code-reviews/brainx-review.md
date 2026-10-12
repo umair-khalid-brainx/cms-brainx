@@ -1,20 +1,36 @@
 ---
-diff_hash: 955daaf297baf361bd71a9d6e380dbfee4037224d1829d47f525b5b44d762086
-reviewed_at: 2026-10-12T17:12:11Z
+diff_hash: 05d56220655938a60715cce16cd5e64c8bd10a720fefc27327729fb5d57449f4
+reviewed_at: 2026-10-12T17:49:08Z
 ---
 
 ## Summary
 
-Docs-only change: week 5 planning (Step 0 housekeeping). Adds `docs/WEEK5_PLAN.md`, decision D-064 (scheduling and
-Viewer folded into GOV-07, DEC-3/DEC-5 resolved, scripts-only deploy, FND-03 folded into GOV-08b), rewrites the
-Definition of Done in the six M5 ticket files, and updates `EXECUTION_PLAN.md` and `STATUS.md`. No code changed.
+GOV-07: review workflow, scheduling and the Viewer role, across `api`, `admin` and `web`.
 
-Stack: the repo root has no `package.json` (three independent projects, D-012), so no stack marker matched; reviewed
-generically for correctness of the plan against the code, and for consistency between the docs.
+- **api:** new `in_review`/`scheduled` statuses, workflow columns on `content` and a migration. A `WorkflowService`
+  handles submit, withdraw, approve, reject, schedule, publish-now and unschedule. Each step is one conditional
+  `updateMany` (`ContentRepository.transition`). A once-a-minute `ScheduledPublisher` timer publishes due pages.
+  There is a new `content:review` permission and a `viewer` role. While a page is in review or scheduled,
+  `ContentService.update` and revision restore are locked (409), and saves to a live page now need `content:publish`.
+  Media replace and alt-text edits on a file used by a live, in-review or scheduled page also need `content:publish`.
+  `refreshPublic` was pulled out of `update` so the workflow can reuse it.
+- **admin:** workflow strip, When and Send-back dialogs, Review screen with a nav badge, an "In review" tab, read-only
+  editor and media for Viewers and locked pages, role descriptions on Team.
+- **web:** the preview banner covers the two new statuses.
 
-Checked against code: D-063 is skipped on purpose (taken by GOV-02 on the week 4 branch, `a4b2b45`); the public read
-does filter on `status: 'published'` (`content.repository.ts:65`); Author has `content:publish` and Contributor
-doesn't (`permission.ts:26-27`); the seed's `*.yourcms.com` hosts exist (`seed.ts:40,90`). All as the plan says.
+Stack: the repo root has no `package.json` (three independent projects, D-012). `api/` is NestJS
+(`resources/nestjs.md`); `admin/` and `web/` are React (`resources/react.md`).
+
+Cross-repo contract check: admin's `ContentRecord`/`Page` fields (`publishAt`, `reviewNote`, `submittedById`,
+`submittedAt`, `reviewedAt`, `submittedBy`/`reviewedBy`/`scheduledBy`) match what `getForEdit` and the workflow
+routes return. `ReviewItem` matches `findInReview`'s `select`. Web's `PreviewPage.status` union matches api's.
+Admin's `canReviewContent`/`canWriteContent` match `ROLE_PERMISSIONS`. No mismatch found.
+
+Checked and fine: every write route in every controller needs more than `content:read`, so a Viewer can write
+nothing. `planMove` still refuses a non-publisher moving a draft with live children. `remove` only deletes
+archived pages, so it can't delete a page in review or scheduled. `RevalidationService` swallows its own errors, so
+`refreshPublic` can't abort the scheduler's loop. `publishChecksFor` includes required fields. Adding enum values
+inside the migration's transaction is safe because none of them is used in the same transaction.
 
 ## Findings
 
@@ -22,60 +38,96 @@ doesn't (`permission.ts:26-27`); the seed's `*.yourcms.com` hosts exist (`seed.t
 
 ### High (0)
 
-### Medium (2)
-- **docs/WEEK5_PLAN.md:106** — The Viewer's access to the review queue contradicts the rest of the permission model. *(consistency)*
-  - status: fixed
-  - dev_reasoning: N/A
-  - ai_reasoning: Re-review: resolved. The Viewer no longer sees the queue anywhere. `WEEK5_PLAN.md:65-66` now says
-    the Viewer sees Pages and Media and a page's preview link, "not the editor or the Review screen (that is
-    `content:review`)", and line 106 gates `GET /content/review-queue` on `content:review` alone. That matches D-064
-    (Viewer has `content:read` only) and `tickets/GOV-07.md:11,14`, so the endpoint takes a single
-    `@RequirePermission('content:review')` with no role check.
-    Original finding: Line 106 gates `GET /content/review-queue` on "`content:review` and Viewer", and line 65 says the Viewer
-    "Sees Pages, Review (read-only)". But D-064 and the GOV-07 DoD (`tickets/GOV-07.md:11`) give the Viewer only
-    `content:read` and say the Review screen is for Owner/Administrator/Editor (`content:review`), and line 109 hides
-    the sidebar item from Author and Contributor. Author and Contributor also hold `content:read`, so the endpoint
-    can't be gated with one `@RequirePermission` and give the Viewer access while hiding it from Author/Contributor
-    without a role check, which is a new pattern. Decide whether the Viewer sees the queue; then make the plan, D-064
-    and the GOV-07 DoD say the same thing before the test-writer builds tests from them.
-
-- **tickets/GOV-07.md:5** — Estimates and bands now disagree between the ticket files, `EXECUTION_PLAN.md` and `WEEK5_PLAN.md`. *(consistency)*
-  - status: fixed
-  - dev_reasoning: N/A
-  - ai_reasoning: Re-review: resolved. The ticket headers, `EXECUTION_PLAN.md:178-191` and `WEEK5_PLAN.md` now agree:
-    GOV-07 0.90/C, DEP-02 0.30/A, GOV-08b 0.80/D, DEP-03 0.80/E, DEP-01b 1.00/E, DEP-04 1.50/D. D-064 records the
-    re-estimate (~5.4 d), each ticket header points at it, and `WEEK5_PLAN.md:5` says its estimates replace
-    `EXECUTION_PLAN.md`'s for week 5, the same pattern as D-052 for week 4.
-    Original finding: GOV-07 is re-estimated to 0.90 d in its ticket, but `EXECUTION_PLAN.md:178` still says 0.40, and
-    `STATUS.md` says estimates live in `EXECUTION_PLAN.md`. The band is also B in the ticket and C in
-    `WEEK5_PLAN.md:94`. The plan's other estimates don't match the ticket files or `EXECUTION_PLAN.md` either:
-    DEP-02 0.3 vs 0.15 (line 128), GOV-08b 0.8 vs 0.70 (line 138), DEP-01b 1.0 vs 0.80 (line 164), DEP-04 1.5 vs
-    1.70 (line 179). Week 4 recorded a re-estimate in `EXECUTION_PLAN.md` with its own decision (D-052). Either do
-    the same here (update `EXECUTION_PLAN.md` and the ticket headers, and mention it in D-064) or label the plan's
-    numbers as rough.
-
-### Low (1)
-- **docs/WEEK5_PLAN.md:161** — The repeatability check names npm scripts that don't exist. *(correctness)*
+### Medium (1)
+- **api/src/content/workflow.service.ts:70** — Approve doesn't tie the decision to the version the reviewer actually read, so a withdrawn, edited and resubmitted page can go live without anyone reviewing it. *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Re-review: still open. The line now reads `npx prisma migrate reset --force` "(which runs the seed)",
-    but it doesn't here. `api/prisma7.config.ts` has no `migrations.seed` entry, Prisma 7.10's `migrate reset` has no
-    seed option (`--help` shows only `--force`, `--schema`, `--config`), and the project records this on purpose:
-    FND-06 and DECISIONS.md:1647 say `npm run db:seed` is manual and "not wired into `prisma migrate reset`". As
-    written, the repeatability check resets the database and leaves it empty. Fix: `npx prisma migrate reset --force
-    && npm run db:seed` (run in `api/`), or have the step add a `migrations.seed` entry and say so.
-    Original finding: `npm run db:reset && npm run seed` — `api/package.json` has `db:seed` (and `db:migrate`, `db:deploy`,
-    `db:push`), but no `db:reset` or `seed`. Either name the real commands (e.g. `npx prisma migrate reset` plus
-    `npm run db:seed`) or say the step adds a `db:reset` script.
+  - ai_reasoning: `approve` reads the page itself and passes its own `page.updatedAt` as `unchangedSince`. That only stops
+    a change made between the server's read and its write, a few milliseconds. The approve body (`approveSchema`) and
+    `approvePage()` in `EditorPage.tsx:470` send no version, so the server can't know which version the reviewer saw.
+    Example: a reviewer opens version A in the editor (read-only, locked). Meanwhile the Contributor withdraws it,
+    edits it to version B and resubmits. The reviewer, still looking at A, clicks Approve → Publish now. B passes the
+    checks and goes live, and nobody reviewed it. That breaks the rule this lock exists for (D-065; `lockedBecause`:
+    "the reviewer approves exactly what was submitted"). The comment at line 77 says it covers exactly this case
+    ("not one withdrawn, edited and resubmitted meanwhile"), but it only covers it inside the server request. Fix:
+    have the editor send the `updatedAt` (or `submittedAt`) it loaded, and pass that to `transition` as
+    `unchangedSince`. If it doesn't match, the API answers with the existing `PAGE_CHANGED` 409. Reject probably
+    needs the same, so a note isn't attached to a version the reviewer never saw.
+
+### Low (1)
+- **api/src/content/content.controller.ts:62** — `GET /content/review-queue` hides any page or entry whose slug is `review-queue`. *(correctness)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: The static route is declared before `@Get(':slug')`, so `GET /content/review-queue` always goes to the
+    queue. `slugProblem` only rejects `RESERVED_PREFIXES` (`admin`, `api`, `preview`, …), and that list doesn't include
+    `review-queue`. So a user can create a page with that slug (e.g. a "Review Queue" page) and then can't open it in
+    the editor. A reviewer gets the queue JSON instead of the page; a Contributor gets 403 from the
+    `content:review` guard. The existing `archived` route has the same problem, so this diff adds a second case rather
+    than starting one. Fix: reserve both words for content slugs, or move the collection routes off the `:slug`
+    namespace (e.g. `/content/_review-queue`; no slug can start with `_`).
 
 ## Reviewed files
-- docs/DECISIONS.md
-- docs/EXECUTION_PLAN.md
-- docs/WEEK5_PLAN.md
-- tickets/DEP-01b.md
-- tickets/DEP-02.md
-- tickets/DEP-03.md
-- tickets/DEP-04.md
-- tickets/GOV-07.md
-- tickets/GOV-08b.md
-- tickets/STATUS.md
+- CLAUDE.md
+- admin/src/App.tsx
+- admin/src/components/HistoryPanel.tsx
+- admin/src/components/MediaDetailsForm.tsx
+- admin/src/components/PublishChecksPanel.tsx
+- admin/src/components/SendBackDialog.tsx
+- admin/src/components/WhenDialog.tsx
+- admin/src/components/WorkflowStrip.css
+- admin/src/components/WorkflowStrip.tsx
+- admin/src/layouts/AdminLayout.css
+- admin/src/layouts/AdminLayout.tsx
+- admin/src/lib/RequireWrite.tsx
+- admin/src/lib/contentApi.ts
+- admin/src/lib/revisions.test.ts (not reviewed: test file)
+- admin/src/lib/revisions.ts
+- admin/src/lib/roles.ts
+- admin/src/lib/workflow.test.ts (not reviewed: test file)
+- admin/src/lib/workflow.ts
+- admin/src/pages/DashboardPage.tsx
+- admin/src/pages/EditorPage.tsx
+- admin/src/pages/MediaPage.tsx
+- admin/src/pages/PagesListPage.css
+- admin/src/pages/PagesListPage.tsx
+- admin/src/pages/ReviewPage.css
+- admin/src/pages/ReviewPage.tsx
+- admin/src/pages/TeamPage.css
+- admin/src/pages/TeamPage.tsx
+- api/.env.example
+- api/prisma/migrations/20261012171511_add_review_and_scheduling/migration.sql
+- api/prisma/schema.prisma
+- api/src/app.module.ts
+- api/src/auth/permission.spec.ts (not reviewed: test file)
+- api/src/auth/permission.ts
+- api/src/content/content.controller.ts
+- api/src/content/content.module.ts
+- api/src/content/content.repository.ts
+- api/src/content/content.service.spec.ts (not reviewed: test file)
+- api/src/content/content.service.ts
+- api/src/content/dto/workflow.dto.spec.ts (not reviewed: test file)
+- api/src/content/dto/workflow.dto.ts
+- api/src/content/workflow-rules.spec.ts (not reviewed: test file)
+- api/src/content/workflow-rules.ts
+- api/src/content/workflow.service.spec.ts (not reviewed: test file)
+- api/src/content/workflow.service.ts
+- api/src/media/media.service.spec.ts (not reviewed: test file)
+- api/src/media/media.service.ts
+- api/src/public/public.service.ts
+- api/src/revisions/revision-rules.ts
+- api/src/revisions/revision.repository.ts
+- api/src/revisions/revisions.service.spec.ts (not reviewed: test file)
+- api/src/revisions/revisions.service.ts
+- api/src/scheduler/scheduled-publisher.spec.ts (not reviewed: test file)
+- api/src/scheduler/scheduled-publisher.ts
+- api/src/scheduler/scheduler.module.ts
+- api/src/sites/site.repository.ts
+- api/src/team/dto/membership.dto.ts
+- api/vitest.config.e2e.ts
+- docs/BACKLOG.md (not reviewed: docs only)
+- docs/DECISIONS.md (not reviewed: docs only)
+- docs/WORKLOG.md (not reviewed: docs only)
+- tickets/GOV-07.md (not reviewed: docs only)
+- tickets/STATUS.md (not reviewed: docs only)
+- web/src/app/preview/[subdomain]/[token]/page.tsx
+- web/src/lib/publicApi.ts
