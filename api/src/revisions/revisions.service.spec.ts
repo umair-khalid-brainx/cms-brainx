@@ -343,7 +343,7 @@ describe('RevisionsService.restore', () => {
   it('does not find a revision of another page of the same site', async () => {
     const s = setup([page(), page({ id: 'p2', slug: 'contact', path: '/contact', title: 'Contact' })]);
     await s.service.record('site-a', 'ann', 'publish', s.current('contact'));
-    await expect(s.service.restore('ann', 'about', s.revisionKit.rows[0].id)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(s.service.restore('ann', 'about', s.revisionKit.rows[0].id, passes)).rejects.toBeInstanceOf(NotFoundException);
     await expect(s.service.get('ann', 'about', s.revisionKit.rows[0].id)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
