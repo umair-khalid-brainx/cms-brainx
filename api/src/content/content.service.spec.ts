@@ -24,6 +24,7 @@ type Row = {
   blocks: unknown;
   typeId?: string | null;
   authorId?: string | null;
+  parentId?: string | null;
   data?: unknown;
 };
 
@@ -38,7 +39,14 @@ function fakeContent(
   previewLinks: Partial<PreviewLinkRepository> = {},
   typeTable: { id: string; siteId: string; prefix: string; fields?: unknown }[] = [],
 ) {
-  const table = rows.map((row) => ({ ...row }));
+  // Every row gets an id and a parent, as Prisma's do; the page tree (CNT-05) needs both.
+  const table = rows.map((row) => ({ parentId: null, ...row, id: row.id ?? `${row.siteId}:${row.slug}` }));
+  // What the real repository reads inside its locked transaction: the site's pages, never entries.
+  type TreeRow = { id: string; parentId: string | null; slug: string; path: string; status: string };
+  const pageTree = (siteId: string): TreeRow[] =>
+    table
+      .filter((r) => r.siteId === siteId && !r.typeId)
+      .map((r) => ({ id: r.id, parentId: r.parentId ?? null, slug: r.slug, path: r.path, status: r.status }));
   const content = {
     // A copy, like Prisma's: a later update must not change a row the
     // service already read.
@@ -48,13 +56,36 @@ function fakeContent(
     }),
     create: vi.fn(
       async (siteId: string, data: Omit<Row, 'siteId' | 'status'>) => {
-        const row = { status: 'draft', ...data, siteId };
+        const row = { status: 'draft', parentId: null, ...data, siteId, id: data.id ?? `${siteId}:${data.slug}` };
         table.push(row);
         return row;
       },
     ),
     findMany: vi.fn(async (siteId: string, typeId: string | null) =>
       table.filter((r) => r.siteId === siteId && (r.typeId ?? null) === typeId && r.status !== 'archived'),
+    ),
+    countChildren: vi.fn(async (siteId: string, id: string) => table.filter((r) => r.siteId === siteId && r.parentId === id).length),
+    // Like the real ones: plan from the tree, then write the page and its descendants together.
+    updateInTree: vi.fn(
+      async (
+        siteId: string,
+        slug: string,
+        data: Partial<Row>,
+        plan: (pages: TreeRow[]) => { path: string; descendants: { id: string; path: string }[] },
+      ) => {
+        const planned = plan(pageTree(siteId));
+        const row = table.find((r) => r.siteId === siteId && r.slug === slug);
+        if (!row) throw new NotFoundException('Page not found');
+        Object.assign(row, data, { path: planned.path });
+        for (const { id, path } of planned.descendants) {
+          const below = table.find((r) => r.siteId === siteId && r.id === id);
+          if (below) below.path = path;
+        }
+        return planned;
+      },
+    ),
+    createInTree: vi.fn(async (siteId: string, plan: (pages: TreeRow[]) => Omit<Row, 'siteId' | 'status'>) =>
+      content.create(siteId, plan(pageTree(siteId))),
     ),
     update: vi.fn(async (siteId: string, slug: string, data: Partial<Row>) => {
       const row = table.find((r) => r.siteId === siteId && r.slug === slug);
@@ -960,9 +991,120 @@ describe('ContentService slug changes (CNT-04)', () => {
 
   it('answers two moves racing to the same slug with a 409, not a 500', async () => {
     const { service, content } = setup();
-    content.update.mockRejectedValueOnce(
+    content.updateInTree.mockRejectedValueOnce(
       new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: 'test' }),
     );
     await expect(service.update('alice', 'draft', { slug: 'team' })).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('ContentService page tree (CNT-05, CNT-06)', () => {
+  // home · about ─ team ─ leads · shop (draft) · fair (an entry) · other site's page
+  function setup() {
+    return fakeContent(
+      [
+        { id: 'home', siteId: 'site-a', title: 'Home', slug: 'home', path: '/', status: 'published', blocks },
+        { id: 'about', siteId: 'site-a', title: 'About', slug: 'about', path: '/about', status: 'published', blocks },
+        { id: 'team', siteId: 'site-a', title: 'Team', slug: 'team', path: '/about/team', status: 'published', blocks, parentId: 'about' },
+        { id: 'leads', siteId: 'site-a', title: 'Leads', slug: 'leads', path: '/about/team/leads', status: 'draft', blocks, parentId: 'team' },
+        { id: 'shop', siteId: 'site-a', title: 'Shop', slug: 'shop', path: '/shop', status: 'draft', blocks },
+        { id: 'fair', siteId: 'site-a', title: 'Fair', slug: 'fair', path: '/events/fair', status: 'draft', blocks, typeId: 't-a' },
+        { id: 'b-page', siteId: 'site-b', title: 'B', slug: 'b-page', path: '/b-page', status: 'draft', blocks },
+      ],
+      { alice: { siteId: 'site-a', role: 'owner' }, carl: { siteId: 'site-a', role: 'contributor' } },
+      {},
+      [{ id: 't-a', siteId: 'site-a', prefix: 'events' }],
+    );
+  }
+  const pathOf = (table: { id: string; path: string }[], id: string) => table.find((r) => r.id === id)?.path;
+
+  it('creates a page under a parent, with the parent’s address in front', async () => {
+    const { service } = setup();
+    expect(await service.create('alice', { title: 'Careers', parentId: 'about', blocks: [] })).toMatchObject({
+      path: '/about/careers',
+      parentId: 'about',
+    });
+  });
+
+  it('refuses a parent that is an entry, on another site, the home page, or too deep', async () => {
+    const { service } = setup();
+    for (const parentId of ['fair', 'b-page', 'home', 'leads']) {
+      await expect(service.create('alice', { title: 'X', parentId, blocks: [] })).rejects.toBeInstanceOf(BadRequestException);
+    }
+    await expect(service.create('alice', { title: 'X', type: 'events', parentId: 'about', blocks: [] })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('renaming a parent moves its whole subtree in one write, and nothing else', async () => {
+    const { service, table, content } = setup();
+    await service.update('alice', 'about', { slug: 'company' });
+    expect([pathOf(table, 'about'), pathOf(table, 'team'), pathOf(table, 'leads'), pathOf(table, 'shop')]).toEqual([
+      '/company',
+      '/company/team',
+      '/company/team/leads',
+      '/shop',
+    ]);
+    expect(content.updateInTree).toHaveBeenCalledTimes(1);
+  });
+
+  it('says which addresses moved, old to new, for redirects (GOV-05)', async () => {
+    const { service } = setup();
+    expect(await service.update('alice', 'team', { slug: 'people' })).toMatchObject({
+      moved: [
+        { from: '/about/team', to: '/about/people' },
+        { from: '/about/team/leads', to: '/about/people/leads' },
+      ],
+    });
+  });
+
+  it('moving under another parent, and back to the top', async () => {
+    const { service, table } = setup();
+    await service.update('alice', 'team', { parentId: 'shop' });
+    expect([pathOf(table, 'team'), pathOf(table, 'leads')]).toEqual(['/shop/team', '/shop/team/leads']);
+    await service.update('alice', 'team', { parentId: null });
+    expect([pathOf(table, 'team'), pathOf(table, 'leads')]).toEqual(['/team', '/team/leads']);
+  });
+
+  it('refuses a loop, too much depth, another site’s page, and a parent for an entry; writes nothing', async () => {
+    const { service, table } = setup();
+    await expect(service.update('alice', 'about', { parentId: 'leads' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'shop', { parentId: 'leads' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'shop', { parentId: 'b-page' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'fair', { parentId: 'about' })).rejects.toBeInstanceOf(BadRequestException);
+    expect([pathOf(table, 'about'), pathOf(table, 'shop'), pathOf(table, 'fair')]).toEqual(['/about', '/shop', '/events/fair']);
+  });
+
+  it('refreshes old and new addresses of every live page that moved', async () => {
+    const { service, revalidation } = setup();
+    await service.update('alice', 'about', { slug: 'company' });
+    for (const path of ['/about', '/company', '/about/team', '/company/team']) {
+      expect(revalidation.page).toHaveBeenCalledWith('a', path);
+    }
+    // `leads` is a draft: never public, so never refreshed.
+    expect(revalidation.page).not.toHaveBeenCalledWith('a', '/company/team/leads');
+  });
+
+  it('needs publish rights to move a draft that has live pages below it', async () => {
+    const { service } = setup();
+    await service.update('alice', 'about', { status: 'draft' });
+    await expect(service.update('carl', 'about', { slug: 'company' })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('lets a child page use a word reserved at the top, but not move it up there', async () => {
+    const { service } = setup();
+    await service.update('alice', 'leads', { slug: 'search' });
+    await expect(service.update('alice', 'search', { parentId: null })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('won’t permanently delete a page that still has pages under it', async () => {
+    const { service } = setup();
+    await service.update('alice', 'team', { status: 'archived' });
+    await expect(service.remove('alice', 'team')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('puts a copy next to the original, under the same parent', async () => {
+    const { service } = setup();
+    expect(await service.duplicate('alice', 'team')).toMatchObject({ path: '/about/team-copy', parentId: 'about' });
   });
 });

@@ -208,11 +208,13 @@ function EditorPage() {
     dirtyRef.current = false;
   }
 
-  function handleSettingsSaved(saved: PageSummary, change: 'title' | 'address') {
+  function handleSettingsSaved(saved: PageSummary) {
+    const moved = saved.slug !== page!.slug;
     setPage((current) => current && { ...current, ...saved });
     setSavedAt(new Date());
     setSaveError(null);
-    if (change === 'address') {
+    // A new slug means a new editor URL; a new parent alone keeps the slug, so the URL stays.
+    if (moved) {
       slugRef.current = saved.slug;
       movedToRef.current = saved.slug;
       navigate(`/editor/${saved.slug}`, { replace: true });
@@ -257,6 +259,7 @@ function EditorPage() {
         onClose={() => setSettingsOpen(false)}
         page={page}
         kind={type?.singularName ?? 'Page'}
+        isEntry={type !== null}
         flushPending={flushPending}
         onSaved={handleSettingsSaved}
       />

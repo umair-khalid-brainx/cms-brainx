@@ -8,6 +8,38 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-054 — 2026-10-12 — Parent pages: paths rebuilt from parent links, one transaction per move (`CNT-05`, `CNT-06`)
+
+**Decision (the week 4 plan's defaults, D-052; built as planned):**
+
+- **`Content.parentId`**, pages only, same site, at most **3 levels** (top level is 1), never a loop. The home
+  page has no parent and no children. A page with children can't be permanently deleted (409, and the foreign
+  key is `Restrict`); unpublishing or archiving a parent doesn't hide its children.
+- **The parent link is the truth and `path` is derived from it.** A move (new slug, new parent, or both)
+  rebuilds the path of the page and every descendant from the parent links (`api/src/content/page-tree.ts`),
+  not by string-replacing stored prefixes, so a stale stored path is corrected on the next move. The page and its
+  descendants are written in **one transaction**, so a move lands whole or not at all (invariant 9); any new path
+  that clashes with a page outside the subtree refuses the whole move (409).
+- **The tree is read and written under a per-site lock** (a Postgres advisory lock held by that transaction).
+  Moves and creates-under-a-parent on one site run one at a time and plan from the tree as it is then, so two
+  crossing moves can't make a loop and a page created under a parent that's moving can't keep a stale path.
+  Verified with two crossing moves fired at once: one wins, the other is refused.
+- **A move answers with the addresses it changed** (`moved: [{ from, to }]`), which `GOV-05` turns into redirects.
+- **Slugs stay unique across the site** (D-052), but **reserved words and type prefixes only apply at the top
+  level**: `/about/search` is fine, and moving that page to the top is refused until its slug changes.
+- **Moving needs `content:publish` if any page that moves is live**, not only the page itself (a draft parent
+  with live children moves live addresses).
+- **The admin's parent picker is a native `<select>` with a "Find a page" search box** that filters by title.
+  Options read title first, then where they sit and why they can't be chosen ("Leads (under Team, too deep)"):
+  leading dashes for depth broke the browser's type-to-jump. Archived pages are listed too, since they're still
+  in the tree. The API stays the authority.
+
+**Costs and limits:** the whole page tree of a site is loaded for each move or create-under-parent: fine at a
+site's page count, not for tens of thousands of pages. Sibling order isn't stored (the Pages list keeps its
+last-edited order within each level); menus (`GOV-03`) carry their own order.
+
+---
+
 ## D-053 — 2026-10-09 — Changing a page's address: explicit, publish-tier when live, unique per site in the database (`CNT-04`)
 
 **Decision (the user chose the permission rule after the reviewer raised it):**

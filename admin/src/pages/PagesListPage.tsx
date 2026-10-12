@@ -17,6 +17,7 @@ import {
 import { canArchiveContent, canPublishContent } from '../lib/roles';
 import { siteUrl } from '../data/site';
 import type { ContentType } from '../lib/typesApi';
+import { orderAsTree } from '../lib/pageTree';
 import './PagesListPage.css';
 
 type Tab = 'active' | 'archived';
@@ -204,9 +205,16 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
             </tr>
           </thead>
           <tbody>
-            {pages.map((page) => (
+            {/* Pages show each child under its parent, like WordPress (CNT-05); entries never nest. */}
+            {(contentType ? pages.map((page) => ({ page, depth: 1 })) : orderAsTree(pages)).map(({ page, depth }) => (
               <tr key={page.slug} className={justCopied?.slug === page.slug ? 'pages-row-new' : undefined}>
                 <td>
+                  {depth > 1 ? (
+                    // The path column already says where it sits, so the dashes are only for the eye.
+                    <span className="pages-row-indent" aria-hidden="true">
+                      {'\u2014 '.repeat(depth - 1)}
+                    </span>
+                  ) : null}
                   <Link to={`/editor/${page.slug}`} className="pages-row-title">
                     {page.title}
                   </Link>

@@ -21,6 +21,7 @@ import { PreviewLinkRepository } from './preview-link.repository.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
 import { normaliseSlug, slugProblem } from './slug.js';
+import { depthUnder, MAX_DEPTH, planMove, type PathMove, type TreePage } from './page-tree.js';
 import { RESERVED_PREFIXES } from '../content-types/prefix.js';
 
 @Injectable()
@@ -74,18 +75,33 @@ export class ContentService {
       if (!layout) throw new NotFoundException('Starter layout not found');
       startingBlocks = structuredClone(layout.blocks) as typeof dto.blocks;
     }
-    const slug = await this.uniqueSlug(siteId, dto.slug ?? dto.title, !type);
-    // An entry lives under its type's address; a page at the top (TYP-01).
-    const path = type ? `/${type.prefix}/${slug}` : slug === 'home' ? '/' : `/${slug}`;
-
-    return this.content.create(siteId, {
+    if (dto.parentId && type) throw new BadRequestException('Only pages can sit under another page.');
+    // Reserved words and type prefixes only matter at the top of the site.
+    const slug = await this.uniqueSlug(siteId, dto.slug ?? dto.title, !type && !dto.parentId);
+    const row = {
       title: dto.title,
       slug,
-      path,
       typeId: type?.id ?? null,
+      parentId: dto.parentId ?? null,
       authorId: userId,
       // Sanitise on write (BLK-05, invariant 5): what is stored is already safe.
       blocks: sanitizeBlocks(startingBlocks) as Prisma.InputJsonValue,
+    };
+    // An entry lives under its type's address; a page at the top (TYP-01).
+    if (!dto.parentId) {
+      return this.content.create(siteId, { ...row, path: type ? `/${type.prefix}/${slug}` : slug === 'home' ? '/' : `/${slug}` });
+    }
+    // A page under a parent (CNT-05): its address starts with the parent's, read under the
+    // site's tree lock so the parent can't move away before this page is written.
+    const parentId = dto.parentId;
+    return this.content.createInTree(siteId, (tree) => {
+      const parent = tree.find((candidate) => candidate.id === parentId);
+      if (!parent) throw new BadRequestException('That parent page doesn’t exist on this site.');
+      if (parent.path === '/') throw new BadRequestException('Pages can’t sit under the home page.');
+      if (depthUnder(tree, parent.id) > MAX_DEPTH) {
+        throw new BadRequestException(`Pages can be nested at most ${MAX_DEPTH} levels deep.`);
+      }
+      return { ...row, path: `${parent.path}/${slug}` };
     });
   }
 
@@ -110,8 +126,12 @@ export class ContentService {
       throw new ForbiddenException('Missing permission: content:delete');
     }
 
-    // A new slug moves the page to a new address (CNT-04). Checked before anything is written.
-    const rename = dto.slug === undefined ? null : await this.planRename(membership.siteId, membership.role, existing, dto.slug);
+    // A new slug or parent moves the page, and every page below it, to a new address
+    // (CNT-04/05/06). Checked whole before anything is written.
+    const move =
+      dto.slug === undefined && dto.parentId === undefined
+        ? null
+        : await this.planMove(membership.siteId, membership.role, existing, { slug: dto.slug, parentId: dto.parentId });
 
     // Sanitise on write (BLK-05, invariant 5), before the checks below so they
     // judge what would actually be stored.
@@ -155,25 +175,39 @@ export class ContentService {
     }
 
     // The slug the client sent is never written as-is: only the normalised one, with its path.
-    const { slug: _requestedSlug, ...changes } = dto;
+    const { slug: _requestedSlug, parentId: _requestedParent, ...changes } = dto;
+    const write = {
+      ...changes,
+      ...(move && { slug: move.slug, parentId: move.parentId }),
+      blocks: blocks as Prisma.InputJsonValue | undefined,
+      data: data as Prisma.InputJsonValue | undefined,
+      // Set the first time it goes live and kept after (TYP-03).
+      ...(dto.status === 'published' && !existing.publishedAt && { publishedAt: new Date() }),
+      ...(entering && { archivedAt: new Date() }),
+      ...(leaving && { archivedAt: null }),
+    };
+    // Every address that changed: the page's own and, for a page, every page below it (CNT-06).
+    let moves: PathMove[] = [];
     try {
-      await this.content.update(membership.siteId, slug, {
-        ...changes,
-        ...(rename && { slug: rename.slug, path: rename.path }),
-        blocks: blocks as Prisma.InputJsonValue | undefined,
-        data: data as Prisma.InputJsonValue | undefined,
-        // Set the first time it goes live and kept after (TYP-03).
-        ...(dto.status === 'published' && !existing.publishedAt && { publishedAt: new Date() }),
-        ...(entering && { archivedAt: new Date() }),
-        ...(leaving && { archivedAt: null }),
-      });
+      if (move?.inTree) {
+        moves = (await this.content.updateInTree(membership.siteId, slug, write, move.inTree)).moves;
+      } else {
+        await this.content.update(membership.siteId, slug, { ...write, ...(move && { path: move.path }) });
+        if (move) moves = [{ id: existing.id, oldPath: existing.path, newPath: move.path, status: existing.status }];
+      }
     } catch (error) {
-      // Two pages moved to the same free slug at the same moment: planRename's check
-      // passes for both, the unique index rejects the second write.
-      if (rename && isUniqueViolation(error)) throw takenSlug(rename.slug);
+      // Two pages moved to the same free address at the same moment: planMove's checks
+      // pass for both, a unique index rejects the second write.
+      // Too long in the queue behind other moves on this site (Prisma's transaction timeout).
+      if (move && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2028') {
+        throw new ConflictException('The site is busy with another move. Try again.');
+      }
+      if (move && isUniqueViolation(error)) {
+        throw move.slug === existing.slug ? new ConflictException('Another page took that address just now. Try again.') : takenSlug(move.slug);
+      }
       throw error;
     }
-    const updated = await this.content.findBySlug(membership.siteId, rename?.slug ?? slug);
+    const updated = await this.content.findBySlug(membership.siteId, move?.slug ?? slug);
 
     // Live before or after this write → the public page changed: publish,
     // unpublish, archive, or a save to a live page. Refresh exactly that
@@ -181,11 +215,19 @@ export class ContentService {
     if (existing.status === 'published' || updated?.status === 'published') {
       await this.revalidation.page(membership.site.subdomain, existing.path);
       // A moved page is also new at its new address (and gone from the old one, above).
-      if (rename) await this.revalidation.page(membership.site.subdomain, rename.path);
+      const own = moves.find((m) => m.id === existing.id);
+      if (own) await this.revalidation.page(membership.site.subdomain, own.newPath);
       // An entry also sits in its type's listing (`/events`), which changed with it (TYP-03).
       if (existing.typeId) await this.revalidation.page(membership.site.subdomain, `/${existing.path.split('/')[1]}`);
     }
-    return updated;
+    // Live pages below a moved one changed address too (CNT-06): gone from the old, new at the new.
+    for (const below of moves) {
+      if (below.id === existing.id || below.status !== 'published') continue;
+      await this.revalidation.page(membership.site.subdomain, below.oldPath);
+      await this.revalidation.page(membership.site.subdomain, below.newPath);
+    }
+    // A move also says which addresses changed, old → new, for the editor and for redirects (GOV-05).
+    return move ? { ...updated, moved: moves.map((m) => ({ from: m.oldPath, to: m.newPath })) } : updated;
   }
 
   // A copy is always a fresh draft (CNT-10): duplicating a live page must
@@ -199,21 +241,27 @@ export class ContentService {
     if (!source) throw new NotFoundException('Page not found');
     if (source.status === 'archived') throw new ConflictException('Restore this page before duplicating it');
 
-    const copySlug = await this.uniqueSlug(siteId, `${source.slug}-copy`, source.typeId === null);
-    const parentPath = source.path.slice(0, source.path.lastIndexOf('/'));
-
-    return this.content.create(siteId, {
+    const copySlug = await this.uniqueSlug(siteId, `${source.slug}-copy`, source.typeId === null && source.parentId === null);
+    const row = {
       title: `${source.title} (copy)`,
       slug: copySlug,
-      path: `${parentPath}/${copySlug}`,
-      // Same type as the original; the copy's author is whoever made the copy.
+      // Same type and parent as the original; the copy's author is whoever made the copy.
       typeId: source.typeId,
+      parentId: source.parentId,
       authorId: userId,
       data: source.data as Prisma.InputJsonValue,
       // A write like any other, so rows saved before sanitising existed are cleaned here too.
       blocks: (Array.isArray(source.blocks)
         ? sanitizeBlocks(source.blocks as Parameters<typeof sanitizeBlocks>[0])
         : source.blocks) as Prisma.InputJsonValue,
+    };
+    const parentId = source.parentId;
+    if (!parentId) return this.content.create(siteId, { ...row, path: `${source.path.slice(0, source.path.lastIndexOf('/'))}/${copySlug}` });
+    // Under a parent: its address is read under the site's tree lock, like any create there (CNT-05).
+    return this.content.createInTree(siteId, (tree) => {
+      const parent = tree.find((candidate) => candidate.id === parentId);
+      if (!parent) throw new ConflictException('This page’s parent page was just removed. Try again.');
+      return { ...row, path: `${parent.path}/${copySlug}` };
     });
   }
 
@@ -249,7 +297,19 @@ export class ContentService {
     const existing = await this.content.findBySlug(siteId, slug);
     if (!existing) throw new NotFoundException('Page not found');
     if (existing.status !== 'archived') throw new ConflictException('Archive this page before deleting it permanently');
-    await this.content.delete(siteId, slug);
+    // Its child pages would lose their place (CNT-05); the database refuses it too.
+    if ((await this.content.countChildren(siteId, existing.id)) > 0) {
+      throw new ConflictException('Move or delete the pages under this one first.');
+    }
+    try {
+      await this.content.delete(siteId, slug);
+    } catch (error) {
+      // A page put under this one since the count above: the foreign key refuses the delete.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException('Move or delete the pages under this one first.');
+      }
+      throw error;
+    }
   }
 
   // Takes the user's first site membership — correct while every seeded user
@@ -316,32 +376,61 @@ export class ContentService {
   }
 
   /**
-   * The slug and path a page moves to, or null when the slug didn't actually change
-   * (CNT-04). Refuses, with words for the person, what can't be used. The path keeps
-   * everything before the last part: an entry stays under its type's prefix.
+   * Where a page moves to (CNT-04/05/06): a new slug, a new parent, or both, plus the
+   * address of every page below it. Null when nothing actually changes. Refuses, with
+   * words for the person, what can't be used; nothing is written until all of it passes.
    */
-  private async planRename(
+  private async planMove(
     siteId: string,
     role: Parameters<typeof hasPermission>[0],
-    existing: { slug: string; path: string; status: string; typeId: string | null },
-    requested: string,
-  ) {
+    existing: { id: string; slug: string; path: string; status: string; typeId: string | null; parentId: string | null },
+    requested: { slug?: string; parentId?: string | null },
+  ): Promise<
+    | { slug: string; parentId: string | null; path: string; inTree?: undefined }
+    | { slug: string; parentId: string | null; path?: undefined; inTree: (pages: TreePage[]) => { path: string; descendants: { id: string; path: string }[]; moves: PathMove[] } }
+    | null
+  > {
     const page = !existing.typeId;
-    const slug = normaliseSlug(requested);
-    if (slug === existing.slug) return null;
+    const slug = requested.slug === undefined ? existing.slug : normaliseSlug(requested.slug);
+    const parentId = requested.parentId === undefined ? existing.parentId : requested.parentId;
+    const slugChanged = slug !== existing.slug;
+    const parentChanged = parentId !== existing.parentId;
+    if (!slugChanged && !parentChanged) return null;
     if (existing.path === '/') throw new BadRequestException('The home page’s address can’t be changed.');
+    if (!page && parentId !== null) throw new BadRequestException('Only pages can sit under another page.');
     // Moving a live page changes the public site, so it sits at the same tier as
-    // publishing (D-053); anyone who can edit can still move a draft.
-    if (existing.status === 'published' && !hasPermission(role, 'content:publish')) {
-      throw new ForbiddenException('Missing permission: content:publish');
-    }
-    const problem = slugProblem(slug, page);
+    // publishing (D-053); anyone who can edit can still move a draft. Checked first,
+    // so a refused move says nothing about which addresses are taken.
+    const mayMoveLive = hasPermission(role, 'content:publish');
+    if (existing.status === 'published' && !mayMoveLive) throw new ForbiddenException('Missing permission: content:publish');
+
+    // Reserved words and type prefixes only matter at the top of the site, so a child
+    // page called "search" is fine until it moves up there.
+    const topLevel = page && parentId === null;
+    const problem = slugProblem(slug, topLevel);
     if (problem) throw new BadRequestException(problem);
-    if (page && (await this.types.prefixes(siteId)).includes(slug)) {
+    if (topLevel && (await this.types.prefixes(siteId)).includes(slug)) {
       throw new ConflictException(`/${slug} is the address of a content type’s listing. Choose a different address.`);
     }
-    if (await this.content.findBySlug(siteId, slug)) throw takenSlug(slug);
-    return { slug, path: `${existing.path.slice(0, existing.path.lastIndexOf('/'))}/${slug}` };
+    if (slugChanged && (await this.content.findBySlug(siteId, slug))) throw takenSlug(slug);
+
+    if (!page) return { slug, parentId: null, path: `${existing.path.slice(0, existing.path.lastIndexOf('/'))}/${slug}` };
+    // A page's new address depends on the tree, so it's worked out from the tree as it is
+    // inside the write's transaction, under the site's lock (ContentRepository.updateInTree).
+    return {
+      slug,
+      parentId,
+      inTree: (pages) => {
+        const plan = planMove(pages, existing.id, slug, parentId);
+        if (!plan.ok) throw plan.conflict ? new ConflictException(plan.problem) : new BadRequestException(plan.problem);
+        // A draft can have live pages below it: moving it moves them too.
+        if (!mayMoveLive && plan.moves.some((m) => m.status === 'published')) {
+          throw new ForbiddenException('Missing permission: content:publish');
+        }
+        const descendants = plan.moves.filter((m) => m.id !== existing.id).map((m) => ({ id: m.id, path: m.newPath }));
+        return { path: plan.path, descendants, moves: plan.moves };
+      },
+    };
   }
 
   // Slugs are unique across the whole site, because admin routes by slug alone.

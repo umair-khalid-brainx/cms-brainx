@@ -150,19 +150,27 @@ model Content {
   typeId   String? @map("type_id")
   // Who created it; the public entry header shows it (TYP-03). Null if that user is later removed.
   authorId String? @map("author_id")
+  // The page this one sits under (CNT-05): `/about/team` has `/about` as its parent. Pages only,
+  // within one site, at most 3 levels deep, never a loop; the rules live in ContentService.
+  // `path` is derived from it and recomputed for the whole subtree on a move (CNT-06, invariant 9).
+  parentId String? @map("parent_id")
 
   site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   type        ContentType? @relation(fields: [typeId], references: [id], onDelete: Restrict)
   author      User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  // Restrict: a page with children can't be deleted out from under them.
+  parent      Content?     @relation("PageTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Content[]    @relation("PageTree")
   previewLink PreviewLink?
   submissions Submission[]
 
   // Matches the actual read pattern (ARCHITECTURE.md: "fetch content by
-  // (site_id, path)"). path === slug for now since hierarchy is deferred.
+  // (site_id, path)"). `path` is derived from the parent chain (invariant 9).
   @@unique([siteId, path])
   // Admin routes by slug alone, so a slug is unique across the whole site, pages and
   // entries together (CNT-04). The service checks first; this catches two writes racing.
   @@unique([siteId, slug])
+  @@index([siteId, parentId])
   @@map("content")
 }
 

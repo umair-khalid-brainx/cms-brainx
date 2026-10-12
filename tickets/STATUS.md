@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 32, IN-PROGRESS 2, TODO 21 (56 tickets). Updated 2026-10-09. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
+**Totals:** BACKLOG 1, DONE 34, IN-PROGRESS 2, TODO 19 (56 tickets). Updated 2026-10-12. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
 
 ## M1 (week 1)
 
@@ -24,8 +24,8 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | FND-04 | Host to site resolution with cache | DONE | 0 |  |
 | XRP-02 | CI pipeline per repository | TODO | 0 |  |
 | CNT-04 | Slug handling and per-site uniqueness | DONE | 0 | 2026-10-09 (D-053) |
-| CNT-05 | Page hierarchy: parent, depth limit, cycle guard | TODO | 0 | Built in week 4, first (D-052) |
-| CNT-06 | Denormalised path and recursive recomputation | TODO | 0 | Built in week 4, first (D-052) |
+| CNT-05 | Page hierarchy: parent, depth limit, cycle guard | DONE | 0 | 2026-10-12 (D-054) |
+| CNT-06 | Denormalised path and recursive recomputation | DONE | 0 | 2026-10-12 (D-054) |
 | DEP-01a | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | TODO | 0 | Blocked on DEC-2 (domain) |
 
 ## M2 (week 2)
@@ -33,7 +33,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | Ticket | Title | Status | Tries | Note |
 |---|---|---|---|---|
 | GOV-08a | Minimal second tenant and host mapping | DONE | 0 |  |
-| CNT-07 | Next catch-all route, host resolution, render | DONE | 0 | Built before CNT-06; nested paths untested |
+| CNT-07 | Next catch-all route, host resolution, render | DONE | 0 | Nested paths checked on two hosts with CNT-06 |
 | CNT-08 | ISR revalidation on publish, host-inclusive cache key | DONE | 0 |  |
 | CNT-09 | Preview links (stored token, revocable) | DONE | 0 |  |
 | CNT-10 | Duplicate page | DONE | 0 |  |

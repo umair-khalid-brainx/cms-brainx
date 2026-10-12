@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { ApiError } from '../lib/api';
 import { getSession } from '../lib/auth';
-import { FieldValuesError, updatePageSettings, type PageSummary } from '../lib/contentApi';
+import { FieldValuesError, listArchivedPages, listPages, updatePageSettings, type PageSummary } from '../lib/contentApi';
+import { hasLiveBelow, parentChoices } from '../lib/pageTree';
 import { canPublishContent } from '../lib/roles';
 import { normaliseSlug, parentPath } from '../lib/slug';
 import { siteUrl } from '../data/site';
@@ -13,9 +14,11 @@ type Props = {
   page: PageSummary;
   /** "Page", or the type's singular name for an entry ("Post"). */
   kind: string;
+  /** Entries live under their type's address, so only pages get a parent (CNT-05). */
+  isEntry: boolean;
   /** Saves whatever the editor hasn't autosaved yet, so a move never strands an edit at the old address. */
   flushPending: () => Promise<void>;
-  onSaved: (page: PageSummary, change: 'title' | 'address') => void;
+  onSaved: (page: PageSummary) => void;
 };
 
 /**
@@ -26,7 +29,7 @@ type Props = {
  * A native modal <dialog>: the browser keeps focus inside it, closes it on Esc
  * and hands focus back to the button that opened it.
  */
-function PageSettingsPanel({ open, onClose, page, kind, flushPending, onSaved }: Props) {
+function PageSettingsPanel({ open, onClose, page, kind, isEntry, flushPending, onSaved }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   // Bumped on every open, so the fields start from what's saved each time instead
   // of keeping a half-typed draft from last time.
@@ -39,6 +42,25 @@ function PageSettingsPanel({ open, onClose, page, kind, flushPending, onSaved }:
   // Where a click started: dragging a text selection out onto the backdrop
   // shouldn't close the panel.
   const pressedOnBackdropRef = useRef(false);
+  // The site's pages, archived ones too (they're still in the tree the API checks): the
+  // parent picker's choices, and whether live pages sit below this one (CNT-05).
+  const [tree, setTree] = useState<PageSummary[] | null>(null);
+  const [treeError, setTreeError] = useState(false);
+  // Bumped after a move: the tree changed, so it's read again.
+  const [treeVersion, setTreeVersion] = useState(0);
+
+  useEffect(() => {
+    if (!open || isEntry) return;
+    let cancelled = false;
+    Promise.all([listPages(), listArchivedPages()])
+      .then(([active, archived]) => !cancelled && setTree([...active, ...archived]))
+      .catch(() => !cancelled && setTreeError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isEntry, page.id, treeVersion]);
+
+  const liveBelow = tree !== null && hasLiveBelow(tree, page.id);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -89,7 +111,7 @@ function PageSettingsPanel({ open, onClose, page, kind, flushPending, onSaved }:
               page={page}
               onSaved={(saved) => {
                 setAnnouncement('Title saved. The address stays the same.');
-                onSaved(saved, 'title');
+                onSaved(saved);
               }}
             />
             <AddressField
@@ -98,12 +120,29 @@ function PageSettingsPanel({ open, onClose, page, kind, flushPending, onSaved }:
               kind={kind}
               flushPending={flushPending}
               justSaved={addressSaved}
+              liveBelow={liveBelow}
               onSaved={(saved) => {
                 setAddressSaved(true);
+                setTreeVersion((count) => count + 1);
                 setAnnouncement(`Address saved. It is now ${siteUrl(saved.path)}.`);
-                onSaved(saved, 'address');
+                onSaved(saved);
               }}
             />
+            {isEntry ? null : (
+              <ParentField
+                key={`parent-${session}-${page.slug}`}
+                page={page}
+                tree={tree}
+                loadError={treeError}
+                liveBelow={liveBelow}
+                flushPending={flushPending}
+                onSaved={(saved) => {
+                  setTreeVersion((count) => count + 1);
+                  setAnnouncement(`Moved. The address is now ${siteUrl(saved.path)}.`);
+                  onSaved(saved);
+                }}
+              />
+            )}
           </section>
         </div>
       </div>
@@ -175,6 +214,7 @@ function AddressField({
   kind,
   flushPending,
   justSaved,
+  liveBelow,
   onSaved,
 }: {
   page: PageSummary;
@@ -182,6 +222,8 @@ function AddressField({
   flushPending: () => Promise<void>;
   /** This field was just remounted by its own save. */
   justSaved: boolean;
+  /** Live pages sit below this one, so moving it changes live addresses too. */
+  liveBelow: boolean;
   onSaved: (page: PageSummary) => void;
 }) {
   const id = useId();
@@ -194,8 +236,9 @@ function AddressField({
 
   const isHome = page.path === '/';
   const live = page.status === 'published';
-  // Moving a live page is a publishing-level change (D-053); the API enforces it.
-  const mayMove = !live || canPublishContent(getSession()?.memberships[0]?.role);
+  // Moving a live page, or one with live pages below it, is a publishing-level change
+  // (D-053, D-054); the API enforces it.
+  const mayMove = !(live || liveBelow) || canPublishContent(getSession()?.memberships[0]?.role);
   const origin = siteUrl('/');
   const before = `${parentPath(page.path)}/`;
   const normalised = normaliseSlug(slug);
@@ -331,9 +374,140 @@ function AddressField({
 
       {isHome ? <p className="page-settings-hint">The home page always lives at the site’s main address.</p> : null}
       {!isHome && !mayMove ? (
-        <p className="page-settings-hint">This {thing} is live, so only someone who can publish can change its address.</p>
+        <p className="page-settings-hint">
+          {live ? `This ${thing} is live` : `Pages under this ${thing} are live`}, so only someone who can publish can change its
+          address.
+        </p>
       ) : null}
     </div>
+  );
+}
+
+function ParentField({
+  page,
+  tree,
+  loadError,
+  liveBelow,
+  flushPending,
+  onSaved,
+}: {
+  page: PageSummary;
+  /** The site's pages, or null while they load. */
+  tree: PageSummary[] | null;
+  loadError: boolean;
+  liveBelow: boolean;
+  flushPending: () => Promise<void>;
+  onSaved: (page: PageSummary) => void;
+}) {
+  const id = useId();
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const choices = tree ? parentChoices(tree, page.id) : null;
+  const [parentId, setParentId] = useState(page.parentId ?? '');
+  // Narrows the list by title: with nested pages, the select's own type-to-jump isn't enough.
+  const [filter, setFilter] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isHome = page.path === '/';
+  const live = page.status === 'published';
+  const mayMove = !(live || liveBelow) || canPublishContent(getSession()?.memberships[0]?.role);
+  const changed = parentId !== (page.parentId ?? '');
+  const chosen = choices?.find((choice) => choice.page.id === parentId)?.page;
+  const newPath = `${chosen ? chosen.path : ''}/${page.slug}`;
+  const titles = new Map((choices ?? []).map(({ page: candidate }) => [candidate.id, candidate.title]));
+  const needle = filter.trim().toLowerCase();
+  // The current choice always stays in the list, so filtering never changes what's selected.
+  const shown = (choices ?? []).filter(
+    ({ page: candidate }) => !needle || candidate.id === parentId || candidate.title.toLowerCase().includes(needle),
+  );
+
+  if (isHome) return null;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!changed || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await flushPending();
+      onSaved(await updatePageSettings(page.slug, { parentId: parentId || null }));
+      // The Move button just turned itself off; focus stays on the choice instead of falling to the page.
+      requestAnimationFrame(() => selectRef.current?.focus());
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="page-settings-field" onSubmit={submit} noValidate>
+      <label htmlFor={`${id}-parent`}>Parent page</label>
+      {choices ? (
+        <input
+          type="search"
+          className="page-settings-filter"
+          placeholder="Find a page"
+          aria-label="Find a parent page by title"
+          aria-controls={`${id}-parent`}
+          value={filter}
+          disabled={!mayMove || saving}
+          onChange={(event) => setFilter(event.target.value)}
+        />
+      ) : null}
+      <div className="page-settings-row">
+        <select
+          ref={selectRef}
+          id={`${id}-parent`}
+          className="page-settings-select"
+          value={parentId}
+          disabled={!choices || !mayMove || saving}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={`${id}-parent-hint${error ? ` ${id}-parent-error` : ''}${changed && live ? ` ${id}-parent-live` : ''}`}
+          onChange={(event) => {
+            setParentId(event.target.value);
+            setError(null);
+          }}
+        >
+          <option value="">None (top level)</option>
+          {/* Title first, so typing a title jumps to it; where it sits comes after. */}
+          {shown.map(({ page: candidate, disabledReason }) => {
+            const notes = [
+              candidate.parentId && titles.has(candidate.parentId) ? `under ${titles.get(candidate.parentId)}` : null,
+              candidate.status === 'archived' ? 'archived' : null,
+              disabledReason,
+            ].filter(Boolean);
+            return (
+              <option key={candidate.id} value={candidate.id} disabled={disabledReason !== null && candidate.id !== page.parentId}>
+                {notes.length ? `${candidate.title} (${notes.join(', ')})` : candidate.title}
+              </option>
+            );
+          })}
+        </select>
+        <button type="submit" className="page-settings-button" disabled={!changed || saving}>
+          {saving ? 'Moving…' : 'Move page'}
+        </button>
+      </div>
+      <p id={`${id}-parent-hint`} className="page-settings-hint">
+        {loadError
+          ? 'Couldn’t load the list of pages. Close and reopen to try again.'
+          : !mayMove
+            ? `${live ? 'This page is live' : 'Pages under this page are live'}, so only someone who can publish can move it.`
+            : changed
+              ? `Will be ${siteUrl(newPath)}, and any pages under it move with it.`
+              : 'Pages can be nested up to 3 levels deep.'}
+      </p>
+      {changed && live ? (
+        <p id={`${id}-parent-live`} className="page-settings-warning">
+          This page is live. Links to its old address, and to pages under it, will stop working once you move it.
+        </p>
+      ) : null}
+      {error ? (
+        <p id={`${id}-parent-error`} className="page-settings-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </form>
   );
 }
 

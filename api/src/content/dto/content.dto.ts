@@ -12,6 +12,8 @@ export const createContentSchema = z.object({
   slug: z.string().min(1).optional(),
   // The address prefix of a content type (`events`): makes this an entry of that type (TYP-01).
   type: z.string().min(1).optional(),
+  // The page this one sits under (CNT-05). Pages only.
+  parentId: z.string().min(1).optional(),
   blocks: z.array(blockSchema).default([]),
   // The key of a starter layout (`landing`): the new page starts with its blocks (TYP-04). Not with `blocks`.
   layout: z.string().min(1).max(64).optional(),
@@ -25,6 +27,8 @@ export const updateContentSchema = z
     // A new slug (CNT-04): an explicit change, normalised and checked by the service.
     // The title never changes it.
     slug: z.string().max(200).optional(),
+    // Moves the page under another page, or to the top level with null (CNT-05). Pages only.
+    parentId: z.string().min(1).nullable().optional(),
     status: z.enum(['draft', 'published', 'archived']).optional(),
     blocks: z.array(blockSchema).optional(),
     // Values of a content type's custom fields, by field key (TYP-02). Entries only.

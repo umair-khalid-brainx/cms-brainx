@@ -1,6 +1,17 @@
-import { Injectable } from '@nestjs/common';
-import type { Prisma } from '../generated/prisma/client.js';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+
+const TREE_FIELDS = { id: true, parentId: true, slug: true, path: true, status: true } as const;
+// Waiting for the site's tree lock counts against the transaction's time, so allow more
+// than Prisma's 5 s: moves queue behind each other instead of failing.
+const TREE_TRANSACTION = { maxWait: 10_000, timeout: 20_000 };
+/** Every page of the site (never entries), just what the page tree needs (CNT-05). */
+function pageTree(client: Prisma.TransactionClient, siteId: string): Promise<TreePageRow[]> {
+  return client.content.findMany({ where: { siteId, typeId: null }, select: TREE_FIELDS });
+}
+
+export type TreePageRow = { id: string; parentId: string | null; slug: string; path: string; status: string };
 
 // Every method takes `siteId` as a required parameter (invariant 1) — there
 // is no method here that can read or write across tenants by accident.
@@ -26,6 +37,10 @@ export class ContentRepository {
 
   findBySlug(siteId: string, slug: string) {
     return this.prisma.content.findFirst({ where: { siteId, slug } });
+  }
+
+  countChildren(siteId: string, id: string) {
+    return this.prisma.content.count({ where: { siteId, parentId: id } });
   }
 
   /**
@@ -70,11 +85,53 @@ export class ContentRepository {
     return this.prisma.content.create({ data: { ...data, siteId } });
   }
 
-  update(siteId: string, slug: string, data: Prisma.ContentUpdateInput) {
-    // `updateMany` rather than `update` because the unique key we have is
-    // (siteId, path)/id, not (siteId, slug) — this keeps the write scoped to
-    // the tenant without a second existence check.
+  update(siteId: string, slug: string, data: Prisma.ContentUncheckedUpdateManyInput) {
+    // `updateMany` rather than `update` because it takes a where clause with
+    // `siteId` — this keeps the write scoped to the tenant without a second
+    // existence check.
     return this.prisma.content.updateMany({ where: { siteId, slug }, data });
+  }
+
+  /**
+   * A write that moves pages in the tree (CNT-05/06): `plan` gets the site's page tree as
+   * it is inside the transaction and returns this page's new path and the descendants'.
+   * One lock per site (a Postgres advisory lock, released at commit) runs moves and
+   * creates-under-a-parent one at a time, so two of them can never plan from the same
+   * old tree — no loop from two crossing moves, no child left at a stale path. The page
+   * and its descendants land together or not at all (invariant 9). `plan` may throw to
+   * refuse; nothing is written then.
+   */
+  updateInTree<T extends { path: string; descendants: { id: string; path: string }[] }>(
+    siteId: string,
+    slug: string,
+    data: Prisma.ContentUncheckedUpdateManyInput,
+    plan: (pages: TreePageRow[]) => T,
+  ): Promise<T> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${siteId}))`;
+      const planned = plan(await pageTree(tx, siteId));
+      const own = await tx.content.updateMany({ where: { siteId, slug }, data: { ...data, path: planned.path } });
+      // Deleted while we waited for the lock: don't move its children on its behalf.
+      if (own.count === 0) throw new NotFoundException('Page not found');
+      if (planned.descendants.length > 0) {
+        // The whole subtree in one statement, however many children, so the lock is held briefly.
+        const rows = Prisma.join(planned.descendants.map(({ id, path }) => Prisma.sql`(${id}, ${path})`));
+        await tx.$executeRaw`
+          UPDATE content AS c SET path = v.path
+          FROM (VALUES ${rows}) AS v(id, path)
+          WHERE c.site_id = ${siteId} AND c.id = v.id`;
+      }
+      return planned;
+    }, TREE_TRANSACTION);
+  }
+
+  /** Creates a page under a parent, under the same per-site lock as a move, so the parent can't move away meanwhile. */
+  createInTree(siteId: string, plan: (pages: TreePageRow[]) => Omit<Prisma.ContentUncheckedCreateInput, 'siteId'>) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${siteId}))`;
+      const data = plan(await pageTree(tx, siteId));
+      return tx.content.create({ data: { ...data, siteId } });
+    }, TREE_TRANSACTION);
   }
 
   delete(siteId: string, slug: string) {

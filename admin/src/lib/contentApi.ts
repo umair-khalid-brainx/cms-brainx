@@ -18,6 +18,9 @@ import { getSession } from './auth';
 export type PageStatus = 'draft' | 'published' | 'archived';
 
 export type PageSummary = {
+  id: string;
+  /** The page this one sits under (CNT-05); null at the top level and for entries. */
+  parentId: string | null;
   slug: string;
   title: string;
   path: string;
@@ -46,6 +49,8 @@ export type Page = PageSummary & {
 type FlatBlock = { type: string } & Record<string, unknown>;
 
 type ContentRecord = {
+  id: string;
+  parentId: string | null;
   slug: string;
   title: string;
   path: string;
@@ -140,7 +145,15 @@ function puckDataToBlocks(data: Data<EditorComponents>): FlatBlock[] {
 }
 
 function toSummary(record: ContentRecord): PageSummary {
-  return { slug: record.slug, title: record.title, path: record.path, status: record.status, archivedAt: record.archivedAt };
+  return {
+    id: record.id,
+    parentId: record.parentId,
+    slug: record.slug,
+    title: record.title,
+    path: record.path,
+    status: record.status,
+    archivedAt: record.archivedAt,
+  };
 }
 
 function requireSession() {
@@ -253,7 +266,10 @@ export async function setPageStatus(slug: string, status: PageStatus): Promise<P
 // A page's title and address, from the editor's Page settings (CNT-04). The API
 // normalises the slug and refuses one that's taken or reserved, with a message
 // for the person; the record that comes back has the slug actually saved.
-export async function updatePageSettings(slug: string, changes: { title?: string; slug?: string }): Promise<PageSummary> {
+export async function updatePageSettings(
+  slug: string,
+  changes: { title?: string; slug?: string; parentId?: string | null },
+): Promise<PageSummary> {
   const session = requireSession();
   const record = await apiSend<ContentRecord>('PATCH', `/content/${slug}`, changes, session.accessToken);
   return toSummary(record);

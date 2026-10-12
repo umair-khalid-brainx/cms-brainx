@@ -111,6 +111,10 @@
   border-bottom: none;
 }
 
+.pages-row-indent {
+  color: #8c8f94;
+}
+
 .pages-row-title {
   color: #1e1e1e;
   font-weight: 600;

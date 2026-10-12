@@ -5,6 +5,35 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Parent pages, and addresses that follow a move (`CNT-05`, `CNT-06` done)
+
+Decision in D-054.
+
+- `api`: `Content.parentId` (migration `20261012090000_add_content_parent`, `Restrict`). New
+  `api/src/content/page-tree.ts`: `planMove` rebuilds the path of a page and its whole subtree from the parent
+  links and checks the rules (3 levels, no loop, pages only, not under home, no clash). `ContentRepository`
+  `updateInTree`/`createInTree` read the tree and write inside one transaction under a per-site advisory lock;
+  `ContentService.planMove` replaces `planRename` (reserved words and type prefixes now only at the top level; a
+  move needs `content:publish` if any page that moves is live). Create, duplicate under a parent; delete refused
+  while children exist. `PATCH` answers with `moved: [{ from, to }]`. A transaction that waits too long in the
+  lock queue is a 409 "try again".
+- `admin`: `PageSummary` has `id`/`parentId`. `lib/pageTree.ts` (`orderAsTree`, `parentChoices`). Page settings
+  gained a Parent page picker (Find a page box, title-first options such as "Leads (under Team)", archived pages
+  included, impossible choices disabled with the reason, live warning, focus kept after a move). Pages list
+  indents children.
+- Tests: `page-tree.spec.ts` (invariant tests for recursive recomputation), 12 more service tests,
+  `pageTree.test.ts`. api 399, admin 110 pass; typecheck, lint, build clean.
+- Verified on `cms_wk4` (API `:4011`, admin `:5174`, web `:3010`): curl for every rule on two tenants; nested
+  pages 200 on their own host and 404 on the other; subtree rename and re-parent; two crossing moves fired at once
+  three times (one 200, one 400, never a loop); in the browser: picker, search, move and move back, live warning.
+  Review: changes requested (move list, lock, searchable picker, archived pages), all fixed, approved; verifier
+  passed after the picker fix; the user approved "(under Team)" in place of an indent.
+
+**Not done:** ISR isn't wired in this local setup (no `WEB_REVALIDATE_URL`), so a renamed page's old URL can stay
+cached on `web` until its 60 s revalidate; the API side is unit-tested. Sibling order isn't stored.
+
+---
+
 ## 2026-10-09 — Changing a page's address, and a Page settings panel (`CNT-04` done)
 
 First ticket of week 4 (`docs/WEEK4_PLAN.md`). Decision in D-053.

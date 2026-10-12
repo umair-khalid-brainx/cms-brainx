@@ -1,28 +1,40 @@
 ---
-diff_hash: 04397e2448b8602613862d84af56ee5758d3366ab2b6fdce6d0f5eaaa4924152
-reviewed_at: 2026-10-09T15:54:06Z
+diff_hash: ca5afc62cf9bc920b99bc2500129ea4c2461c61d200b8eb136582570d6923ef4
+reviewed_at: 2026-10-12T09:38:28Z
 ---
 
 ## Summary
 
-CNT-04: a page's or entry's title and address can be changed from a new Page settings panel in the editor.
+CNT-05 and CNT-06: pages can sit under a parent page, and moving a page recomputes the address of every page
+below it.
 
-- **api** (NestJS + Prisma): `PATCH /content/:slug` now accepts `slug`; `planRename` normalises it (new
-  `slug.ts`), refuses the home page, reserved words (pages only), a content type's listing address and a slug in
-  use anywhere in the site, and gates moving a live page behind `content:publish` (D-053). A new unique index on
-  `(site_id, slug)` backs the check, and a P2002 race maps to 409. Old and new paths are revalidated for live
-  pages. `slugify` now reuses `normaliseSlug` (accents stripped, 80-char cap).
-- **admin** (React): `PageSettingsPanel` (native modal `<dialog>`, title and address sections), a client copy of
-  `normaliseSlug` for the preview, and `EditorPage` changes so a move flushes pending autosaves first, keeps Puck
-  mounted (keyed by the slug it loaded under) and follows the new URL without reloading.
+- **api** (NestJS + Prisma): adds a `parent_id` column (self-relation, `ON DELETE RESTRICT`, index on
+  `(site_id, parent_id)`). A new pure module, `page-tree.ts`, holds `planMove` and `depthUnder`. They rebuild paths
+  from the parent links and refuse loops, a home-page parent, a parent from another site or an entry, nesting deeper
+  than 3 levels, and address clashes. `PATCH /content/:slug` accepts `parentId`. `planRename` became `planMove`,
+  and a page move runs in `ContentRepository.updateInTree`: one transaction under a per-site advisory lock, where the
+  page and all its descendants are written together (invariant 9). A create or duplicate under a parent uses
+  `createInTree` under the same lock. Reserved words only apply at the top level. A draft that has live pages below
+  it needs publish rights to move. Old and new addresses are revalidated for every live page that moved. A page
+  with children can't be permanently deleted (409). P2028 (transaction timeout) maps to 409.
+- **admin** (React): `pageTree.ts` (tree ordering plus parent choices with the reason each disabled one is refused),
+  the Pages list shows children indented under their parent, and Page settings gets a "Parent page" picker with a
+  title filter, a live-page warning and focus kept on the picker after a move. `EditorPage` now follows a new URL
+  only when the slug actually changed.
 
 Stack: no root marker (three independent projects, D-012). Reviewed `api/` against `resources/nestjs.md` and
-`admin/` against `resources/react.md`. Cross-repo contract checked: admin sends `{ title?, slug? }` to the same
-PATCH route and reads `slug`/`path` from the response, which matches the API change. Verified: api content tests
-(264) pass, admin slug tests (7) pass, `tsc` is clean in both. Also checked that Puck re-subscribes when its
-`onChange` prop changes (`chunk-55V3NZVF.mjs:13513`), so autosaves after a move use the new slug, not a stale one.
-Invariant 9 (descendant path recompute) does not bite yet: there is no hierarchy column, pages are flat, and an
-entry keeps its type prefix.
+`admin/` against `resources/react.md`. Cross-repo contract checked: admin sends `{ parentId: string | null }` to
+the same PATCH route and reads `id`/`parentId` from the list and update responses, which now include them (the API
+returns full rows). The extra `moved` field on the update response is ignored by admin, which is harmless. `web`
+already serves nested paths through its `[[...path]]` catch-all.
+
+Verified: api content tests (286) pass, admin lib tests (81) pass, `tsc --noEmit` is clean in both. In a scratch
+transaction on the local Postgres, deleting a site still cascades through a three-level self-referential `RESTRICT`
+chain (0 rows left), so the new FK doesn't break site deletion (`api/test/submissions.e2e-spec.ts` relies on that).
+The descendant loop can't hit the `(site_id, path)` unique index partway through: slugs are unique site-wide, so a
+new path can only equal its own page's old path. Admin and API keep separate copies of `MAX_DEPTH` and the tree
+rules. That's deliberate (independent repos, no shared code apart from `cms-blocks`; the admin copy says the API is
+the authority), so it isn't a finding.
 
 ## Findings
 
@@ -30,61 +42,81 @@ entry keeps its type prefix.
 
 ### High (0)
 
-### Medium (2)
-- **api/src/content/content.service.ts:349** — Creating a page still skips the reserved-word rule that a rename
-  now enforces. `uniqueSlug` only avoids content type prefixes, so `POST /content` with the title "Sitemap",
-  "Login" or "Search" makes a page at `/sitemap`, `/login`, `/search`, but renaming a page to the same slug is
-  refused with a 400. The new comment on `slugify` ("Created slugs and changed slugs follow the same rules") says
-  otherwise. The two paths should share `slugProblem` (with care for the `home` → `/` case in `create`), or the
-  comment should say what is different. *(consistency)*
+### Medium (1)
+- **admin/src/components/PageSettingsPanel.tsx:388** — A contributor moving a draft page that has live pages
+  under it gets a raw "Missing permission: content:publish" error. `mayMove` only looks at the page's own status, so
+  the parent picker (and the address field at :212) stays enabled and promises "any pages under it move with it."
+  Then the API refuses the move, correctly, because live pages would change address (`content.service.ts`
+  `planMove`, "A draft can have live pages below it"). *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: `uniqueSlug` builds `taken` from `this.types.prefixes(siteId)` only, never `RESERVED_PREFIXES`;
-    `planRename` calls `slugProblem(slug, page)`, which does. The same word is allowed on one path and refused
-    on the other, and a page at a reserved address can shadow routes later tickets add (SEO-02 sitemap, TAX-02
-    category pages).
+  - ai_reasoning: The API enforces this correctly, so it isn't a security problem. Only the UI disagrees with it.
+    `ParentField` already loads every page with `status` and `parentId` (`choices`), so it can tell whether any
+    page below this one is published. When one is, it can disable the move and show the same "only someone who can
+    publish can move it" hint used for a live page. As it stands, the person picks a parent, sees the preview
+    address and presses Move, and only then gets a permission string with no explanation. `AddressField` has the
+    same gap for a rename.
 
-- **admin/src/components/PageSettingsPanel.tsx:114** — An entry with a field value the API refuses can't be
-  moved, and the panel blames the connection. `flushPending` re-sends the unsaved edit before the move. For an
-  entry, `saveDraft` throws `FieldValuesError` when the API refuses a field value (400). That class extends
-  `Error`, not `ApiError`, so `errorMessage` shows "Couldn’t save. Check your connection and try again." The move
-  never happens, and nothing in the panel says which field to fix. *(correctness)*
+### Low (4)
+- **api/src/content/content.repository.ts:38** — `findPageTree` is never called by production code, only by the
+  test fake. The two real transactions (`updateInTree`, `createInTree`) each inline the same
+  `findMany({ where: { siteId, typeId: null }, select: TREE_FIELDS })` against `tx`. *(maintainability)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: `FieldValuesError extends Error` (`admin/src/lib/contentApi.ts:182`). When its save fails, the
-    autosave sets `dirtyRef.current = true`, so every later move attempt resends the bad value and fails the
-    same way. Handle `FieldValuesError` in `errorMessage` (e.g. "Fields not saved: …, fix them before changing
-    the address"). Another option is to skip the field-values half in the flush, because the blocks half already
-    saved.
+  - ai_reasoning: Dead repository surface, plus the same query written three times. If the tree query changes
+    (e.g. to exclude something), the copies can drift apart, and the fake would keep testing the unused one. Use a
+    small private helper that takes the client (`tree(client, siteId)`) for both transactions, or remove
+    `findPageTree` and have the fake mirror the inline query.
 
-### Low (1)
-- **api/src/content/slug.ts:13** — The accent-stripping regex `/[̀-ͯ]/g` is written with literal combining
-  characters. They're invisible in most editors and easy to break with a reformat or copy. The same code is in
-  `admin/src/lib/slug.ts:11`. `/[̀-ͯ]/g` behaves the same and can be read. *(maintainability)*
+- **api/src/content/content.service.ts:301** — `remove` counts children and then deletes, outside the per-site
+  tree lock. If a page is created or moved under this archived page between the two calls (archived pages are
+  offered as parents), the FK's `RESTRICT` rejects the delete with a Prisma P2003. That error isn't mapped, so the
+  person gets a 500 instead of the 409 "Move or delete the pages under this one first." *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: The regex works today (the shared accent test cases pass in both repos), but nobody can review
-    the character range by eye, and an editor or formatter that changes the combining characters would quietly
-    stop accents from being stripped.
+  - ai_reasoning: The data stays safe, because the database refuses the delete. Only the response is wrong, and the
+    window is narrow. Either catch a foreign-key violation (P2003) around `this.content.delete` and throw the same
+    `ConflictException`, or run the count and the delete under the same advisory lock.
+
+- **api/src/content/content.repository.ts:116** — Inside the locked transaction, descendant paths are written one
+  `updateMany` per page. A parent with many children makes N sequential round trips while holding the site's tree
+  lock and counting against the 20 s timeout. *(efficiency)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: The result is correct, and depth is capped at 3, but breadth isn't. A single
+    `UPDATE content AS c SET path = v.path FROM (VALUES …) AS v(id, path) WHERE c.site_id = $1 AND c.id = v.id`
+    via `$executeRaw` (with `Prisma.join` for bound values) would write the whole subtree in one statement. At
+    current site sizes this can reasonably be deferred.
+
+- **api/prisma/schema.prisma:168** — The comment on `@@unique([siteId, path])` still says "path === slug for now
+  since hierarchy is deferred". This diff adds the hierarchy, and the new comment on `parentId` a few lines above
+  says the opposite. *(maintainability)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: A stale comment on the exact constraint the subtree recompute relies on. The project rule is that
+    when the code and a doc disagree, the doc is fixed in the same pass. Reword it to say `path` is derived from the
+    parent chain (invariant 9).
 
 ## Reviewed files
-- .code-reviews/brainx-review.md (deleted, previous review — not reviewed)
+- .code-reviews/brainx-review.md (staged deletion of the previous review; replaced by this file)
 - admin/src/components/PageSettingsPanel.css
 - admin/src/components/PageSettingsPanel.tsx
 - admin/src/lib/contentApi.ts
-- admin/src/lib/slug.test.ts
-- admin/src/lib/slug.ts
-- admin/src/pages/EditorPage.css
+- admin/src/lib/pageTree.test.ts
+- admin/src/lib/pageTree.ts
 - admin/src/pages/EditorPage.tsx
-- api/prisma/migrations/20261009160000_unique_content_slug_per_site/migration.sql
+- admin/src/pages/PagesListPage.css
+- admin/src/pages/PagesListPage.tsx
+- api/prisma/migrations/20261012090000_add_content_parent/migration.sql
 - api/prisma/schema.prisma
+- api/src/content/content.repository.ts
 - api/src/content/content.service.spec.ts
 - api/src/content/content.service.ts
 - api/src/content/dto/content.dto.ts
-- api/src/content/slug.spec.ts
-- api/src/content/slug.ts
-- docs/BACKLOG.md (skimmed)
-- docs/DECISIONS.md (skimmed)
-- docs/WORKLOG.md (skimmed)
-- tickets/CNT-04.md (skimmed)
-- tickets/STATUS.md (skimmed)
+- api/src/content/page-tree.spec.ts
+- api/src/content/page-tree.ts
+- docs/DECISIONS.md (not reviewed, docs only)
+- docs/WORKLOG.md (not reviewed, docs only)
+- tickets/CNT-05.md (not reviewed, docs only)
+- tickets/CNT-06.md (not reviewed, docs only)
+- tickets/STATUS.md (not reviewed, docs only)
