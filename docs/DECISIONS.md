@@ -8,6 +8,30 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-064 — 2026-10-12 — Week 5 scope: scheduling and Viewer in GOV-07, placeholder tenants, scripts-only deploy
+
+Agreed with the user in the week 5 ticket review (`docs/WEEK5_PLAN.md`).
+
+- **Scheduled publishing goes into `GOV-07`.** Req. 1 ("schedule pages for future publication"), req. 3 ("scheduled status")
+  and req. 8 ("published immediately or scheduled") ask for it and no ticket had it. A reviewer approves to "now" or to a
+  date and time; publishers can schedule directly.
+- **Reviewers are Owner, Administrator and Editor**, through a new `content:review` permission. Author keeps
+  `content:publish` (it can publish directly, as in WordPress) but can't approve someone else's work. A page in review is
+  locked until it's reviewed or withdrawn, so the reviewer approves exactly what was submitted.
+- **A Viewer role is added** (req. 7 lists it; only five roles existed): `content:read` only.
+- **DEC-3 resolved: Corrick Oyster Co. and Kestrel Rigging are kept** as the demo tenants. Swapping them later is a re-seed.
+- **DEC-5 resolved: the production API is `api.<domain>`**, nginx proxying to `127.0.0.1:4000`. 4001 is only this Mac's
+  workaround for Local.
+- **No server or domain yet (DEC-2 open), so `DEP-01b` writes and tests the deploy scripts locally.** `DEP-01a`'s server-side
+  files (nginx, pm2) are written there too; `DEP-01a` stays open until a real box exists.
+- **`FND-03` (tenant invariant tests) is folded into `GOV-08b`'s cross-tenant bug hunt**, which writes those tests anyway.
+- **Custom domains (`DEP-02`) can be entered and are stored as Pending**; nothing verifies DNS or serves the site on them.
+- **Demo photos are free-licensed stock**, each approved by the user before download.
+- **Week 5 is re-estimated** in `docs/WEEK5_PLAN.md` (~5.4 d): GOV-07 0.90, DEP-02 0.30, GOV-08b 0.80, DEP-03 0.80, DEP-01b
+  1.00, DEP-04 1.50. `EXECUTION_PLAN.md`'s table and the ticket headers carry the new numbers.
+
+---
+
 ## D-062 — 2026-10-12 — Revisions: full snapshots, taken after the save, one autosave row per 10 minutes (`GOV-01`)
 
 **Options considered:**

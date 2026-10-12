@@ -2,14 +2,16 @@
 - Milestone: M5 (week 5)
 - Depends on: GOV-08a, GOV-04
 - Use cases: none yet (no docs/use-cases.md)
-- Estimate: 0.70 days, band D (see EXECUTION_PLAN.md "Bands")
+- Estimate: 0.80 days, band D (re-estimated in docs/WEEK5_PLAN.md, D-064)
 ## Goal
 The second tenant is fully branded with real content, and a cross-tenant bug hunt is done.
 ## Definition of Done
-_Items marked Draft were written from the plan, decisions and code, not from use cases. Confirm them before `/build`._
-- [ ] Draft: second tenant has its own theme, header, footer and several pages
-- [ ] Draft: every public and admin route is checked with both tenants for leaks
-- [ ] Draft: any leak found gets an invariant test
+_Confirmed with the user on 2026-10-12 (docs/WEEK5_PLAN.md)._
+- [ ] Kestrel has its own logo, tagline, footer note, header and footer menus and at least five pages, including nested ones and a contact form
+- [ ] A repeatable cross-tenant spec calls every admin route as one tenant's owner with the other tenant's slugs and ids and gets 404/403; every public route on both hosts shows only its own data; an ISR refresh on one host leaves the other's cache HIT
+- [ ] A check that nothing outside a repository imports `PrismaService` (FND-03, folded in)
+- [ ] Every leak found is fixed with its own test and listed in WORKLOG
 - [ ] All tests pass. Reviewer approved. Verifier passed.
+
 ## Technical notes
 Depends on `GOV-08a`, `GOV-04`. Root invariant 6: test with two hosts.

@@ -20,13 +20,13 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | CNT-01 | Content CRUD API, tenant-scoped | DONE | 0 |  |
 | CNT-02 | Admin content list and edit screens | DONE | 0 |  |
 | CNT-03 | Publish states and transitions | DONE | 0 |  |
-| FND-03 | Tenant invariant tests | TODO | 0 |  |
+| FND-03 | Tenant invariant tests | TODO | 0 | Folded into GOV-08b (WEEK5_PLAN.md) |
 | FND-04 | Host to site resolution with cache | DONE | 0 |  |
 | XRP-02 | CI pipeline per repository | TODO | 0 |  |
 | CNT-04 | Slug handling and per-site uniqueness | DONE | 0 | 2026-10-09 (D-053) |
 | CNT-05 | Page hierarchy: parent, depth limit, cycle guard | DONE | 0 | 2026-10-12 (D-054) |
 | CNT-06 | Denormalised path and recursive recomputation | DONE | 0 | 2026-10-12 (D-054) |
-| DEP-01a | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | TODO | 0 | Blocked on DEC-2 (domain) |
+| DEP-01a | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | TODO | 0 | Blocked on DEC-2 (domain); its files are written in DEP-01b |
 
 ## M2 (week 2)
 

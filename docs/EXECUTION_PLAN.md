@@ -50,9 +50,9 @@ Cut order if a week overruns: **GOV-02** (revision comparison), then **GOV-03** 
 | -- | -------- | ----- | --------- | ------ | ------ |
 | DEC-1 | How blocks are shared between editor and public renderer | Saad | Day 2 | XRP-01, BLK-03, BLK-04 | **resolved 2026-08-31** &mdash; D-008 |
 | DEC-2 | Domain with DNS control for a wildcard record | CEO | Day 3 | DEP-01a, CNT-08 | open |
-| DEC-3 | Two demo tenant identities: industry, brand, content direction | CEO | End of week 3 | GOV-08b, DEP-03 | open &mdash; placeholders in code |
+| DEC-3 | Two demo tenant identities: industry, brand, content direction | CEO | End of week 3 | GOV-08b, DEP-03 | **resolved 2026-10-12** &mdash; Corrick Oyster Co. and Kestrel Rigging kept (D-064) |
 | DEC-4 | Confirm the out-of-scope list | CEO | Day 3 | everything | open |
-| DEC-5 | Production API subdomain and port | Saad | Week 5 | DEP-01b | open |
+| DEC-5 | Production API subdomain and port | Saad | Week 5 | DEP-01b | **resolved 2026-10-12** &mdash; `api.<domain>`, nginx to port 4000 (D-064) |
 
 ## Tickets
 
@@ -175,8 +175,8 @@ What makes it read as a real product rather than a page editor: roles, review, h
 | `GOV-04` | Header and footer content and branding | A | 0.20 | 4 | BLK-01 |
 | `GOV-05` | Redirect engine and auto-redirect on slug change | B | 0.40 | 4 | CNT-04 |
 | `GOV-06` | Roles as data, five seeded, site members | B | 0.55 | 4 | FND-05 |
-| `GOV-07` | Submit for review and reviewer queue | B | 0.40 | 5 | CNT-03, GOV-06 |
-| `GOV-08b` | Second tenant branding, content, cross-tenant bug hunt | D | 0.70 | 5 | GOV-08a, GOV-04 |
+| `GOV-07` | Submit for review and reviewer queue | C | 0.90 | 5 | CNT-03, GOV-06 |
+| `GOV-08b` | Second tenant branding, content, cross-tenant bug hunt | D | 0.80 | 5 | GOV-08a, GOV-04 |
 
 ### DEP — Deploy and demo prep  ·  3.85d  ·  infrastructure
 
@@ -185,10 +185,10 @@ The least-compressible work in the project at 23% of remaining effort. The agent
 | ID | Ticket | Band | Days | Wk | Depends on |
 | -- | ------ | ---- | ---- | -- | ---------- |
 | `DEP-01a` | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | E | 0.40 | 1 | DEC-2 |
-| `DEP-01b` | Deploy script, three-app topology, rollback | E | 0.80 | 5 | DEP-01a |
-| `DEP-02` | Domains screen, UI only | A | 0.15 | 5 | GOV-06 |
+| `DEP-01b` | Deploy script, three-app topology, rollback | E | 1.00 | 5 | DEP-01a |
+| `DEP-02` | Domains screen, UI only | A | 0.30 | 5 | GOV-06 |
 | `DEP-03` | Realistic seed content for both tenants | E | 0.80 | 5 | GOV-08b, DEC-3 |
-| `DEP-04` | Bug fixing and demo rehearsal | D | 1.70 | 5 | DEP-03 |
+| `DEP-04` | Bug fixing and demo rehearsal | D | 1.50 | 5 | DEP-03 |
 
 ## Out of scope
 
