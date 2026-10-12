@@ -1,5 +1,6 @@
+import { useSyncExternalStore } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router'
-import { clearSession, getSession } from '../lib/auth'
+import { clearSession, getSession, subscribeSession } from '../lib/auth'
 import { useContentTypes } from '../lib/contentTypesContext'
 import { canManageSite, canManageTeam, canReadSubmissions } from '../lib/roles'
 import './AdminLayout.css'
@@ -95,7 +96,8 @@ function initials(name: string): string {
 function AdminLayout() {
   const navigate = useNavigate()
   const session = getSession()
-  const siteName = session?.memberships[0]?.siteName ?? 'No site'
+  // Subscribed, so a new site title saved in Settings shows here at once (GOV-04), not after a reload.
+  const siteName = useSyncExternalStore(subscribeSession, () => getSession()?.memberships[0]?.siteName ?? 'No site')
   const userName = session?.user.name ?? 'Unknown user'
   // Affordance only (admin/CLAUDE.md invariant 3) — hiding the nav item for
   // a role that can't manage the team is UX, not the real gate; the API

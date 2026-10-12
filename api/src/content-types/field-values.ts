@@ -59,6 +59,23 @@ export function mediaValue(siteId: string) {
     .transform((url) => url.replace(pattern, '$1'));
 }
 
+/**
+ * Empty, or a file from this site's own library (see `mediaValue`), with the library rule's
+ * message otherwise. For settings where a picture is optional: a social image, a logo.
+ */
+export function optionalMediaValue(siteId: string) {
+  return z
+    .string()
+    .default('')
+    .transform((value, ctx) => {
+      if (value.trim() === '') return '';
+      const file = mediaValue(siteId).safeParse(value);
+      if (file.success) return file.data;
+      for (const issue of file.error.issues) ctx.addIssue({ code: 'custom', message: issue.message });
+      return z.NEVER;
+    });
+}
+
 function selectValue(options: readonly string[] = []) {
   return z.string().refine((value) => options.includes(value), 'Choose one of the listed options');
 }

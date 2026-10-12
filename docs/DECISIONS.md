@@ -8,6 +8,43 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-058 — 2026-10-12 — Site identity: stored once, refreshed by tag (`GOV-04`)
+
+**Decision (the week 4 plan, D-052; the logo and the refresh method are the parts worth recording):**
+
+- **`Site.settings`** holds the tagline, the footer note and a logo; the **title stays `Site.name`**, the column every
+  picker and page title already uses. `PATCH /sites/:siteId/settings` (`site:manage`: owners and administrators) takes any
+  of the four and changes only those; `GET /sites/:siteId` now returns them too (every role may read). Limits: 100, 120 and 400
+  characters; nothing is written if any part is refused.
+- **The logo is a picture from the site's own library.** The same rule as the social image (`SEO-01`) keeps another
+  site's folder out, and the service also checks that the file is in this library and is an image, so a deleted or
+  non-image file is refused. On the public site a logo whose file has since left the library is simply not shown.
+- **Header and footer:** the logo replaces the name in the header (its alternative text is the site name); the
+  tagline sits beside it and the footer note under the name, each only when set. **The logo is the last social image
+  fallback** (after a chosen image and an entry's featured picture), with the site name as its alternative text.
+- **A settings change refreshes every page of that site, by tag.** `web` reads the site, and each page, with a
+  per-site cache tag (`site:<subdomain>`); the revalidate endpoint, called without a path, refreshes that tag.
+  Refreshing a path or a layout did not work: the header comes from the site data every page reads, and a page's own tags
+  and social picture are worked out from the site's name and logo, and only a tag reaches those cached reads. One site's
+  tag never touches another's (invariant 6). Checked: after a title, tagline or logo change, every page of that site
+  (home, nested, an entry, a listing) showed it on the very next request, and the other site's pages were unchanged.
+- **The logo counts as "in use" in the media library.** The warning before Delete lists "The site's logo (every page)" next to
+  the pages that use a file, and deleting the file takes the logo off the site and refreshes every page, so no cached header
+  keeps pointing at a missing file. One helper (`MediaRepository.findImage`) decides what a usable picture is, for saving a logo
+  or a social image and for showing it; a logo path is checked again on the way out, so a value edited by hand in the database
+  never becomes a picture address; and the logo is only looked up when nothing else would be a page's social picture.
+- **The admin follows at once:** the Settings card saves through the API and updates the stored session, and the site
+  picker in the layout subscribes to the session, so a new title shows in the top bar without a reload. The stand-in values
+  in `admin/src/data/site.ts` are gone.
+
+**Costs and limits:** no per-page logo, no separate dark-mode logo, no favicon. Anyone can read the site's settings in the admin
+(they are public on the site anyway). The header's navigation and the footer's link groups come with `GOV-03`. Two admins saving
+different settings at the very same moment can overwrite each other: a save reads the current settings, merges what it was sent and
+writes the whole object (acceptable for a site with a couple of administrators; B-31). Each page cache miss reads the site and its logo
+again for the page's tags, on the API side only (B-31).
+
+---
+
 ## D-057 — 2026-10-12 — Sitemap and robots.txt: per tenant, built on every request (`SEO-02`)
 
 **Decision (the week 4 plan, D-052; one part changed after testing):**

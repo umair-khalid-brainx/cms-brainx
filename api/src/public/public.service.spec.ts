@@ -355,6 +355,10 @@ describe('PublicService.getPage SEO (SEO-01)', () => {
       findByFilenames: vi.fn(async (siteId: string, names: string[]) =>
         siteId === 'site-a' ? library.filter((file) => names.includes(file.filename)).map((file) => ({ ...file, title: null })) : [],
       ),
+      findImage: vi.fn(async (siteId: string, path: string) => {
+        const file = siteId === 'site-a' ? library.find((candidate) => candidate.filename === path.slice(path.lastIndexOf('/') + 1)) : undefined;
+        return file && file.mimetype.startsWith('image/') ? { filename: file.filename, alt: file.alt } : null;
+      }),
       findAltsByFilenames: vi.fn(async () => []),
     };
     return new PublicService(
@@ -456,5 +460,123 @@ describe('PublicService.getSitemap past the limit (SEO-02)', () => {
     const { entries } = await service.getSitemap('alpha');
     expect(entries).toHaveLength(50_000);
     expect(entries.at(-1)?.path).toBe('/p49999');
+  });
+});
+
+describe('PublicService.getSite branding (GOV-04)', () => {
+  const site = (settings: unknown) => ({ id: 'site-a', name: 'Corrick', subdomain: 'alpha', themeJson: {}, settings });
+
+  function setup(settings: unknown, library: { filename: string; mimetype: string; alt: string | null }[] = []) {
+    const sites = { findById: vi.fn(async () => site(settings)) };
+    const content = { findLiveByPath: vi.fn(async () => null) };
+    const media = {
+      findByFilenames: vi.fn(async (siteId: string, names: string[]) =>
+        siteId === 'site-a' ? library.filter((file) => names.includes(file.filename)).map((file) => ({ ...file, title: null })) : [],
+      ),
+      findImage: vi.fn(async (siteId: string, path: string) => {
+        const file = siteId === 'site-a' ? library.find((candidate) => candidate.filename === path.slice(path.lastIndexOf('/') + 1)) : undefined;
+        return file && file.mimetype.startsWith('image/') ? { filename: file.filename, alt: file.alt } : null;
+      }),
+      findAltsByFilenames: vi.fn(async () => []),
+    };
+    return new PublicService(
+      sites as unknown as SiteRepository,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async () => 'site-a') } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      media as unknown as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
+      {} as RedirectRepository,
+    );
+  }
+
+  it('returns the tagline, the footer note and the logo as a full address', async () => {
+    const service = setup({ tagline: 'River oysters', footerNote: 'Since 1980', logo: '/uploads/sitea/l1.png' }, [
+      { filename: 'l1.png', mimetype: 'image/png', alt: null },
+    ]);
+    expect(await service.getSite('alpha')).toMatchObject({
+      name: 'Corrick',
+      tagline: 'River oysters',
+      footerNote: 'Since 1980',
+      logo: { url: 'http://api.test/uploads/sitea/l1.png' },
+    });
+  });
+
+  it('ignores a logo path that was edited by hand into something that is not this site’s library file', async () => {
+    for (const logo of ['javascript:alert(1)', 'https://evil.com/a.png', '/uploads/othersite/l1.png', '/uploads/sitea/../x.png']) {
+      const service = setup({ logo }, [{ filename: 'l1.png', mimetype: 'image/png', alt: null }]);
+      expect((await service.getSite('alpha')).logo).toBeNull();
+    }
+  });
+
+  it('returns empty values and no logo for a site that never set them, or whose logo left the library', async () => {
+    expect(await setup({}).getSite('alpha')).toMatchObject({ tagline: '', footerNote: '', logo: null });
+    expect((await setup({ logo: '/uploads/sitea/gone.png' }).getSite('alpha')).logo).toBeNull();
+  });
+
+  it('never exposes the stored settings object itself', async () => {
+    const json = JSON.stringify(await setup({ tagline: 'T', logo: '' }).getSite('alpha'));
+    expect(json).not.toContain('settings');
+    expect(json).not.toContain('siteId');
+  });
+});
+
+
+describe('PublicService.getPage looks the logo up only when it would be the picture (GOV-04)', () => {
+  function setup(seo: unknown) {
+    const withLogo = { findById: vi.fn(async () => ({ id: 'site-a', name: 'Alpha', settings: { logo: '/uploads/sitea/logo.png' } })) };
+    const content = {
+      findLiveByPath: vi.fn(async () => ({
+        id: 'p1',
+        siteId: 'site-a',
+        title: 'About',
+        path: '/about',
+        status: 'published',
+        blocks: [],
+        data: {},
+        seo,
+        updatedAt: new Date('2026-10-12'),
+        publishedAt: null,
+        author: null,
+        type: null,
+      })),
+    };
+    const files = [
+      { filename: 'logo.png', mimetype: 'image/png', alt: null },
+      { filename: 'chosen.png', mimetype: 'image/png', alt: null },
+    ];
+    const media = {
+      findImage: vi.fn(async (_siteId: string, path: string) => {
+        const file = files.find((candidate) => candidate.filename === path.slice(path.lastIndexOf('/') + 1));
+        return file ? { filename: file.filename, alt: file.alt } : null;
+      }),
+      findAltsByFilenames: vi.fn(async () => []),
+    };
+    const service = new PublicService(
+      withLogo as unknown as SiteRepository,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async () => 'site-a') } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      media as unknown as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
+    );
+    return { service, media };
+  }
+
+  it('a page with a social image of its own never looks the logo up', async () => {
+    const { service, media } = setup({ ogImage: '/uploads/sitea/chosen.png' });
+    expect((await service.getPage('alpha', '/about')).seo.social.image?.url).toContain('chosen.png');
+    expect(media.findImage).toHaveBeenCalledTimes(1);
+  });
+
+  it('a page with nothing of its own looks it up and uses it', async () => {
+    const { service, media } = setup({});
+    expect((await service.getPage('alpha', '/about')).seo.social.image?.url).toContain('logo.png');
+    expect(media.findImage).toHaveBeenCalledTimes(1);
   });
 });

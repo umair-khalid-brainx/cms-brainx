@@ -48,8 +48,11 @@ describe('MediaService', () => {
     updateSize: ReturnType<typeof vi.fn>;
     updateDetails: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    isSiteLogo: ReturnType<typeof vi.fn>;
+    clearSiteLogo: ReturnType<typeof vi.fn>;
   };
-  let revalidation: { page: ReturnType<typeof vi.fn> };
+  let revalidation: { page: ReturnType<typeof vi.fn>; site: ReturnType<typeof vi.fn> };
   let content: { findReferencing: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
@@ -67,8 +70,11 @@ describe('MediaService', () => {
       updateSize: vi.fn(async () => ({ count: 1 })),
       updateDetails: vi.fn(async () => ({ count: 1 })),
       create: vi.fn(async (data: Record<string, unknown>) => ({ id: 'new', ...data })),
+      delete: vi.fn(async () => ({ count: 1 })),
+      isSiteLogo: vi.fn(async () => false),
+      clearSiteLogo: vi.fn(async () => {}),
     };
-    revalidation = { page: vi.fn(async () => {}) };
+    revalidation = { page: vi.fn(async () => {}), site: vi.fn(async () => {}) };
     content = { findReferencing: vi.fn(async () => [{ id: 'c1', title: 'Home', path: 'home', status: 'published' }]) };
     // MediaService joins UPLOADS_DIR onto cwd, so it has to be relative.
     const uploadsDir = relative(process.cwd(), uploadsRoot);
@@ -149,6 +155,31 @@ describe('MediaService', () => {
 
     it('404s for a file that is not in the caller’s site', async () => {
       await expect(service.usage('user-1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('lists the site’s logo first when the file is the logo, since every page shows it (GOV-04)', async () => {
+      media.isSiteLogo.mockResolvedValueOnce(true);
+      const pages = await service.usage('user-1', RECORD.id);
+      expect(media.isSiteLogo).toHaveBeenCalledWith(SITE, RECORD.filename);
+      expect(pages[0]).toMatchObject({ title: 'The site’s logo', path: '(every page)' });
+      expect(pages).toHaveLength(2);
+    });
+  });
+
+  describe('remove and the site’s logo (GOV-04)', () => {
+    it('deleting the logo takes it off the site and refreshes every page of the site', async () => {
+      media.isSiteLogo.mockResolvedValueOnce(true);
+      await service.remove('user-1', RECORD.id);
+      expect(media.delete).toHaveBeenCalledWith(SITE, RECORD.id);
+      expect(media.clearSiteLogo).toHaveBeenCalledWith(SITE);
+      expect(revalidation.site).toHaveBeenCalledExactlyOnceWith('alpha');
+    });
+
+    it('deleting any other file leaves the site alone', async () => {
+      await service.remove('user-1', RECORD.id);
+      expect(media.delete).toHaveBeenCalledWith(SITE, RECORD.id);
+      expect(media.clearSiteLogo).not.toHaveBeenCalled();
+      expect(revalidation.site).not.toHaveBeenCalled();
     });
   });
 

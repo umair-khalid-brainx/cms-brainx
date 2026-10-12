@@ -230,15 +230,27 @@ export class MediaService {
     if (!record) throw new NotFoundException('Media not found');
     // Match on the host-independent part of the URL, so a page saved under a
     // different API_PUBLIC_URL still counts as using the file.
-    return this.content.findReferencing(siteId, `/uploads/${siteId}/${record.filename}`);
+    const pages = await this.content.findReferencing(siteId, `/uploads/${siteId}/${record.filename}`);
+    // The site's logo is shown on every page, so it counts too (GOV-04): the warning before Delete says so.
+    const logo = (await this.media.isSiteLogo(siteId, record.filename))
+      ? [{ id: siteId, title: 'The site’s logo', path: '(every page)', status: 'published' }]
+      : [];
+    return [...logo, ...pages];
   }
 
   async remove(userId: string, id: string): Promise<void> {
-    const siteId = await this.resolveSiteId(userId);
+    const membership = await this.resolveMembership(userId);
+    const { siteId } = membership;
     const record = await this.media.findById(siteId, id);
     if (!record) throw new NotFoundException('Media not found');
 
+    // A deleted logo is taken off the site and every page is refreshed, so no header keeps pointing at a missing file.
+    const wasLogo = await this.media.isSiteLogo(siteId, record.filename);
     await this.media.delete(siteId, id);
+    if (wasLogo) {
+      await this.media.clearSiteLogo(siteId);
+      await this.revalidation.site(membership.site.subdomain);
+    }
     // Best-effort: the DB row is the source of truth for what the library
     // shows, so a leftover orphaned file if this fails isn't user-visible —
     // but it shouldn't fail the request either.

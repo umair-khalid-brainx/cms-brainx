@@ -61,6 +61,13 @@ describe('listingMetadata and notFoundMetadata', () => {
     assert.equal(meta.alternates?.canonical, 'https://corrick.example.com/blog');
   });
 
+  it('a listing uses the site’s logo as its card picture when there is one', () => {
+    const meta = listingMetadata({ origin: input.origin, path: '/blog', typeName: 'Posts', siteName: 'Corrick', logoUrl: 'https://api/logo.png' });
+    assert.deepEqual((meta.openGraph as { images: unknown }).images, [{ url: 'https://api/logo.png', alt: 'Corrick' }]);
+    assert.equal((meta.twitter as { card: string }).card, 'summary_large_image');
+    assert.equal((listingMetadata({ origin: input.origin, path: '/blog', typeName: 'Posts', siteName: 'Corrick' }).twitter as { card: string }).card, 'summary');
+  });
+
   it('a missing page says so, on the site’s name (B-15)', () => {
     assert.equal(notFoundMetadata('Corrick').title, 'Page not found · Corrick');
   });

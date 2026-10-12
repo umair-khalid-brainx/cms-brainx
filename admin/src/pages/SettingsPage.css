@@ -67,13 +67,28 @@
   box-sizing: border-box;
 }
 
-.settings-form input:focus {
+.settings-form textarea {
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #949494;
+  border-radius: 4px;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.settings-form input:focus,
+.settings-form textarea:focus {
   outline: 2px solid #2271b1;
   outline-offset: -1px;
   border-color: #2271b1;
 }
 
-.settings-form input:disabled {
+.settings-form input:disabled,
+.settings-form textarea:disabled {
   background: #f0f0f1;
   color: #6b7280;
 }
@@ -235,13 +250,15 @@
     color: #d4d4d4;
   }
 
-  .settings-form input {
+  .settings-form input,
+  .settings-form textarea {
     background: #1a1a1a;
     border-color: #444;
     color: #ededed;
   }
 
-  .settings-form input:disabled {
+  .settings-form input:disabled,
+  .settings-form textarea:disabled {
     background: #232323;
     color: #9ca3af;
   }
@@ -288,5 +305,106 @@
 
   .settings-account-note {
     color: #9ca3af;
+  }
+}
+
+/* The logo field of Site Identity (GOV-04): a preview, then Choose / Remove. */
+.settings-label {
+  margin-top: 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.settings-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.settings-logo-preview {
+  display: grid;
+  place-items: center;
+  width: 9rem;
+  height: 4rem;
+  flex: none;
+  border: 1px dashed #949494;
+  border-radius: 4px;
+  background: #f6f7f7;
+  overflow: hidden;
+}
+
+.settings-logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.settings-logo-empty {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.settings-logo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settings-secondary {
+  min-height: 2.25rem;
+  padding: 0 0.85rem;
+  border: 1px solid #2271b1;
+  border-radius: 4px;
+  background: transparent;
+  color: #2271b1;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.settings-secondary:hover:not(:disabled) {
+  background: #f0f6fc;
+}
+
+.settings-secondary:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.settings-secondary:focus-visible,
+.settings-save:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+.settings-error-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+}
+
+/* After the base rules above, so these win: the same cascade order as the rest of the file's dark rules. */
+@media (prefers-color-scheme: dark) {
+  .settings-label {
+    color: #d4d4d4;
+  }
+
+  .settings-logo-preview {
+    background: #1a1a1a;
+    border-color: #646970;
+  }
+
+  .settings-logo-empty {
+    color: #9ca3af;
+  }
+
+  .settings-secondary {
+    color: #72aee6;
+    border-color: #72aee6;
+  }
+
+  .settings-secondary:hover:not(:disabled) {
+    background: #101b26;
   }
 }

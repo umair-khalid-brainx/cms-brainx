@@ -49,6 +49,8 @@ export function buildSeo(input: {
   entryFields?: readonly PublicField[];
   /** The chosen social image, when it is still in the library. */
   socialImage: SeoImage | null;
+  /** The site's logo (GOV-04): the last resort when there's no social image and no featured picture. */
+  siteLogo?: SeoImage | null;
 }): PublicSeo {
   const seo = readSeo(input.page.seo);
   const title = blank(seo.metaTitle) ?? (input.page.path === '/' ? input.siteName : `${input.page.title} · ${input.siteName}`);
@@ -63,7 +65,7 @@ export function buildSeo(input: {
       // Social text falls back to the meta text, then to the page's own.
       title: blank(seo.ogTitle) ?? title,
       description: blank(seo.ogDescription) ?? description,
-      image: input.socialImage ?? entryPicture(input.entryFields),
+      image: input.socialImage ?? entryPicture(input.entryFields) ?? input.siteLogo ?? null,
     },
   };
 }

@@ -1,25 +1,88 @@
 ---
-diff_hash: f812bde22a2f053b9ad50244ae808a639473d4ddae3ef338fd4c94667c58f050
-reviewed_at: 2026-10-12T10:40:51Z
+diff_hash: 9f7e210eb014d5eaf94324bc01c670c525d6beb498c7819b86d21df845db4ec1
+branch: claude/week-4-cms-tickets-d0f656
+author: Umer
+timestamp: 2026-10-12T10:57:49Z
+reviewed_at: 2026-10-12T11:04:18Z
+stack: unknown
+resolved_count: 0
+files:
+  - .code-reviews/brainx-review.md
+  - admin/src/components/SiteIdentityCard.tsx
+  - admin/src/data/site.ts
+  - admin/src/layouts/AdminLayout.tsx
+  - admin/src/lib/auth.ts
+  - admin/src/lib/siteApi.ts
+  - admin/src/pages/DashboardPage.tsx
+  - admin/src/pages/SettingsPage.css
+  - admin/src/pages/SettingsPage.tsx
+  - api/prisma/migrations/20261012140000_add_site_settings/migration.sql
+  - api/prisma/schema.prisma
+  - api/src/content-types/field-values.ts
+  - api/src/content/seo.ts
+  - api/src/public/public.service.spec.ts
+  - api/src/public/public.service.ts
+  - api/src/public/seo-view.spec.ts
+  - api/src/public/seo-view.ts
+  - api/src/revalidation/revalidation.service.spec.ts
+  - api/src/revalidation/revalidation.service.ts
+  - api/src/sites/site-settings.spec.ts
+  - api/src/sites/site-settings.ts
+  - api/src/sites/site.repository.ts
+  - api/src/sites/sites.controller.ts
+  - api/src/sites/sites.module.ts
+  - api/src/sites/sites.service.spec.ts
+  - api/src/sites/sites.service.ts
+  - api/src/sites/subdomain-cache.spec.ts
+  - docs/BACKLOG.md
+  - docs/DECISIONS.md
+  - docs/WORKLOG.md
+  - tickets/GOV-04.md
+  - tickets/STATUS.md
+  - web/package.json
+  - web/src/app/internal/revalidate/route.ts
+  - web/src/app/sites/[subdomain]/[[...path]]/page.tsx
+  - web/src/lib/publicApi.ts
+  - web/src/lib/seo.test.ts
+  - web/src/lib/seo.ts
+  - web/src/site/SiteFooter.tsx
+  - web/src/site/SiteHeader.tsx
+  - web/src/site/types.test.ts
+  - web/src/site/types.ts
 ---
 
 ## Summary
 
-SEO-02 (D-057): per-tenant `sitemap.xml` and `robots.txt`. `api` gains `ContentRepository.findSitemapRows(siteId)`
-(published rows only, ordered by path, `take` 50,001), `GET /public/sites/:subdomain/sitemap`, and a pure
-`buildSitemap` (drops noindex rows, adds one listing per type with an indexable entry, caps at 50,000 keeping the
-listings). `web` gains two `force-dynamic` route handlers under `app/sites/[subdomain]/`, each checking the request's
-`Host` against its tenant (`isOwnHost`) because extension paths skip the proxy; the proxy matcher gains exactly
-`/sitemap.xml` and `/robots.txt`; `getSitemap` reads the API with `no-store`; XML is escaped. `web` gets `npm test`
-(Node's runner) with `allowImportingTsExtensions`. The previous commit's review file is removed (staged deletion).
+GOV-04: real Site Identity settings. `api` adds a `sites.settings` JSONB column (migration with `DEFAULT '{}'`, so
+existing rows read as empty), `site-settings.ts` (Zod rules: title 1–100, tagline ≤120, footer note ≤400, logo empty or
+a file of this site's library via the new shared `optionalMediaValue`, which `seo.ts` now reuses), `GET /sites/:siteId`
+now returns the details, and `PATCH /sites/:siteId/settings` (`site:manage`) merges only the sent parts, checks the logo
+is an image in the site's library, writes title + settings in one update, and revalidates the whole site. The public
+`getSite` returns tagline, footer note and the logo as a full address, re-checking the stored logo against the library
+rule on the way out. The site logo becomes the last-resort social image for pages and listings. `RevalidationService`
+gains `site(subdomain)`, which POSTs `{ subdomain }` with no path. `web` tags `getSite`/`getPage` fetches with
+`site:<subdomain>`, and `/__revalidate` with no path calls `revalidateTag` for that tag; the header shows the logo (alt =
+site name) and hides an empty tagline/footer note. `admin` replaces the local-only Site Identity form with
+`SiteIdentityCard` (loads/saves via the API, logo picked from the media library, read-only for non-managers), updates
+the stored session's site name on save, and `AdminLayout` subscribes to session changes so the sidebar name updates
+immediately. The previous commit's review file is removed (staged deletion).
 
-Stacks: `api/` NestJS (nestjs.md), `web/` Next.js (react.md). One git repository, so one review. Cross-project
-contract check: `api`'s `SitemapEntry` (`{ path, lastModified }`) matches `web/src/lib/publicApi.ts`'s field for field.
-Entry paths are `/<prefix>/<slug>` (`content.service.ts:105`), so the listing derivation `/${path.split('/')[1]}` matches
-the existing revalidation code (`content.service.ts:246`); top-level page slugs can't take a type prefix, so a listing
-can't duplicate a page. Tenant scoping holds: the repository method takes `siteId`; the routes refuse foreign hosts.
+Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md), `admin/` as React
+(react.md), `web/` as Next.js using react.md plus general criteria. One git repository, so one review.
 
-Verified: `web` `npm test` 17/17 pass, `web` `tsc --noEmit` clean, `api` `vitest run src/public` 59/59 pass.
+Cross-project contract check: `api`'s `PublicSite` (`tagline`, `footerNote`, `logo: { url } | null`) matches
+`web/src/lib/publicApi.ts` field for field; `api`'s `SiteDetails` (`id, name, subdomain, tagline, footerNote, logo`)
+matches `admin/src/lib/siteApi.ts`; the length limits are duplicated in `admin` with a comment saying to keep them in
+step (repos can't share code). `RevalidationService.site` sends `{ subdomain }` and `web`'s route treats a missing
+`path` as "whole site" while still rejecting a present-but-invalid one. Tenant scoping holds: `siteId` comes from the
+route param checked by the permission guard, the settings write is `where: { id }` on that site, the logo must be in
+`media.findByFilenames(siteId, …)`, and the cache tag includes the subdomain (invariant 6). Using `@Body() body: unknown`
+and parsing in the service instead of `ZodValidationPipe` matches the existing pattern for site-dependent schemas
+(`seo.ts` parses `seoSchema(siteId)` in the service), since the schema needs `siteId`.
+
+Verified: `api` `tsc --noEmit` clean, `api` `vitest run src/sites src/public src/revalidation src/content` 392/392 pass;
+`web` `tsc --noEmit` clean, `web` `npm test` 21/21 pass (new `src/**` glob picks up `site/types.test.ts`); `admin`
+`tsc -b` clean. Not run: a production `next build && next start` check of the tag revalidation.
 
 ## Findings
 
@@ -28,42 +91,48 @@ Verified: `web` `npm test` 17/17 pass, `web` `tsc --noEmit` clean, `api` `vitest
 ### High (0)
 
 ### Medium (1)
-- **api/src/public/sitemap-view.ts:16** — A page whose staff-entered canonical URL (SEO-01) points to a different address is still listed in the sitemap. *(correctness)*
+- **api/src/sites/sites.service.ts:45** — The site logo is a new reference to a library file, but the media "used by" check shown before Delete (B-12, `MediaService.usage` → `content.findReferencing`) only looks at page content, so deleting the file that is the site's logo gives no warning, and nothing refreshes the site after the file is removed. *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Search engines treat a sitemap as a list of canonical URLs; listing an address whose own `<link rel="canonical">` (set by `pageMetadata` from `seo.canonicalUrl`) points elsewhere sends conflicting signals, and Google reports such URLs as "Alternate page with proper canonical tag" / ignores the sitemap hint. Only `noindex` is filtered today. Fix: leave out rows whose `readSeo(row.seo).canonicalUrl` is set and isn't this page's own address. Because `api` doesn't know the public origin, either pass `canonicalUrl` through in `SitemapEntry` and filter in `web` (`sitemapXml` has the origin), or treat any set canonical as "not this address" and accept the rare self-canonical being dropped. Note the decision in D-057 either way.
+  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. `api/src/media/media.service.ts` is not in the staged diff; `usage` (line 227) still only calls `content.findReferencing`, so deleting the logo file still gives no warning and no site refresh. An owner picks `logo.png` as the logo, later opens the media library and deletes it. The usage dialog says no pages use it, so they confirm. The file is `rm`'d immediately; cached pages keep pointing `<img>` at it (a broken image in the header) until the 60 s timer, after which `getSite` returns `logo: null` and the header silently falls back to the name. The same applies to the social image fallback. Fix by having `usage` also report "the site's logo" when `readSettings(site.settings).logo` matches the file (and ideally revalidate the site on delete when it does), or clear the logo on delete and revalidate.
 
-### Low (2)
-- **api/src/content/content.repository.ts:6** — The 50,000 limit is defined twice: `SITEMAP_ROWS` here and `SITEMAP_LIMIT` in `api/src/public/sitemap-view.ts:9`, same value and same doc comment. *(maintainability)*
+### Low (3)
+- **web/src/app/internal/revalidate/route.ts:35** — `'path' in body` throws a `TypeError` when the JSON body is a primitive (`5`, `"x"`, `true`), so the route returns a 500 instead of the 400 it returns for every other bad body. *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Two independently editable constants for one rule; changing one (e.g. lowering the cap) silently desynchronises the read cap from the output cap. Export one and import it in the other (the view module is pure, so the repository importing from it, or both from a small shared module, is fine).
-- **api/src/public/public.service.ts:97** — The "sitemap stops at the limit" warning only fires when more than 50,000 rows come back, but `buildSitemap` also drops pages whenever indexable rows plus listings exceed 50,000 (e.g. 49,999 rows and 3 type listings), with no log. *(maintainability)*
+  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. Line 35 is unchanged: `body !== null && 'path' in body` still throws on a primitive JSON body. `request.json()` happily returns non-object JSON, and the `in` operator throws on primitives. The old code used `body?.path`, which doesn't. The route is behind the shared secret, so only a misbehaving `api` could hit this, hence Low. Fix by checking `typeof body === 'object'` before the `in` test (or reading `body?.path !== undefined`).
+- **api/src/sites/sites.service.ts:46** — "Is this stored path a picture in the site's library" is now implemented twice: here (filename slice + `media.findByFilenames` + `mimetype.startsWith('image/')`) and in `PublicService.libraryImage` (`api/src/public/public.service.ts:214`). *(maintainability)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Edge case at real scale only, but it means the logged warning doesn't reliably say when addresses were left out. Either have `buildSitemap` report whether it truncated (e.g. return `{ entries, truncated }`) and log on that, or word the warning as "more than N live rows" so it doesn't claim to cover every truncation.
+  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. `sites.service.ts:46` and `public.service.ts:221` still each do their own filename slice + `findByFilenames` + `image/` check. The two copies must agree on what counts as a usable logo (the save check and the public read); if one changes (e.g. to exclude SVG or check a thumbnail), the other won't follow and a saved logo could be dropped on read or vice versa. A small shared helper (e.g. on `MediaRepository` or in `field-values.ts`'s neighbourhood) taking `(siteId, path)` would keep them in step.
+- **api/src/public/public.service.ts:201** — `seoOf` now looks up the logo in the media table for every page render, even when the page has a chosen social image or a featured picture, so the logo is never used. *(efficiency)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. `seoOf` (lines 201–202) still resolves the logo before knowing whether a social image or entry picture exists. One extra indexed query per uncached page render, so Low, but it's avoidable: resolve the logo only when `socialImage` and the entry picture are both missing (e.g. pass a lazy resolver, or compute the entry picture first).
 
 ## Reviewed files
-- .code-reviews/brainx-review.md (deletion of previous commit's review; not reviewed)
-- api/src/content/content.repository.ts
-- api/src/public/public.controller.ts
-- api/src/public/public.service.spec.ts
-- api/src/public/public.service.ts
-- api/src/public/sitemap-view.spec.ts
-- api/src/public/sitemap-view.ts
-- docs/BACKLOG.md (skimmed)
-- docs/DECISIONS.md
-- docs/WORKLOG.md (skimmed)
-- tickets/SEO-02.md
-- tickets/STATUS.md (skimmed)
+- api/prisma/migrations/20261012140000_add_site_settings/migration.sql
+- api/prisma/schema.prisma
+- api/src/content-types/field-values.ts
+- api/src/content/seo.ts
+- api/src/public/public.service.ts, public.service.spec.ts
+- api/src/public/seo-view.ts, seo-view.spec.ts
+- api/src/revalidation/revalidation.service.ts, revalidation.service.spec.ts
+- api/src/sites/site-settings.ts, site-settings.spec.ts
+- api/src/sites/site.repository.ts, sites.controller.ts, sites.module.ts
+- api/src/sites/sites.service.ts, sites.service.spec.ts, subdomain-cache.spec.ts
 - web/package.json
-- web/src/app/sites/[subdomain]/robots.txt/route.ts
-- web/src/app/sites/[subdomain]/sitemap.xml/route.ts
-- web/src/lib/publicApi.ts
-- web/src/lib/seo.test.ts
-- web/src/lib/sitemap.test.ts
-- web/src/lib/sitemap.ts
-- web/src/lib/tenant.test.ts
-- web/src/lib/tenant.ts
-- web/src/proxy.ts
-- web/tsconfig.json
+- web/src/app/internal/revalidate/route.ts
+- web/src/app/sites/[subdomain]/[[...path]]/page.tsx
+- web/src/lib/publicApi.ts, seo.ts, seo.test.ts
+- web/src/site/SiteHeader.tsx, SiteFooter.tsx, types.ts, types.test.ts
+- admin/src/components/SiteIdentityCard.tsx
+- admin/src/data/site.ts, layouts/AdminLayout.tsx, lib/auth.ts, lib/siteApi.ts
+- admin/src/pages/DashboardPage.tsx, SettingsPage.tsx, SettingsPage.css
+- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/GOV-04.md, tickets/STATUS.md (skimmed; docs only)
+- .code-reviews/brainx-review.md (staged deletion of the previous review; not reviewed)
+
+## Context used
+api/src/common/zod-validation.pipe.ts (body validation pattern), api/src/media/media.service.ts (`usage`/`remove`, the
+B-12 delete check), admin/src/lib/api.ts (`apiGet`/`apiSend` signatures), admin/src/lib/auth.ts `refreshSession`
+(calls `setSession`, so session listeners fire), web callers of `getSite` (layout, page, not-found, robots, preview).

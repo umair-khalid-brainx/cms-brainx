@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { readSettings } from '../sites/site-settings.js';
 
 const MEDIA_SELECT = {
   id: true,
@@ -60,6 +61,30 @@ export class MediaRepository {
       where: { siteId, filename: { in: filenames } },
       select: { filename: true, mimetype: true, alt: true, title: true },
     });
+  }
+
+  /**
+   * A picture in this site's library, by the path it is stored under (`/uploads/<site>/<file>`), or null when the
+   * file isn't in the library or isn't an image. One place for "is this a usable picture", so saving a logo or a
+   * social image and showing it agree (SEO-01, GOV-04).
+   */
+  async findImage(siteId: string, path: string): Promise<{ filename: string; alt: string | null } | null> {
+    const filename = path.slice(path.lastIndexOf('/') + 1);
+    const [file] = await this.findByFilenames(siteId, [filename]);
+    return file && file.mimetype.startsWith('image/') ? { filename: file.filename, alt: file.alt } : null;
+  }
+
+  /** Whether this file is the site's logo (GOV-04): deleting it would leave the header pointing at nothing. */
+  async isSiteLogo(siteId: string, filename: string): Promise<boolean> {
+    const site = await this.prisma.site.findUnique({ where: { id: siteId }, select: { settings: true } });
+    return readSettings(site?.settings).logo.endsWith(`/${filename}`);
+  }
+
+  /** Takes the logo off the site, keeping the rest of its settings. */
+  async clearSiteLogo(siteId: string): Promise<void> {
+    const site = await this.prisma.site.findUnique({ where: { id: siteId }, select: { settings: true } });
+    if (!site) return;
+    await this.prisma.site.update({ where: { id: siteId }, data: { settings: { ...readSettings(site.settings), logo: '' } } });
   }
 
   delete(siteId: string, id: string) {

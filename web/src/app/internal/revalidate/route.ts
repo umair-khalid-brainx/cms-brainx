@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { siteTag } from '@/lib/publicApi';
 
 /**
  * On-demand ISR (CNT-08): `api` POSTs `{ subdomain, path }` here after a
@@ -29,9 +30,18 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as { subdomain?: unknown; path?: unknown } | null;
   const subdomain = typeof body?.subdomain === 'string' ? body.subdomain : '';
-  const path = typeof body?.path === 'string' ? body.path : '';
-  if (!SUBDOMAIN.test(subdomain) || !path.startsWith('/')) {
-    return Response.json({ error: 'Expected { subdomain, path }' }, { status: 400 });
+  // No path at all means the whole site: its header or footer changed, and every page shows them
+  // (GOV-04). A path that is there but isn't a path is a mistake, not a request for everything.
+  const hasPath = typeof body === 'object' && body !== null && body.path !== undefined;
+  const path = hasPath && typeof body?.path === 'string' ? body.path : null;
+  if (!SUBDOMAIN.test(subdomain) || (hasPath && (path === null || !path.startsWith('/')))) {
+    return Response.json({ error: 'Expected { subdomain, path? }' }, { status: 400 });
+  }
+  if (path === null) {
+    // By tag, not by path: the header and footer come from the site data every page reads, and
+    // only a tag reaches that cached read. `{ expire: 0 }`: the next visit renders fresh.
+    revalidateTag(siteTag(subdomain), { expire: 0 });
+    return Response.json({ revalidated: `${siteTag(subdomain)} (every page of ${subdomain})` });
   }
 
   const destination = path === '/' ? `/sites/${subdomain}` : `/sites/${subdomain}${path}`;

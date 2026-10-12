@@ -3,7 +3,17 @@ import type { Block, EntryView, SiteTheme, TypeListing } from 'cms-blocks';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4001';
 
-export type PublicSite = { name: string; subdomain: string; theme: SiteTheme };
+export type PublicSite = {
+  name: string;
+  subdomain: string;
+  theme: SiteTheme;
+  /** Shown beside the name in the header (GOV-04); empty if none. */
+  tagline: string;
+  /** Shown in the footer; empty if none. */
+  footerNote: string;
+  /** The logo as a full address, or null. */
+  logo: { url: string } | null;
+};
 /** What search engines and link previews get for a page (SEO-01); `api` has already applied the fallbacks. */
 export type PublicSeo = {
   title: string;
@@ -30,8 +40,22 @@ export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'publish
  */
 export const PUBLIC_REVALIDATE_SECONDS = 60;
 
-async function getJson<T>(path: string, { fresh = false }: { fresh?: boolean } = {}): Promise<T | null> {
-  const response = await fetch(`${API_URL}${path}`, fresh ? { cache: 'no-store' } : { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
+/**
+ * The cache tag of everything a tenant's header and footer are built from (GOV-04). Each page
+ * that read the site is cached together with this tag, so refreshing the tag refreshes every
+ * page of that site and no other (invariant 6). A path refresh alone does not reach the site
+ * data a layout reads.
+ */
+export const siteTag = (subdomain: string): string => `site:${subdomain}`;
+
+async function getJson<T>(
+  path: string,
+  { fresh = false, tags }: { fresh?: boolean; tags?: string[] } = {},
+): Promise<T | null> {
+  const response = await fetch(
+    `${API_URL}${path}`,
+    fresh ? { cache: 'no-store' } : { next: { revalidate: PUBLIC_REVALIDATE_SECONDS, ...(tags && { tags }) } },
+  );
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`API ${response.status} for ${path}`);
   return (await response.json()) as T;
@@ -40,11 +64,15 @@ async function getJson<T>(path: string, { fresh = false }: { fresh?: boolean } =
 // cache(): the layout and generateMetadata both need the site; this makes it
 // one API call per request, not two.
 export const getSite = cache((subdomain: string) =>
-  getJson<PublicSite>(`/public/sites/${encodeURIComponent(subdomain)}`),
+  getJson<PublicSite>(`/public/sites/${encodeURIComponent(subdomain)}`, { tags: [siteTag(subdomain)] }),
 );
 
+// Tagged with the site too: a page's tags and social picture are worked out from the site's name and
+// logo (the page's own `seo`), so a change to the site must refresh what each page read (GOV-04).
 export const getPage = cache((subdomain: string, path: string) =>
-  getJson<PublicPage>(`/public/sites/${encodeURIComponent(subdomain)}/page?path=${encodeURIComponent(path)}`),
+  getJson<PublicPage>(`/public/sites/${encodeURIComponent(subdomain)}/page?path=${encodeURIComponent(path)}`, {
+    tags: [siteTag(subdomain)],
+  }),
 );
 
 /**

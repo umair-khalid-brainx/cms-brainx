@@ -5,6 +5,34 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Site identity: title, tagline, footer note and logo (`GOV-04` done)
+
+Decision in D-058.
+
+- `api`: `Site.settings` (migration `20261012140000_add_site_settings`); `sites/site-settings.ts` (+spec) rules (100/120/400
+  characters, the logo through the shared `optionalMediaValue`, new in `content-types/field-values.ts` and also used by
+  `content/seo.ts`); `SitesService.getDetails`/`updateSettings` (whole body checked first, the logo must be an image in this
+  site's library, then name and settings written in one update and the whole site refreshed); `GET /sites/:siteId` returns the
+  details, new `PATCH /sites/:siteId/settings` (`site:manage`); `SitesModule` imports the media and revalidation modules.
+  `RevalidationService.site()`. `PublicService.getSite` returns tagline, footer note and the logo (checked again on the way out);
+  the logo is the last fallback of `buildSeo`.
+- `web`: `settingsFromSite` maps logo/tagline/footer note; header shows the logo (alt = name) or the name, tagline only when set;
+  footer note only when set; `getSite` and `getPage` fetches carry the tag `site:<subdomain>`; `/__revalidate` with no `path`
+  refreshes that tag (a path that is there but isn't a string is a 400); a listing gets the logo as its card picture.
+- `admin`: `SiteIdentityCard` (title, tagline, footer note, logo picker, role gating, the API's messages) in Settings;
+  `lib/siteApi.ts`; `subscribeSession` (this tab and other tabs) so the top-bar site name follows a save; the stand-in in
+  `data/site.ts` is gone; dark-mode rules for the new fields.
+- Tests: `site-settings.spec.ts`, `sites.service.spec.ts`, revalidation, `seo-view` logo fallback, `PublicService` branding; web
+  `types.test.ts`, listing logo. api 486, admin 116, web 21 pass; typecheck, lint, builds clean.
+- Verified on `cms_wk4`: curl for persistence, refusals, a Contributor (403) and the other site's owner (403); every page of the
+  site (home, nested, entry, listing, titles and og:image) showing a title, tagline or logo change on the very next request, the
+  other site untouched; hand-edited bad logo path ignored; browser: light/dark, desktop/tablet, the top bar updating.
+
+**Not done:** two administrators saving different fields at the same instant can overwrite each other, and each page cache miss
+reads the site and logo again (B-31). No favicon, per-page logo or dark-mode logo.
+
+---
+
 ## 2026-10-12 — Sitemap and robots.txt for each site (`SEO-02` done)
 
 Decision in D-057.

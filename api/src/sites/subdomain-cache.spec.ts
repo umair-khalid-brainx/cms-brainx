@@ -1,3 +1,5 @@
+import type { MediaRepository } from '../media/media.repository.js';
+import type { RevalidationService } from '../revalidation/revalidation.service.js';
 import type { SiteRepository } from './site.repository.js';
 import { SitesService } from './sites.service.js';
 import { SubdomainCache } from './subdomain-cache.js';
@@ -77,7 +79,7 @@ describe('SitesService.updateSubdomain', () => {
   it('stops the old subdomain resolving immediately and the new one starts', async () => {
     const { asRepository } = fakeSites({ corrick: 'site-1' });
     const cache = new SubdomainCache(asRepository);
-    const service = new SitesService(asRepository, cache);
+    const service = new SitesService(asRepository, cache, {} as MediaRepository, {} as RevalidationService);
 
     expect(await cache.resolve('corrick')).toBe('site-1'); // now cached
     expect(await cache.resolve('corrick-farm')).toBeNull();

@@ -7,8 +7,10 @@ import type { PublicSite } from '@/lib/publicApi';
  * branding vary; the layout is fixed.
  */
 export type SiteSettings = {
-  /** Wordmark text. A logo image replaces this once media exists. */
+  /** Wordmark text, and the logo's alternative text. */
   name: string;
+  /** A logo from the media library; replaces the wordmark text in the header when set (GOV-04). */
+  logoUrl: string | null;
   tagline: string;
   nav: { label: string; href: string }[];
   footer: {
@@ -19,16 +21,16 @@ export type SiteSettings = {
 };
 
 /**
- * The database stores a site's name and theme, but not yet its tagline,
- * navigation or footer links — that's `GOV-04`. Until then the header and
- * footer show the site name only.
+ * The header and footer of a site: its name, logo, tagline and footer note (GOV-04). The
+ * navigation and the footer's link groups come with the menus (`GOV-03`), so they are empty here.
  */
 export function settingsFromSite(site: PublicSite): SiteSettings {
   return {
     name: site.name,
-    tagline: '',
+    logoUrl: site.logo?.url ?? null,
+    tagline: site.tagline,
     nav: [],
-    footer: { note: '', groups: [] },
+    footer: { note: site.footerNote, groups: [] },
     theme: site.theme,
   };
 }

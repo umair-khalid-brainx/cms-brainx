@@ -10,7 +10,9 @@ import { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import { MediaRepository } from '../media/media.repository.js';
 import { RedirectRepository } from '../redirects/redirect.repository.js';
 import { readSeo } from '../content/seo.js';
-import { buildSeo, type PublicSeo, type SeoImage } from './seo-view.js';
+import { mediaValue } from '../content-types/field-values.js';
+import { readSettings } from '../sites/site-settings.js';
+import { buildSeo, entryPicture, type PublicSeo, type SeoImage } from './seo-view.js';
 import { buildSitemap, type Sitemap } from './sitemap-view.js';
 import { normaliseRedirectPath } from '../redirects/redirect-rules.js';
 import { SiteRepository } from '../sites/site.repository.js';
@@ -27,7 +29,17 @@ import {
 } from './entry-view.js';
 import { filenamesNeedingAlt, withLibraryAlt } from './image-alt.js';
 
-export type PublicSite = { name: string; subdomain: string; theme: unknown };
+export type PublicSite = {
+  name: string;
+  subdomain: string;
+  theme: unknown;
+  /** Shown beside the name in the header; empty if none (GOV-04). */
+  tagline: string;
+  /** Shown in the footer; empty if none. */
+  footerNote: string;
+  /** The logo, as a full address, or null when none is set or its file has left the library. */
+  logo: { url: string } | null;
+};
 /** What an entry shows above its page content (TYP-03). Absent for an ordinary page. */
 export type PublicEntry = {
   type: { name: string; singularName: string; prefix: string };
@@ -85,7 +97,16 @@ export class PublicService {
     // Name and theme are read fresh, not cached (D-035).
     const site = await this.sites.findById(await this.findSiteId(subdomain));
     if (!site) throw new NotFoundException('Site not found');
-    return { name: site.name, subdomain: site.subdomain, theme: site.themeJson };
+    const settings = readSettings(site.settings);
+    const logo = settings.logo ? await this.libraryImage(site.id, settings.logo) : null;
+    return {
+      name: site.name,
+      subdomain: site.subdomain,
+      theme: site.themeJson,
+      tagline: settings.tagline,
+      footerNote: settings.footerNote,
+      logo: logo && { url: logo.url },
+    };
   }
 
   /**
@@ -177,20 +198,29 @@ export class PublicService {
   private async seoOf(siteId: string, page: { title: string; path: string; seo: unknown }, entry: PublicEntry | undefined): Promise<PublicSeo> {
     const site = await this.sites.findById(siteId);
     const chosen = readSeo(page.seo).ogImage;
+    const socialImage = chosen ? await this.libraryImage(siteId, chosen) : null;
+    // The logo is the last resort, so it is only looked up when nothing else would be the picture.
+    const logoPath = readSettings(site?.settings).logo;
+    const needsLogo = !socialImage && !entryPicture(entry?.fields) && logoPath !== '';
+    const logo = needsLogo ? await this.libraryImage(siteId, logoPath) : null;
     return buildSeo({
       page,
       siteName: site?.name ?? '',
       entryFields: entry?.fields,
-      socialImage: chosen ? await this.libraryImage(siteId, chosen) : null,
+      socialImage,
+      // The logo's alt text is the site's name, as in the header.
+      siteLogo: logo && { url: logo.url, alt: site?.name ?? '' },
     });
   }
 
   /** A picture from this site's library, or null when the file has since been deleted or isn't an image. */
-  private async libraryImage(siteId: string, path: string): Promise<SeoImage | null> {
-    const filename = path.slice(path.lastIndexOf('/') + 1);
-    const [file] = await this.media.findByFilenames(siteId, [filename]);
-    if (!file || !file.mimetype.startsWith('image/')) return null;
-    return { url: `${this.apiOrigin()}${path}`, alt: file.alt ?? '' };
+  private async libraryImage(siteId: string, stored: string): Promise<SeoImage | null> {
+    // Checked again on the way out, not only when saved: a value edited by hand in the database
+    // must never become a picture address (invariant 5's spirit; the rule is the one saving uses).
+    const checked = mediaValue(siteId).safeParse(stored);
+    if (!checked.success) return null;
+    const file = await this.media.findImage(siteId, checked.data);
+    return file && { url: `${this.apiOrigin()}${checked.data}`, alt: file.alt ?? '' };
   }
 
   private apiOrigin(): string {

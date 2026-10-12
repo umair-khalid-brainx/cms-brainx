@@ -6,7 +6,9 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
       <div className="mx-auto grid w-full max-w-6xl gap-10 py-12 sm:grid-cols-[1.2fr_repeat(2,0.9fr)]">
         <div className="flex flex-col gap-3">
           <span className="font-[family-name:var(--site-font-display)] text-lg font-semibold">{settings.name}</span>
-          <p className="max-w-xs text-sm leading-relaxed text-[var(--site-muted)]">{settings.footer.note}</p>
+          {settings.footer.note ? (
+            <p className="max-w-xs text-sm leading-relaxed text-[var(--site-muted)]">{settings.footer.note}</p>
+          ) : null}
         </div>
 
         {settings.footer.groups.map((group) => (

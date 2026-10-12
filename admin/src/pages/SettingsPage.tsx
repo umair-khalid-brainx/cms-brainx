@@ -3,24 +3,15 @@ import { getSession } from '../lib/auth'
 import { ApiError } from '../lib/api'
 import { canManageSite } from '../lib/roles'
 import { updateSubdomain } from '../lib/siteApi'
-import { currentSite, currentSubdomain, siteAddressParts, siteUrl } from '../data/site'
+import { currentSubdomain, siteAddressParts, siteUrl } from '../data/site'
+import SiteIdentityCard from '../components/SiteIdentityCard'
 import './SettingsPage.css'
 
-// Site Identity fields are locally editable but don't persist — there's no
-// settings API yet (see docs/EXECUTION_PLAN.md, out-of-scope until CNT-01's
-// area grows a site-settings endpoint). Account fields are read-only: they
-// come straight from the real logged-in session.
+// Site Identity is saved through the API (GOV-04, SiteIdentityCard). Account fields are
+// read-only: they come straight from the real logged-in session.
 
 function SettingsPage() {
   const session = getSession()
-  const [name, setName] = useState(currentSite.name)
-  const [tagline, setTagline] = useState(currentSite.tagline)
-  const [saved, setSaved] = useState(false)
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSaved(true)
-  }
 
   return (
     <>
@@ -29,22 +20,7 @@ function SettingsPage() {
       </div>
 
       <div className="settings-grid">
-        <section className="settings-card">
-          <h2 className="settings-card-title">Site Identity</h2>
-          <form className="settings-form" onSubmit={handleSubmit}>
-            <label htmlFor="site-name">Site Title</label>
-            <input id="site-name" value={name} onChange={(event) => setName(event.target.value)} />
-
-            <label htmlFor="site-tagline">Tagline</label>
-            <input id="site-tagline" value={tagline} onChange={(event) => setTagline(event.target.value)} />
-
-            <button type="submit" className="settings-save">
-              Save Changes
-            </button>
-            {saved ? <p className="settings-saved-note">Saved — locally only, there's no settings API yet.</p> : null}
-          </form>
-        </section>
-
+        <SiteIdentityCard />
 
         <section className="settings-card">
           <h2 className="settings-card-title">Your Account</h2>

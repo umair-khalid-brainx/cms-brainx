@@ -28,6 +28,9 @@ model Site {
   subdomain String   @unique
   name      String
   themeJson Json     @default("{}") @map("theme_json")
+  // What the public header and footer show besides the name (GOV-04): tagline, footer note and
+  // a logo from the site's media library. Shape and rules: sites/site-settings.ts.
+  settings  Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

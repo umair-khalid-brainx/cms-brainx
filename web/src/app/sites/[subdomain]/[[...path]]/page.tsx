@@ -30,7 +30,9 @@ export async function generateMetadata({ params }: PageProps<'/sites/[subdomain]
   }
   if (path?.length === 1) {
     const listing = await getListing(subdomain, path[0]);
-    if (listing) return listingMetadata({ origin, path: `/${path[0]}`, typeName: listing.type.name, siteName: site.name });
+    if (listing) {
+      return listingMetadata({ origin, path: `/${path[0]}`, typeName: listing.type.name, siteName: site.name, logoUrl: site.logo?.url });
+    }
   }
   // Nothing here: the tab title of a missing page is set by this segment's not-found.tsx (B-15).
   return {};

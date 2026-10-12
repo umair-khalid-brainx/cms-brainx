@@ -47,15 +47,25 @@ export function pageMetadata(input: { seo: PublicSeo; origin: string; path: stri
   };
 }
 
-/** A type's listing (`/events`): a plain title, its own address, and a card with no picture. */
-export function listingMetadata(input: { origin: string; path: string; typeName: string; siteName: string }): Metadata {
+/**
+ * A type's listing (`/events`): a plain title and its own address. It has no picture of its own, so
+ * the site's logo is its card picture when there is one (`GOV-04`), as for any page without one.
+ */
+export function listingMetadata(input: {
+  origin: string;
+  path: string;
+  typeName: string;
+  siteName: string;
+  logoUrl?: string | null;
+}): Metadata {
   const title = `${input.typeName} · ${input.siteName}`;
   const url = `${input.origin}${input.path}`;
+  const logo = input.logoUrl ?? null;
   return {
     title,
     alternates: { canonical: url },
-    openGraph: { type: 'website', siteName: input.siteName, url, title },
-    twitter: { card: 'summary', title },
+    openGraph: { type: 'website', siteName: input.siteName, url, title, ...(logo && { images: [{ url: logo, alt: input.siteName }] }) },
+    twitter: { card: logo ? 'summary_large_image' : 'summary', title, ...(logo && { images: [logo] }) },
   };
 }
 

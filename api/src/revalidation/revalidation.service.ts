@@ -17,12 +17,22 @@ export class RevalidationService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async page(subdomain: string, path: string): Promise<void> {
+  /** One page of one site. */
+  page(subdomain: string, path: string): Promise<void> {
+    return this.send(subdomain, { subdomain, path }, path);
+  }
+
+  /** Every page of one site: its header or footer changed (GOV-04). */
+  site(subdomain: string): Promise<void> {
+    return this.send(subdomain, { subdomain }, '(the whole site)');
+  }
+
+  private async send(subdomain: string, body: { subdomain: string; path?: string }, what: string): Promise<void> {
     const url = this.config.get<string>('WEB_REVALIDATE_URL');
     const secret = this.config.get<string>('REVALIDATE_SECRET');
     if (!url || !secret) {
       this.logger.warn(
-        `Revalidation not configured; ${subdomain}${path} refreshes on the timer`,
+        `Revalidation not configured; ${subdomain}${what} refreshes on the timer`,
       );
       return;
     }
@@ -34,17 +44,17 @@ export class RevalidationService {
           'content-type': 'application/json',
           'x-revalidate-secret': secret,
         },
-        body: JSON.stringify({ subdomain, path }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       if (!response.ok)
         this.logger.warn(
-          `web refused to revalidate ${subdomain}${path}: ${response.status}`,
+          `web refused to revalidate ${subdomain}${what}: ${response.status}`,
         );
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.logger.warn(
-        `Couldn't reach web to revalidate ${subdomain}${path}: ${reason}`,
+        `Couldn't reach web to revalidate ${subdomain}${what}: ${reason}`,
       );
     }
   }

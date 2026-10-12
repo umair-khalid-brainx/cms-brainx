@@ -1,7 +1,49 @@
-import { apiSend } from './api';
+import { apiGet, apiSend } from './api';
 import { getSession, refreshSession } from './auth';
 
 export type SiteSummary = { id: string; name: string; subdomain: string };
+
+/** What Settings edits: the summary plus the public header and footer's tagline, note and logo (GOV-04). */
+export type SiteDetails = SiteSummary & {
+  tagline: string;
+  footerNote: string;
+  /** A picture in the site's media library (`/uploads/<site>/<file>`), or empty. */
+  logo: string;
+};
+
+/** The API's hard limits (api/src/sites/site-settings.ts; the repos can't share code, so keep these in step). */
+export const SITE_NAME_MAX = 100;
+export const TAGLINE_MAX = 120;
+export const FOOTER_NOTE_MAX = 400;
+
+function requireMembership() {
+  const session = getSession();
+  const membership = session?.memberships[0];
+  if (!session || !membership) throw new Error('Not authenticated');
+  return { session, membership };
+}
+
+export function getSiteDetails(): Promise<SiteDetails> {
+  const { session, membership } = requireMembership();
+  return apiGet(`/sites/${membership.siteId}`, session.accessToken);
+}
+
+/**
+ * Saves the site's title, tagline, footer note and logo (GOV-04). The API checks every part and
+ * names what is wrong; the stored session gets the new title, so the site picker and the page
+ * heading show it straight away.
+ */
+export async function updateSiteSettings(
+  changes: Partial<Pick<SiteDetails, 'name' | 'tagline' | 'footerNote' | 'logo'>>,
+): Promise<SiteDetails> {
+  const { session, membership } = requireMembership();
+  const site = await apiSend<SiteDetails>('PATCH', `/sites/${membership.siteId}/settings`, changes, session.accessToken);
+  refreshSession({
+    user: session.user,
+    memberships: session.memberships.map((m) => (m.siteId === site.id ? { ...m, siteName: site.name } : m)),
+  });
+  return site;
+}
 
 /**
  * Renames the current site's subdomain. The API enforces the rules (format,

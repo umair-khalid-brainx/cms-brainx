@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { createPage, listPages, type PageSummary } from '../lib/contentApi'
-import { currentSite, siteUrl } from '../data/site'
+import { siteUrl } from '../data/site'
+import { getSession } from '../lib/auth'
 import { ApiError } from '../lib/api'
 import './DashboardPage.css'
 
@@ -17,6 +18,7 @@ const activity = [
 ]
 
 function DashboardPage() {
+  const siteName = getSession()?.memberships[0]?.siteName ?? '—'
   const [pages, setPages] = useState<PageSummary[]>([])
   const [loaded, setLoaded] = useState(false)
   const [title, setTitle] = useState('')
@@ -92,7 +94,7 @@ function DashboardPage() {
                 <strong>{loaded ? draftCount : '—'}</strong> Drafts
               </li>
               <li>
-                <strong>{currentSite.name}</strong> current site
+                <strong>{siteName}</strong> current site
               </li>
             </ul>
           </section>

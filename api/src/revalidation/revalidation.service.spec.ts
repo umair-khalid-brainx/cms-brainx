@@ -67,3 +67,24 @@ describe('RevalidationService', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe('RevalidationService.site (GOV-04)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('POSTs the site alone, so web refreshes every page of it', async () => {
+    const fetch = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+
+    await service(configured).site('corrick');
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://web.test/__revalidate',
+      expect.objectContaining({ body: JSON.stringify({ subdomain: 'corrick' }) }),
+    );
+  });
+
+  it('never throws when web is down', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('fetch failed'))));
+    await expect(service(configured).site('corrick')).resolves.toBeUndefined();
+  });
+});

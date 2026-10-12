@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { mediaValue } from '../content-types/field-values.js';
+import { optionalMediaValue } from '../content-types/field-values.js';
 
 // Search and social-sharing settings of a page or entry (SEO-01), stored whole in
 // `Content.seo`. Every field is optional text: empty means "use the page's own title and
@@ -59,17 +59,7 @@ export function seoSchema(siteId: string) {
     canonicalUrl,
     ogTitle: text(SEO_TITLE_MAX, 'The social title'),
     ogDescription: text(SEO_DESCRIPTION_MAX, 'The social description'),
-    // Empty, or a library file of this site; the library rule's own message otherwise.
-    ogImage: z
-      .string()
-      .default('')
-      .transform((value, ctx) => {
-        if (value.trim() === '') return '';
-        const file = mediaValue(siteId).safeParse(value);
-        if (file.success) return file.data;
-        for (const issue of file.error.issues) ctx.addIssue({ code: 'custom', message: issue.message });
-        return z.NEVER;
-      }),
+    ogImage: optionalMediaValue(siteId),
     noindex: z.boolean().default(false),
   });
 }

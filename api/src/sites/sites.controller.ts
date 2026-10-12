@@ -13,11 +13,19 @@ import { SitesService } from './sites.service.js';
 export class SitesController {
   constructor(private readonly sites: SitesService) {}
 
-  // Any member may read their site's address; every role has content:read.
+  // Any member may read their site's address and settings; every role has content:read.
   @Get()
   @RequirePermission('content:read')
   get(@Param('siteId') siteId: string) {
-    return this.sites.get(siteId);
+    return this.sites.getDetails(siteId);
+  }
+
+  // Title, tagline, footer note and logo (GOV-04). The service checks the body itself, so every
+  // problem is named in one answer.
+  @Patch('settings')
+  @RequirePermission('site:manage')
+  updateSettings(@Param('siteId') siteId: string, @Body() body: unknown) {
+    return this.sites.updateSettings(siteId, body);
   }
 
   @Patch('subdomain')

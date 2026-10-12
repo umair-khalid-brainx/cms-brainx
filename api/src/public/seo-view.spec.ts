@@ -55,6 +55,16 @@ describe('buildSeo fallbacks (SEO-01)', () => {
     expect(seo.social.image).toEqual(image);
   });
 
+  it('the site’s logo is the last resort: after the chosen image and the featured one', () => {
+    const logo = { url: 'http://api/logo.png', alt: 'Corrick' };
+    expect(buildSeo({ page, siteName: 'S', socialImage: null, siteLogo: logo }).social.image).toEqual(logo);
+    expect(buildSeo({ page, siteName: 'S', socialImage: image, siteLogo: logo }).social.image).toEqual(image);
+    const fields: PublicField[] = [
+      { key: 'image', label: 'Image', kind: 'media', file: { url: 'http://x/feat.png', name: 'f', alt: 'Featured', mimetype: 'image/png', isImage: true } },
+    ];
+    expect(buildSeo({ page, siteName: 'S', entryFields: fields, socialImage: null, siteLogo: logo }).social.image?.url).toBe('http://x/feat.png');
+  });
+
   it('the chosen social image wins over the featured image', () => {
     const fields: PublicField[] = [
       { key: 'image', label: 'Image', kind: 'media', file: { url: 'http://x/other.png', name: 'o', alt: '', mimetype: 'image/png', isImage: true } },

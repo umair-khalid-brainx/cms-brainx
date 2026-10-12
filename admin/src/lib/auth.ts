@@ -18,12 +18,31 @@ export function getSession(): Session | null {
   }
 }
 
+const listeners = new Set<() => void>();
+
+/**
+ * For `useSyncExternalStore`: called when this tab changes the stored session (a site renamed,
+ * say) or another tab of the admin does (the browser's `storage` event).
+ */
+export function subscribeSession(listener: () => void): () => void {
+  listeners.add(listener);
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) listener();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener('storage', onStorage);
+  };
+}
+
 export function setSession(session: Session): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   } catch {
     // Best-effort — private browsing / blocked storage shouldn't crash the app.
   }
+  listeners.forEach((listener) => listener());
 }
 
 export function clearSession(): void {

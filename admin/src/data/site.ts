@@ -1,12 +1,7 @@
 import { getSession } from '../lib/auth';
 
-// Name and tagline are still a stand-in — there's no site-settings API for
-// them yet (GOV-04). The subdomain is real: it comes from the session (D-030).
-export const currentSite = {
-  name: 'Corrick Oyster Co.',
-  tagline: 'Damariscotta River, Maine',
-};
-
+// The subdomain comes from the session (D-030); the title and the rest of the site's identity
+// come from the API (GOV-04, lib/siteApi.ts).
 // Where `web` serves a tenant. `{subdomain}` is replaced per site:
 // locally `http://corrick.lvh.me:3000`, in production `https://corrick.<root>`.
 const SITE_URL_TEMPLATE: string = import.meta.env.VITE_SITE_URL_TEMPLATE ?? 'http://{subdomain}.lvh.me:3000';
