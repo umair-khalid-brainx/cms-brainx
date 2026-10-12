@@ -1,6 +1,6 @@
 import { clearSession } from './auth';
 
-const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:4001';
+export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:4001';
 
 export class ApiError extends Error {
   status: number;

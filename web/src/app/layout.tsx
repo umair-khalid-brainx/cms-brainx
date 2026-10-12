@@ -41,9 +41,11 @@ const plexMono = IBM_Plex_Mono({
   display: 'swap',
 });
 
+// Only a fallback title, for the platform's own 404. No description here: every tenant page
+// inherits the root's metadata, so one would show up in search results for pages that have
+// none of their own (SEO-01). A page without a description simply has no description tag.
 export const metadata: Metadata = {
   title: 'CMS — tenant site renderer',
-  description: 'Server-rendered public sites for the multi-tenant CMS.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

@@ -27,6 +27,7 @@ type Row = {
   authorId?: string | null;
   parentId?: string | null;
   data?: unknown;
+  seo?: unknown;
 };
 
 /**
@@ -1162,3 +1163,66 @@ describe('ContentService hands moves to redirects (GOV-05)', () => {
     expect(table.find((r) => r.id === 'about')?.path).toBe('/company');
   });
 });
+
+describe('ContentService SEO settings (SEO-01)', () => {
+  function setup() {
+    return fakeContent(
+      [
+        { id: 'about', siteId: 'site-a', title: 'About', slug: 'about', path: '/about', status: 'published', blocks },
+        { id: 'draft', siteId: 'site-a', title: 'Draft', slug: 'draft', path: '/draft', status: 'draft', blocks },
+      ],
+      { alice: { siteId: 'site-a', role: 'owner' }, carl: { siteId: 'site-a', role: 'contributor' } },
+    );
+  }
+
+  it('saves the settings trimmed, and replaces the whole object', async () => {
+    const { service, table } = setup();
+    await service.update('alice', 'about', { seo: { metaTitle: '  About the farm  ', noindex: true, extra: 'ignored' } });
+    expect(table.find((r) => r.id === 'about')?.seo).toEqual({
+      metaTitle: 'About the farm',
+      metaDescription: '',
+      canonicalUrl: '',
+      ogTitle: '',
+      ogDescription: '',
+      ogImage: '',
+      noindex: true,
+    });
+    await service.update('alice', 'about', { seo: { metaDescription: 'Hello' } });
+    expect(table.find((r) => r.id === 'about')?.seo).toMatchObject({ metaTitle: '', metaDescription: 'Hello', noindex: false });
+  });
+
+  it('refuses invalid settings with every problem named, and writes nothing, not even the title', async () => {
+    const { service, table } = setup();
+    const attempt = service.update('alice', 'about', { title: 'Changed', seo: { canonicalUrl: 'javascript:alert(1)', ogImage: '/uploads/othersite/a.png' } });
+    await expect(attempt).rejects.toBeInstanceOf(BadRequestException);
+    expect(table.find((r) => r.id === 'about')).toMatchObject({ title: 'About' });
+    expect(table.find((r) => r.id === 'about')?.seo).toBeUndefined();
+  });
+
+  it('only accepts a social image from the caller’s own site’s library', async () => {
+    const { service } = setup();
+    await expect(service.update('alice', 'about', { seo: { ogImage: '/uploads/sitea/a1.png' } })).resolves.toBeTruthy();
+    await expect(service.update('alice', 'about', { seo: { ogImage: '/uploads/siteb/a1.png' } })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('refreshes a live page on the public site, and not a draft', async () => {
+    const { service, revalidation } = setup();
+    await service.update('alice', 'draft', { seo: { noindex: true } });
+    expect(revalidation.page).not.toHaveBeenCalled();
+    await service.update('alice', 'about', { seo: { noindex: true } });
+    expect(revalidation.page).toHaveBeenCalledWith('a', '/about');
+  });
+
+  it('lets anyone who can edit change them', async () => {
+    const { service } = setup();
+    await expect(service.update('carl', 'draft', { seo: { metaTitle: 'Hi' } })).resolves.toBeTruthy();
+  });
+
+  it('copies them into a duplicate, without the canonical address', async () => {
+    const { service, table } = setup();
+    await service.update('alice', 'about', { seo: { metaTitle: 'About', canonicalUrl: 'https://example.com/about', noindex: true } });
+    const copy = await service.duplicate('alice', 'about');
+    expect(table.find((r) => r.slug === copy.slug)?.seo).toMatchObject({ metaTitle: 'About', canonicalUrl: '', noindex: true });
+  });
+});
+

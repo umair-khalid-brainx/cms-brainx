@@ -3,6 +3,7 @@ import { ApiError } from '../lib/api';
 import { getSession } from '../lib/auth';
 import { FieldValuesError, listArchivedPages, listPages, updatePageSettings, type PageSummary } from '../lib/contentApi';
 import { hasLiveBelow, parentChoices } from '../lib/pageTree';
+import PageSeoSection from './PageSeoSection';
 import { canPublishContent } from '../lib/roles';
 import { normaliseSlug, parentPath } from '../lib/slug';
 import { siteUrl } from '../data/site';
@@ -144,6 +145,15 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, flushPending, o
               />
             )}
           </section>
+
+          {/* Keyed like the fields above, so it starts from what's saved on every open and after a move. */}
+          <PageSeoSection
+            key={`seo-${session}-${page.slug}`}
+            page={page}
+            siteName={getSession()?.memberships[0]?.siteName ?? ''}
+            announce={setAnnouncement}
+            onSaved={onSaved}
+          />
         </div>
       </div>
     </dialog>

@@ -139,6 +139,10 @@ model Content {
   blocks      Json          @default("[]")
   // Values of the type's custom fields, by field key (TYP-02). Empty for pages.
   data        Json          @default("{}")
+  // Search and social-sharing settings (SEO-01): meta title and description, canonical URL,
+  // social title, description and image, and noindex. Shape and rules: content/seo.ts.
+  // Empty means "use the page's own title and text"; the fallbacks live in public/seo-view.ts.
+  seo         Json          @default("{}")
   // When it was archived, for display only — set on entering `archived`,
   // cleared on leaving it. `status` is the source of truth, not this.
   archivedAt  DateTime?     @map("archived_at")

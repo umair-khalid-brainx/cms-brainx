@@ -1,3 +1,17 @@
+import type { Metadata } from 'next';
+import { getSite } from '@/lib/publicApi';
+import { notFoundMetadata } from '@/lib/seo';
+
+/**
+ * The tab title of a missing page (B-15). A page that calls notFound() doesn't pass its own
+ * metadata on, so it's set here, where the tenant is known from the route.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ subdomain: string }> }): Promise<Metadata> {
+  // A tab title isn't worth failing a 404 for: if the API can't be reached, there's simply no title.
+  const site = await getSite((await params).subdomain).catch(() => null);
+  return site ? notFoundMetadata(site.name) : {};
+}
+
 /**
  * A page that isn't live on a site that is: rendered inside that site's
  * layout, so it keeps the site's header, footer and theme. Same message for a

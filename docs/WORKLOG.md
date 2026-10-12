@@ -5,6 +5,32 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Search and sharing settings, real meta tags (`SEO-01` done)
+
+Decision in D-056.
+
+- `api`: `Content.seo` (migration `20261012130000_add_content_seo`). `content/seo.ts` (+spec): Zod rules (titles 120,
+  descriptions 320, canonical http(s) only, social image a file of this site's library via the exported `mediaValue`),
+  `parseSeo`, `readSeo`. `ContentService.update` validates `seo` before any write and replaces the whole object;
+  `duplicate` copies it without the canonical address. `public/seo-view.ts` (+spec) `buildSeo`: title, description, canonical,
+  noindex and social text, image with fallbacks (entry summary, featured image). `PublicService.getPage`/`getPreview`
+  return `seo`; the chosen image is looked up in the library and dropped if gone or not a picture.
+- `web`: `lib/seo.ts` (`pageMetadata`, `listingMetadata`, `notFoundMetadata`, `siteOrigin` from `PUBLIC_SITE_URL_TEMPLATE`,
+  https on `PUBLIC_ROOT_DOMAIN` in production if unset). `generateMetadata` uses them; the tenant segment's `not-found.tsx`
+  sets "Page not found · <site>" (B-15); the root layout lost the platform description that every tenant page inherited.
+- `admin`: `lib/seo.ts` (+test); `PageSeoSection.tsx/.css` in Page settings (search-result and shared-link previews, counters
+  against 60/160, media picker, noindex, one save, Undo); `PageSummary.seo`.
+- Tests: `seo.spec.ts`, `seo-view.spec.ts`, service and `PublicService` SEO tests, `seo.test.ts`. api 455, admin 116 pass;
+  typecheck, lint, builds clean (api, admin, web).
+- Verified on `cms_wk4` with the page source: every tag on corrick, each fallback for pages and entries, `/blog` listing,
+  404 titles on both sites; browser: counters, previews, invalid canonical, save, picker and Esc, light/dark, 768px.
+
+**Not done:** `web` has no test runner, so its tag mapping is checked on the page source, not unit-tested. The editor can't
+preview an entry's summary as the description. A social image whose file is missing from the library is accepted on write and
+falls back when shown. `API_PUBLIC_URL` (used for `og:image`) must be set in production, as for any media URL.
+
+---
+
 ## 2026-10-12 — Redirects, automatic on a move (`GOV-05` done)
 
 Decision in D-055.

@@ -8,6 +8,8 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import { MediaRepository } from '../media/media.repository.js';
 import { RedirectRepository } from '../redirects/redirect.repository.js';
+import { readSeo } from '../content/seo.js';
+import { buildSeo, type PublicSeo, type SeoImage } from './seo-view.js';
 import { normaliseRedirectPath } from '../redirects/redirect-rules.js';
 import { SiteRepository } from '../sites/site.repository.js';
 import { SubdomainCache } from '../sites/subdomain-cache.js';
@@ -32,7 +34,15 @@ export type PublicEntry = {
   publishedAt: Date | null;
   fields: PublicField[];
 };
-export type PublicPage = { title: string; path: string; blocks: unknown; updatedAt: Date; entry?: PublicEntry };
+export type PublicPage = {
+  title: string;
+  path: string;
+  blocks: unknown;
+  updatedAt: Date;
+  entry?: PublicEntry;
+  /** What search engines and link previews get (SEO-01), fallbacks already applied. */
+  seo: PublicSeo;
+};
 export type PublicListing = {
   type: { name: string; singularName: string; prefix: string };
   entries: ListingItem[];
@@ -40,7 +50,8 @@ export type PublicListing = {
 
 // A listing shows this many, newest first. Paging comes with the archive pages (TAX-02).
 const LISTING_LIMIT = 50;
-export type PreviewPage = PublicPage & { status: 'draft' | 'published' };
+// A preview is never indexed (CNT-09), so it carries no search settings.
+export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' };
 
 // What `randomBytes(32).toString('base64url')` produces; anything else is
 // refused before touching the database.
@@ -89,12 +100,14 @@ export class PublicService {
     const siteId = await this.findSiteId(subdomain);
     const page = await this.content.findLiveByPath(siteId, normalisePath(rawPath));
     if (!page) throw new NotFoundException('Page not found');
+    const entry = page.type ? await this.entryOf(siteId, page, page.type) : undefined;
     return {
       title: page.title,
       path: page.path,
       blocks: await this.withLibraryAlt(siteId, page.blocks),
       updatedAt: page.updatedAt,
-      ...(page.type && { entry: await this.entryOf(siteId, page, page.type) }),
+      ...(entry && { entry }),
+      seo: await this.seoOf(siteId, page, entry),
     };
   }
 
@@ -130,14 +143,35 @@ export class PublicService {
     const siteId = await this.findSiteId(subdomain);
     const page = await this.previewLinks.findPageByToken(siteId, token);
     if (!page || page.status === 'archived') throw new NotFoundException('Preview not found');
+    const entry = page.type ? await this.entryOf(siteId, page, page.type) : undefined;
     return {
       title: page.title,
       path: page.path,
       blocks: await this.withLibraryAlt(siteId, page.blocks),
       updatedAt: page.updatedAt,
       status: page.status,
-      ...(page.type && { entry: await this.entryOf(siteId, page, page.type) }),
+      ...(entry && { entry }),
     };
+  }
+
+  /** The page's search and sharing settings with fallbacks applied (SEO-01). */
+  private async seoOf(siteId: string, page: { title: string; path: string; seo: unknown }, entry: PublicEntry | undefined): Promise<PublicSeo> {
+    const site = await this.sites.findById(siteId);
+    const chosen = readSeo(page.seo).ogImage;
+    return buildSeo({
+      page,
+      siteName: site?.name ?? '',
+      entryFields: entry?.fields,
+      socialImage: chosen ? await this.libraryImage(siteId, chosen) : null,
+    });
+  }
+
+  /** A picture from this site's library, or null when the file has since been deleted or isn't an image. */
+  private async libraryImage(siteId: string, path: string): Promise<SeoImage | null> {
+    const filename = path.slice(path.lastIndexOf('/') + 1);
+    const [file] = await this.media.findByFilenames(siteId, [filename]);
+    if (!file || !file.mimetype.startsWith('image/')) return null;
+    return { url: `${this.apiOrigin()}${path}`, alt: file.alt ?? '' };
   }
 
   private apiOrigin(): string {

@@ -4,6 +4,7 @@ import { parseVideoUrl } from 'cms-blocks';
 import type { EditorComponents } from '../puck/config';
 import { ApiError, apiDelete, apiGet, apiSend } from './api';
 import { getSession } from './auth';
+import { readSeo, type Seo } from './seo';
 
 // Replaces the old localStorage-backed pagesStore.ts (D-019) now that CNT-01
 // is real: content lives in Postgres via `api`, reached over `/content`.
@@ -19,6 +20,8 @@ export type PageStatus = 'draft' | 'published' | 'archived';
 
 export type PageSummary = {
   id: string;
+  /** Search and sharing settings (SEO-01). */
+  seo: Seo;
   /** The page this one sits under (CNT-05); null at the top level and for entries. */
   parentId: string | null;
   slug: string;
@@ -50,6 +53,7 @@ type FlatBlock = { type: string } & Record<string, unknown>;
 
 type ContentRecord = {
   id: string;
+  seo?: unknown;
   parentId: string | null;
   slug: string;
   title: string;
@@ -147,6 +151,7 @@ function puckDataToBlocks(data: Data<EditorComponents>): FlatBlock[] {
 function toSummary(record: ContentRecord): PageSummary {
   return {
     id: record.id,
+    seo: readSeo(record.seo),
     parentId: record.parentId,
     slug: record.slug,
     title: record.title,
@@ -268,7 +273,7 @@ export async function setPageStatus(slug: string, status: PageStatus): Promise<P
 // for the person; the record that comes back has the slug actually saved.
 export async function updatePageSettings(
   slug: string,
-  changes: { title?: string; slug?: string; parentId?: string | null },
+  changes: { title?: string; slug?: string; parentId?: string | null; seo?: Seo },
 ): Promise<PageSummary> {
   const session = requireSession();
   const record = await apiSend<ContentRecord>('PATCH', `/content/${slug}`, changes, session.accessToken);

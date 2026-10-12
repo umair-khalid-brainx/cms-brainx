@@ -49,7 +49,7 @@ const linkValue = z
  * address, another host, another site's folder, a query string and any other path all fail).
  * `web` adds the API's address when it shows the file.
  */
-function mediaValue(siteId: string) {
+export function mediaValue(siteId: string) {
   const pattern = new RegExp(`^(?:https?://[^\\s/?#]+)?(/uploads/${siteId.replace(/[^A-Za-z0-9]/g, '')}/[A-Za-z0-9-]+\\.[A-Za-z0-9]+)$`);
   return z
     .string()

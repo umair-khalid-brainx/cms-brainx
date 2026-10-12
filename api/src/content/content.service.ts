@@ -23,6 +23,7 @@ import { RedirectsService } from '../redirects/redirects.service.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
 import { normaliseSlug, slugProblem } from './slug.js';
+import { parseSeo, readSeo } from './seo.js';
 import { depthUnder, MAX_DEPTH, planMove, type PathMove, type TreePage } from './page-tree.js';
 import { RESERVED_PREFIXES } from '../content-types/prefix.js';
 
@@ -138,6 +139,14 @@ export class ContentService {
       throw new ForbiddenException('Missing permission: content:delete');
     }
 
+    // SEO settings are checked before anything is written (SEO-01).
+    let seo: Prisma.InputJsonValue | undefined;
+    if (dto.seo !== undefined) {
+      const parsed = parseSeo(dto.seo, membership.siteId);
+      if (!parsed.ok) throw new BadRequestException(parsed.problems);
+      seo = parsed.seo;
+    }
+
     // A new slug or parent moves the page, and every page below it, to a new address
     // (CNT-04/05/06). Checked whole before anything is written.
     const move =
@@ -193,6 +202,7 @@ export class ContentService {
       ...(move && { slug: move.slug, parentId: move.parentId }),
       blocks: blocks as Prisma.InputJsonValue | undefined,
       data: data as Prisma.InputJsonValue | undefined,
+      seo,
       // Set the first time it goes live and kept after (TYP-03).
       ...(dto.status === 'published' && !existing.publishedAt && { publishedAt: new Date() }),
       ...(entering && { archivedAt: new Date() }),
@@ -280,6 +290,9 @@ export class ContentService {
       parentId: source.parentId,
       authorId: userId,
       data: source.data as Prisma.InputJsonValue,
+      // The copy keeps the search settings but not the canonical address: two pages naming the
+      // same canonical would tell search engines they are one (SEO-01).
+      seo: { ...readSeo(source.seo), canonicalUrl: '' },
       // A write like any other, so rows saved before sanitising existed are cleaned here too.
       blocks: (Array.isArray(source.blocks)
         ? sanitizeBlocks(source.blocks as Parameters<typeof sanitizeBlocks>[0])

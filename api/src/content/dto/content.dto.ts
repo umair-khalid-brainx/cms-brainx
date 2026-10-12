@@ -30,6 +30,8 @@ export const updateContentSchema = z
     // Moves the page under another page, or to the top level with null (CNT-05). Pages only.
     parentId: z.string().min(1).nullable().optional(),
     status: z.enum(['draft', 'published', 'archived']).optional(),
+    // Search and social-sharing settings, saved whole (SEO-01). Checked field by field in content/seo.ts.
+    seo: z.record(z.string(), z.unknown()).optional(),
     blocks: z.array(blockSchema).optional(),
     // Values of a content type's custom fields, by field key (TYP-02). Entries only.
     data: z.record(z.string(), z.unknown()).optional(),

@@ -8,6 +8,39 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-056 — 2026-10-12 — SEO: one validated object, fallbacks resolved in `api`, tags built in `web` (`SEO-01`)
+
+**Decision (the week 4 plan's choices, D-052: the full req. 5 list; built as planned):**
+
+- **`Content.seo`, one JSON object** on pages and entries alike: meta title, meta description, canonical address,
+  social title, social description, social image, and noindex. Saved whole, validated on write (`api/src/content/seo.ts`):
+  text has a hard limit (120 for titles, 320 for descriptions) looser than the **advice the editor shows (60 and 160)**,
+  the canonical address must be a full http(s) address, and the social image must be a file of **this site's own**
+  library (the same rule as an entry's media field). Nothing is written if any part is refused.
+- **Fallbacks are resolved in `api`**, in a pure function (`api/src/public/seo-view.ts`), so each rule has a test:
+  title → "Page · Site" (the home page is just the site's name); description → an entry's first text field, cut to a
+  search-result length, else none; social text → the meta text; social image → the chosen file, else an entry's first
+  picture field (`GOV-04` adds the site logo last). A chosen image that was deleted from the library, or isn't a
+  picture, quietly falls back.
+- **`web` only turns that into tags** (`web/src/lib/seo.ts`): title, description, canonical, Open Graph, Twitter card
+  (`summary_large_image` only when there is a picture), and `robots: noindex, nofollow` when switched on. The canonical
+  address defaults to the page's own, built from **`PUBLIC_SITE_URL_TEMPLATE`** (`{subdomain}` replaced): only `web`
+  knows its public origin, and reading the request's host in `generateMetadata` would make every page dynamic and break
+  the host-keyed cache (invariant 6).
+- **No description tag when there is none.** The root layout used to carry the platform's own description, which every
+  tenant page inherited; it is gone, so a page without a description says nothing rather than something false.
+- **The 404 tab says "Page not found · <site>"** (B-15). A page that calls `notFound()` doesn't pass its metadata on,
+  so the title is set by the tenant segment's `not-found.tsx`.
+- **Copying a page copies its search settings but not its canonical address**: two pages naming the same canonical
+  would tell search engines they are one.
+
+**Costs and limits:** a noindex page also leaves the sitemap (`SEO-02`); the editor can't show an entry's summary as the
+description preview (it doesn't load the entry's type fields), so it says "Search engines will pick text from the page";
+no structured data (JSON-LD), no per-language tags. `web` has no test runner, so the tag mapping is checked on the page
+source with `curl`, not unit-tested.
+
+---
+
 ## D-055 — 2026-10-12 — Redirects: flat, a page always wins, automatic on a move (`GOV-05`)
 
 **Decision (the week 4 plan's defaults, D-052; built as planned):**

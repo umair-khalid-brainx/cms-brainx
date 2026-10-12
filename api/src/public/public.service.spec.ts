@@ -55,7 +55,7 @@ function setup() {
     ),
   };
   const service = new PublicService(
-    {} as SiteRepository,
+    sites,
     {} as ContentRepository,
     previewLinks as unknown as PreviewLinkRepository,
     subdomainCache as unknown as SubdomainCache,
@@ -67,6 +67,9 @@ function setup() {
   );
   return { service, previewLinks };
 }
+
+// getPage reads the site's name for the page's title (SEO-01).
+const sites = { findById: vi.fn(async () => ({ name: 'Alpha' })) } as unknown as SiteRepository;
 
 describe('PublicService.getPreview', () => {
   it("shows a draft through its site's token, with its status", async () => {
@@ -132,7 +135,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
     };
     const subdomainCache = { resolve: vi.fn(async () => SITE) };
     const service = new PublicService(
-      {} as SiteRepository,
+      sites,
       content as unknown as ContentRepository,
       {} as PreviewLinkRepository,
       subdomainCache as unknown as SubdomainCache,
@@ -170,7 +173,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
     };
     const media = { findAltsByFilenames: vi.fn(async () => [{ filename: 'aaa-111.png', alt: 'Library alt' }]) };
     const service = new PublicService(
-      {} as SiteRepository,
+      sites,
       {} as ContentRepository,
       previewLinks as unknown as PreviewLinkRepository,
       { resolve: vi.fn(async () => SITE) } as unknown as SubdomainCache,
@@ -228,7 +231,7 @@ describe('PublicService entries and listings (TYP-03)', () => {
       findAltsByFilenames: vi.fn(async () => []),
     };
     const service = new PublicService(
-      {} as SiteRepository,
+      sites,
       content as unknown as ContentRepository,
       {} as PreviewLinkRepository,
       { resolve: vi.fn(async (sub: string) => ({ alpha: 'site-a', beta: 'site-b' })[sub] ?? null) } as unknown as SubdomainCache,
@@ -329,3 +332,61 @@ describe('PublicService.getRedirect (GOV-05)', () => {
   });
 });
 
+
+describe('PublicService.getPage SEO (SEO-01)', () => {
+  const live = (seo: unknown) => ({
+    id: 'p1',
+    siteId: 'site-a',
+    title: 'About us',
+    path: '/about',
+    status: 'published',
+    blocks: [],
+    data: {},
+    seo,
+    updatedAt: new Date('2026-10-12'),
+    publishedAt: null,
+    author: null,
+    type: null,
+  });
+
+  function setup(seo: unknown, library: { filename: string; mimetype: string; alt: string | null }[] = []) {
+    const content = { findLiveByPath: vi.fn(async (siteId: string) => (siteId === 'site-a' ? live(seo) : null)) };
+    const media = {
+      findByFilenames: vi.fn(async (siteId: string, names: string[]) =>
+        siteId === 'site-a' ? library.filter((file) => names.includes(file.filename)).map((file) => ({ ...file, title: null })) : [],
+      ),
+      findAltsByFilenames: vi.fn(async () => []),
+    };
+    return new PublicService(
+      sites,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async (sub: string) => ({ alpha: 'site-a', beta: 'site-b' })[sub] ?? null) } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      media as unknown as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
+      {} as RedirectRepository,
+    );
+  }
+
+  it('returns the title with the site’s name, and nothing else, for a page with no settings', async () => {
+    expect((await setup({}).getPage('alpha', '/about')).seo).toMatchObject({ title: 'About us · Alpha', description: null, noindex: false });
+  });
+
+  it('returns what staff entered, noindex included', async () => {
+    const seo = (await setup({ metaTitle: 'About the farm', metaDescription: 'Who we are', noindex: true }).getPage('alpha', '/about')).seo;
+    expect(seo).toMatchObject({ title: 'About the farm', description: 'Who we are', noindex: true });
+  });
+
+  it('turns the chosen social image into an absolute address, with the library’s alt text', async () => {
+    const service = setup({ ogImage: '/uploads/sitea/a1.png' }, [{ filename: 'a1.png', mimetype: 'image/png', alt: 'A farm' }]);
+    expect((await service.getPage('alpha', '/about')).seo.social.image).toEqual({ url: 'http://api.test/uploads/sitea/a1.png', alt: 'A farm' });
+  });
+
+  it('drops a social image that was deleted from the library, or isn’t a picture', async () => {
+    expect((await setup({ ogImage: '/uploads/sitea/gone.png' }).getPage('alpha', '/about')).seo.social.image).toBeNull();
+    const pdf = setup({ ogImage: '/uploads/sitea/doc.pdf' }, [{ filename: 'doc.pdf', mimetype: 'application/pdf', alt: null }]);
+    expect((await pdf.getPage('alpha', '/about')).seo.social.image).toBeNull();
+  });
+});

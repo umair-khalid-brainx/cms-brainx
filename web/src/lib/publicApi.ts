@@ -4,9 +4,18 @@ import type { Block, EntryView, SiteTheme, TypeListing } from 'cms-blocks';
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4001';
 
 export type PublicSite = { name: string; subdomain: string; theme: SiteTheme };
+/** What search engines and link previews get for a page (SEO-01); `api` has already applied the fallbacks. */
+export type PublicSeo = {
+  title: string;
+  description: string | null;
+  /** Only what staff entered; the page's own address is used otherwise. */
+  canonicalUrl: string | null;
+  noindex: boolean;
+  social: { title: string; description: string | null; image: { url: string; alt: string } | null };
+};
 /** `entry` is present when the page is an entry of a content type (TYP-03). */
-export type PublicPage = { title: string; path: string; blocks: Block[]; updatedAt: string; entry?: EntryView };
-export type PreviewPage = PublicPage & { status: 'draft' | 'published' };
+export type PublicPage = { title: string; path: string; blocks: Block[]; updatedAt: string; entry?: EntryView; seo: PublicSeo };
+export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' };
 
 /**
  * Both reads hit the API's unauthenticated `/public` routes, which only ever

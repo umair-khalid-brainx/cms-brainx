@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { BlockRenderer, ContactFormProvider, EntryHeader, EntryList } from 'cms-blocks';
 import { getListing, getPage, getRedirect, getSite } from '@/lib/publicApi';
+import { listingMetadata, pageMetadata, siteOrigin } from '@/lib/seo';
 import { submitContactForm } from '@/site/contactFormAction';
 
 // ISR (CNT-08): every page is rendered on its first visit, cached, and
@@ -22,12 +23,17 @@ function toPath(segments: string[] | undefined): string {
 export async function generateMetadata({ params }: PageProps<'/sites/[subdomain]/[[...path]]'>): Promise<Metadata> {
   const { subdomain, path } = await params;
   const [site, page] = await Promise.all([getSite(subdomain), getPage(subdomain, toPath(path))]);
-  if (site && !page && path?.length === 1) {
-    const listing = await getListing(subdomain, path[0]);
-    if (listing) return { title: `${listing.type.name} · ${site.name}` };
+  if (!site) return {};
+  const origin = siteOrigin(subdomain);
+  if (page) {
+    return pageMetadata({ seo: page.seo, origin, path: page.path, siteName: site.name, article: Boolean(page.entry) });
   }
-  if (!site || !page) return {};
-  return { title: page.path === '/' ? site.name : `${page.title} · ${site.name}` };
+  if (path?.length === 1) {
+    const listing = await getListing(subdomain, path[0]);
+    if (listing) return listingMetadata({ origin, path: `/${path[0]}`, typeName: listing.type.name, siteName: site.name });
+  }
+  // Nothing here: the tab title of a missing page is set by this segment's not-found.tsx (B-15).
+  return {};
 }
 
 /**
