@@ -1,6 +1,7 @@
 /* The editor's History panel (GOV-01). Same sheet and palette as Page settings (#2271b1, light and dark). */
 
-.history {
+.history,
+.compare {
   --hp-bg: #fff;
   --hp-text: #1e1e1e;
   --hp-muted: #50575e;
@@ -16,7 +17,15 @@
   --hp-live-text: #0a4b1c;
   --hp-draft-bg: #f0f0f1;
   --hp-draft-text: #3c434a;
+  --hp-add-bg: #e6f4ea;
+  --hp-add-text: #0a4b1c;
+  --hp-del-bg: #fbe9e9;
+  --hp-del-text: #8a1f1f;
+  --hp-change-bg: #fff4d6;
+  --hp-change-edge: #b27d00;
+}
 
+.history {
   position: fixed;
   inset: 0 0 0 auto;
   width: min(28rem, 100vw);
@@ -35,7 +44,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .history {
+  .history,
+  .compare {
     --hp-bg: #22272b;
     --hp-text: #f0f0f1;
     --hp-muted: #a7aaad;
@@ -50,6 +60,12 @@
     --hp-live-text: #8fdca2;
     --hp-draft-bg: #2c3338;
     --hp-draft-text: #c3c4c7;
+    --hp-add-bg: #14301c;
+    --hp-add-text: #8fdca2;
+    --hp-del-bg: #3d1a1c;
+    --hp-del-text: #f4a3a5;
+    --hp-change-bg: #3a3214;
+    --hp-change-edge: #dba617;
   }
 }
 
@@ -260,12 +276,29 @@
   border-color: var(--hp-accent-hover);
 }
 
+.history-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.history-row-actions {
+  display: flex;
+  flex: none;
+  gap: 0.5rem;
+}
+
 .history-button:disabled {
   opacity: 0.55;
   cursor: default;
 }
 
-.history button:focus-visible {
+.history button:focus-visible,
+.history a:focus-visible,
+.compare button:focus-visible,
+.compare a:focus-visible,
+.compare select:focus-visible,
+.compare summary:focus-visible {
   outline: 2px solid var(--hp-accent);
   outline-offset: 2px;
 }

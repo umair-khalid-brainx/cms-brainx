@@ -114,3 +114,17 @@ export function restoreWarning(status: PageStatus, hasUnsavedEdits: boolean): st
   else lines.push('What is on the page now is kept in the history first, so you can undo this.');
   return lines;
 }
+
+/** What the editor says after a restore, here so the History panel and the Compare screen word it alike. */
+export function restoredNotice(droppedTerms: readonly { name: string }[], revision: Pick<RevisionSummary, 'savedAt'>): string {
+  const left = droppedTerms.map((term) => term.name);
+  return (
+    `Restored the version from ${whenLabel(revision.savedAt)}.` +
+    (left.length > 0 ? ` Left out, because they no longer exist: ${left.join(', ')}.` : '')
+  );
+}
+
+/** One line for a version in a picker: "10:42 today, Published, Ann". */
+export function revisionOptionLabel(revision: RevisionSummary): string {
+  return `${whenLabel(revision.savedAt)}, ${reasonLabel(revision)}, ${authorName(revision)}`;
+}

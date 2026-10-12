@@ -1,0 +1,358 @@
+/* The Compare screen (GOV-02). Tokens (--hp-*) come from HistoryPanel.css, so it matches History and Page settings. */
+
+.compare {
+  min-height: 100vh;
+  background: var(--hp-bg);
+  color: var(--hp-text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.compare-topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: #1d2327;
+  color: #f0f0f1;
+  font-size: 0.8125rem;
+}
+
+.compare-back {
+  color: #c3c4c7;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.compare-back:hover {
+  color: #fff;
+}
+
+.compare-back:focus-visible {
+  outline: 2px solid #72aee6;
+  outline-offset: 2px;
+}
+
+.compare-heading-top {
+  font-weight: 600;
+  color: #fff;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-site {
+  margin-left: auto;
+  color: #a7aaad;
+  white-space: nowrap;
+}
+
+.compare-main {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 4rem;
+}
+
+.compare-h1 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.compare-state {
+  margin: 1.5rem 0;
+  color: var(--hp-muted);
+}
+
+.compare-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.compare-field {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.compare-field select {
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding: 0 0.6rem;
+  border: 1px solid var(--hp-border);
+  border-radius: 4px;
+  background: var(--hp-bg);
+  color: var(--hp-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.compare-swap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.compare select:focus-visible {
+  outline: 2px solid var(--hp-accent);
+  outline-offset: 1px;
+}
+
+.compare-summary {
+  margin: 1rem 0 0;
+  min-height: 1.5rem;
+}
+
+.compare-summary p {
+  margin: 0;
+}
+
+.compare-restore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--hp-border);
+  border-radius: 4px;
+  background: var(--hp-soft);
+}
+
+.compare-restore p {
+  margin: 0;
+  flex: 1 1 18rem;
+}
+
+.compare-section {
+  margin-top: 1.75rem;
+}
+
+.compare-section h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cmp-none {
+  margin: 0.4rem 0;
+  color: var(--hp-muted);
+}
+
+.cmp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Differences: colour plus strike-through / underline and a +/- mark, never colour alone. */
+.cmp-ins,
+.cmp-del {
+  padding: 0 0.15rem;
+  border-radius: 2px;
+  overflow-wrap: anywhere;
+}
+
+.cmp-ins {
+  background: var(--hp-add-bg);
+  color: var(--hp-add-text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.cmp-del {
+  background: var(--hp-del-bg);
+  color: var(--hp-del-text);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.cmp-ins > span[aria-hidden],
+.cmp-del > span[aria-hidden] {
+  margin-right: 0.15rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.cmp-chip {
+  display: inline-block;
+  margin: 0 0.4rem 0.3rem 0;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+}
+
+.cmp-empty {
+  font-style: italic;
+}
+
+.cmp-words,
+.cmp-values {
+  margin: 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.cmp-details,
+.cmp-changes {
+  margin: 0;
+  border: 1px solid var(--hp-border);
+  border-radius: 4px;
+}
+
+.cmp-detail,
+.cmp-change {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  gap: 0.25rem 1rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.cmp-detail + .cmp-detail,
+.cmp-change + .cmp-change {
+  border-top: 1px solid var(--hp-border);
+}
+
+.cmp-detail dt,
+.cmp-change dt {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cmp-detail dd,
+.cmp-change dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.cmp-group {
+  display: block;
+  color: var(--hp-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.cmp-blocks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cmp-blocks-nested {
+  margin: 0.5rem 0 0.25rem 0.75rem;
+}
+
+.cmp-block {
+  border: 1px solid var(--hp-border);
+  border-left-width: 4px;
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+}
+
+.cmp-block-added {
+  border-left-color: var(--hp-add-text);
+}
+
+.cmp-block-removed {
+  border-left-color: var(--hp-del-text);
+}
+
+.cmp-block-changed {
+  border-left-color: var(--hp-change-edge);
+}
+
+.cmp-block-unchanged {
+  border-left-color: var(--hp-border);
+}
+
+.cmp-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+}
+
+.cmp-block summary {
+  cursor: pointer;
+  min-height: 1.75rem;
+}
+
+.cmp-block-name {
+  font-weight: 600;
+}
+
+.cmp-block-preview {
+  min-width: 0;
+  color: var(--hp-muted);
+  overflow-wrap: anywhere;
+}
+
+.cmp-block-pos {
+  margin-left: auto;
+  color: var(--hp-muted);
+  font-size: 0.75rem;
+}
+
+.cmp-tag {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--hp-border);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cmp-tag-added {
+  background: var(--hp-add-bg);
+  color: var(--hp-add-text);
+}
+
+.cmp-tag-removed {
+  background: var(--hp-del-bg);
+  color: var(--hp-del-text);
+}
+
+.cmp-tag-changed {
+  background: var(--hp-change-bg);
+  color: var(--hp-text);
+  border-color: var(--hp-change-edge);
+}
+
+.cmp-tag-unchanged {
+  background: var(--hp-soft);
+  color: var(--hp-muted);
+}
+
+.cmp-block .cmp-changes {
+  margin-top: 0.6rem;
+}
+
+@media (max-width: 48rem) {
+  .cmp-detail,
+  .cmp-change {
+    grid-template-columns: 1fr;
+  }
+
+  .cmp-block-pos {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  .compare-site {
+    display: none;
+  }
+}

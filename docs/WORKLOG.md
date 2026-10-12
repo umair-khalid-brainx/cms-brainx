@@ -5,6 +5,25 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Revision comparison (`GOV-02` built; reviewer and verifier still to run)
+
+Decision in D-063.
+
+- `admin/src/lib/diffBlocks.ts` (+ `diffBlocks.test.ts`, 23 cases): `diffBlocks` (three-pass LCS alignment, Added/Removed/Changed/Unchanged
+  rows with prop changes), word-level `diffWords`, `htmlToText`, `diffDetails` / `diffRecord` / `diffTerms` for title, fields, SEO and
+  terms, `summarize` for the live-region text. `lib/revisionsApi.ts` gained `getRevision` and `getCurrentPage`; `lib/revisions.ts` gained
+  `restoredNotice` and `revisionOptionLabel`.
+- `pages/ComparePage.tsx` (+css) on route `/editor/:slug/compare?from=&to=`: From/To pickers with "Current version", Swap, a result summary
+  in an `aria-live` region, Details list, Blocks list with unchanged runs folded into one expandable group, Restore this version for the
+  older side. History rows got a Compare link. The restore confirm moved to `components/RestoreConfirm.tsx`, shared by both screens.
+  `EditorPage` shows the restore message passed from Compare.
+- Verified live on a throwaway stack (api :4011, admin :5174, DB `cms_wk4`): five revisions of a live Corrick page, default selection,
+  tagging, old -> new, word highlights, details rows, swap, restore from Compare (live-page wording, editor reloaded with the restored
+  content), contributor sees the button disabled with a note; dark, light and tablet (768) widths. Test page deleted afterwards.
+- Not done: moved-block detection, previews side by side (D-063). `web` and `api` untouched.
+
+---
+
 ## 2026-10-12 — Page revisions: snapshot, list, restore (`GOV-01` built; reviewer and verifier still to run)
 
 Decision in D-062.

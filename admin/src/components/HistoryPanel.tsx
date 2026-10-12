@@ -1,18 +1,18 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { ApiError } from '../lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import type { PageStatus } from '../lib/contentApi';
 import {
   authorName,
   groupByDay,
   reasonLabel,
-  restoreWarning,
   STATUS_LABEL,
   timeLabel,
   titleChanges,
   whenLabel,
   type RevisionSummary,
 } from '../lib/revisions';
-import { listRevisions, restoreRevision, type RestoreResult } from '../lib/revisionsApi';
+import { listRevisions, type RestoreResult } from '../lib/revisionsApi';
+import RestoreConfirm from './RestoreConfirm';
 import './HistoryPanel.css';
 
 type Props = {
@@ -39,16 +39,12 @@ type ListState = { status: 'loading' } | { status: 'error' } | { status: 'ready'
  */
 function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flushPending, onRestored }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const confirmRef = useRef<HTMLDialogElement>(null);
   const pressedOnBackdropRef = useRef(false);
-  const confirmTitleId = useId();
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   // True when the editor's latest edits could not be saved first: the confirm then says they will be replaced.
   const [unsaved, setUnsaved] = useState(false);
   const [confirming, setConfirming] = useState<RevisionSummary | null>(null);
-  const [restoring, setRestoring] = useState(false);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -76,36 +72,6 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, slug, attempt]);
 
-  useEffect(() => {
-    const dialog = confirmRef.current;
-    if (!dialog) return;
-    if (confirming && !dialog.open) dialog.showModal();
-    if (!confirming && dialog.open) dialog.close();
-  }, [confirming]);
-
-  async function restore() {
-    if (!confirming || restoring) return;
-    setRestoring(true);
-    setRestoreError(null);
-    try {
-      await flushPending().catch(() => undefined);
-      const result = await restoreRevision(slug, confirming.id);
-      const revision = confirming;
-      setConfirming(null);
-      onRestored(result, revision);
-    } catch (error) {
-      setRestoreError(
-        error instanceof ApiError && error.status === 403
-          ? 'You don’t have permission to restore a live page.'
-          : error instanceof ApiError && error.status === 404
-            ? 'That version is no longer there. Close this and look again.'
-            : 'Couldn’t restore. Check your connection and try again.',
-      );
-    } finally {
-      setRestoring(false);
-    }
-  }
-
   const items = list.status === 'ready' ? list.items : [];
   const days = groupByDay(items);
   const titles = titleChanges(items);
@@ -120,7 +86,7 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
       onClose={onClose}
       // One Esc closes the confirm only: the panel stays while its confirm is still open.
       onCancel={(event) => {
-        if (confirmRef.current?.open) event.preventDefault();
+        if (confirming) event.preventDefault();
       }}
       onMouseDown={(event) => {
         pressedOnBackdropRef.current = event.target === event.currentTarget;
@@ -194,18 +160,36 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
                       {revision.id === latestId ? (
                         <span className="history-current">Latest</span>
                       ) : (
-                        <button
-                          type="button"
-                          className="history-button"
-                          disabled={needsPublishRight}
-                          aria-label={`Restore the version from ${whenLabel(revision.savedAt)}`}
-                          onClick={() => {
-                            setRestoreError(null);
-                            setConfirming(revision);
-                          }}
-                        >
-                          Restore
-                        </button>
+                        <div className="history-row-actions">
+                          {unsaved ? (
+                            // Compare leaves the editor, and edits not yet saved would be lost on the way.
+                            <button
+                              type="button"
+                              className="history-button"
+                              disabled
+                              title="Your latest edits couldn’t be saved yet. Save them first."
+                            >
+                              Compare
+                            </button>
+                          ) : (
+                            <Link
+                              className="history-button history-link"
+                              to={`/editor/${encodeURIComponent(slug)}/compare?from=${encodeURIComponent(revision.id)}&to=current`}
+                              aria-label={`Compare the version from ${whenLabel(revision.savedAt)} with the current ${kind.toLowerCase()}`}
+                            >
+                              Compare
+                            </Link>
+                          )}
+                          <button
+                            type="button"
+                            className="history-button"
+                            disabled={needsPublishRight}
+                            aria-label={`Restore the version from ${whenLabel(revision.savedAt)}`}
+                            onClick={() => setConfirming(revision)}
+                          >
+                            Restore
+                          </button>
+                        </div>
                       )}
                     </li>
                   );
@@ -216,44 +200,18 @@ function HistoryPanel({ open, onClose, slug, status, kind, canRestoreLive, flush
         </div>
       </div>
 
-      <dialog
-        ref={confirmRef}
-        className="history-confirm"
-        aria-labelledby={confirmTitleId}
-        // React passes a nested dialog's close up to the panel's own onClose, which would close the panel too.
-        onClose={(event) => {
-          event.stopPropagation();
-          if (!restoring) setConfirming(null);
+      <RestoreConfirm
+        revision={confirming}
+        slug={slug}
+        status={status}
+        unsaved={unsaved}
+        flushPending={flushPending}
+        onCancel={() => setConfirming(null)}
+        onRestored={(result, revision) => {
+          setConfirming(null);
+          onRestored(result, revision);
         }}
-        onCancel={(event) => {
-          event.stopPropagation();
-          if (restoring) event.preventDefault();
-        }}
-      >
-        {confirming && (
-          <div className="history-confirm-inner">
-            <h2 id={confirmTitleId}>Restore the version from {whenLabel(confirming.savedAt)}?</h2>
-            {restoreWarning(status, unsaved).map((line, index) => (
-              <p key={line} className={index === 0 && status === 'published' ? 'history-confirm-live' : undefined}>
-                {line}
-              </p>
-            ))}
-            {restoreError && (
-              <p className="history-confirm-error" role="alert">
-                {restoreError}
-              </p>
-            )}
-            <div className="history-actions">
-              <button type="button" className="history-button" autoFocus onClick={() => setConfirming(null)} disabled={restoring}>
-                Cancel
-              </button>
-              <button type="button" className="history-button history-button-primary" onClick={restore} disabled={restoring}>
-                {restoring ? 'Restoring…' : 'Restore this version'}
-              </button>
-            </div>
-          </div>
-        )}
-      </dialog>
+      />
     </dialog>
   );
 }

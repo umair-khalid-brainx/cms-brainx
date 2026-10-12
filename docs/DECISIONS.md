@@ -8,6 +8,53 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-063 — 2026-10-12 — Comparing revisions: client-side block diff, matched by sequence, on its own route (`GOV-02`)
+
+**Options considered:**
+
+1. **Diff on the server.** One request, but a new endpoint to keep in step with the block contract, and the page needs both versions
+   anyway (it shows them in full).
+2. **Diff in the admin** (chosen). `GET /content/:slug/revisions/:id` already returns a whole snapshot, and the current page comes from
+   `GET /content/:slug`. A pure function in `admin/src/lib/diffBlocks.ts` needs no API change and is unit-tested directly.
+3. **Give blocks stable ids** so a block can be followed across versions. Cleanest matching, but it changes the stored block contract
+   (invariant 7) and every stored page. Rejected: the ticket says the contract does not change.
+
+**Decision:**
+
+- **Alignment by sequence, in three passes.** (1) LCS over each block's exact key (canonical JSON of the whole block): matches are
+  *Unchanged*. (2) In each gap between those anchors, LCS over type plus main text (headline, heading, quote, ...): the same block with
+  other props edited is *Changed*. (3) Still in the same gap, LCS over type alone: a block of the same type at the same relative position
+  whose text was edited is *Changed*, not Removed + Added. What is left is *Removed* (old side) or *Added* (new side). O(n*m) per pass;
+  300 blocks run in a few milliseconds.
+- **Moves are not tracked.** A reordered block shows as Removed + Added. Following it would need an id (option 3), and a move is rare
+  next to an edit. Known cost: pass 3 can pair two unrelated same-type blocks that happen to sit in the same gap (shown as one
+  Changed block with several prop changes rather than a removal and an addition).
+- **Props are compared at leaf level** with readable paths (`Items 2 › Body`, `Primary button › Label`); arrays are indexed, a longer
+  array shows its extra items as added leaves. Props the editor derives from another (a video's provider and id) are skipped. The
+  labels are the humanised prop name, with a few overrides: the admin does not carry a second copy of every Puck field label.
+- **Rich text** (`html` and any string holding tags) is compared as plain text: block ends become spaces, tags dropped, entities decoded
+  after that. Changed text with more than one word gets a **word-level LCS** returned as `same | add | del` segments. The screen renders
+  segments as text nodes only (`<ins>`/`<del>` elements with underline or strike-through plus a +/- mark, so colour is never the only cue);
+  stored HTML never reaches the DOM here (invariant 5 is untouched: nothing is sanitised or re-rendered).
+- **Header rows** (`diffDetails`): title, field values (labelled from the content type, else the key), SEO, and categories/tags (names
+  added and removed), only what changed, above the blocks, with a "No changes" state.
+- **"Current" is a pseudo-revision**: the page as `GET /content/:slug` returns it, offered as "Current version" in both pickers. The
+  default is the version you opened Compare from against Current.
+- **Where it lives: a route**, `/editor/:slug/compare?from=<id>&to=<id|current>`, not another dialog. The screen needs width (two
+  pickers, nested change lists), is linkable and survives a reload, and History stays a narrow list: each older row there gets a
+  Compare link next to Restore. It sits outside the admin layout like the editor. Cost: opening it leaves the editor, which loads fresh
+  on return (History already saved pending edits when it opened).
+- **Restore from Compare** reuses the GOV-01 flow: the confirm dialog moved out of `HistoryPanel` into a shared `RestoreConfirm`
+  (same wording, same request). The button restores the *older* of the two sides when that is a saved version; a live page needs
+  `content:publish`, otherwise the button is disabled with a note (the API still enforces). After a restore the screen goes back to
+  the editor, which reads the page fresh (the reload GOV-01 does) and says "Restored the version from ..." from the navigation state.
+- **Permissions:** viewing needs only `content:read` (existing endpoints). No API change, no schema change, no new API spec.
+
+**Not done on purpose:** moved-block detection, side-by-side rendered previews of two versions, comparing more than two versions,
+diffing image files (only their address and alt text), restoring a single block or a single field out of a version.
+
+---
+
 ## D-062 — 2026-10-12 — Revisions: full snapshots, taken after the save, one autosave row per 10 minutes (`GOV-01`)
 
 **Options considered:**

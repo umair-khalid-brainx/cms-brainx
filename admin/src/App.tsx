@@ -20,6 +20,7 @@ import TeamPage from './pages/TeamPage.tsx'
 import SubmissionsPage from './pages/SubmissionsPage.tsx'
 import SubmissionDetailPage from './pages/SubmissionDetailPage.tsx'
 import EditorPage from './pages/EditorPage.tsx'
+import ComparePage from './pages/ComparePage.tsx'
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
         </Route>
 
         <Route path="/editor/:slug" element={<EditorPage />} />
+        <Route path="/editor/:slug/compare" element={<ComparePage />} />
       </Route>
     </Routes>
   )

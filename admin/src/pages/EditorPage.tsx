@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Puck, type Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import type { EditorComponents } from '../puck/config';
 import { configFor } from '../puck/entryFields';
 import { listContentTypes, type ContentType } from '../lib/typesApi';
@@ -12,7 +12,7 @@ import SharePreview from '../components/SharePreview';
 import { ApiError } from '../lib/api';
 import { canPublishContent } from '../lib/roles';
 import type { RestoreResult } from '../lib/revisionsApi';
-import { whenLabel, type RevisionSummary } from '../lib/revisions';
+import { restoredNotice, type RevisionSummary } from '../lib/revisions';
 import { getSession } from '../lib/auth';
 import {
   FieldValuesError,
@@ -37,8 +37,18 @@ function EditorPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   // Said in the status line after a restore, until the next save replaces it.
-  const [notice, setNotice] = useState<string | null>(null);
+  // A restore made on the Compare screen arrives here with its message in the navigation state.
+  const location = useLocation();
+  const [notice, setNotice] = useState<string | null>(() => (location.state as { notice?: string } | null)?.notice ?? null);
+  // Said once: Back or a reload to this entry in the history mustn't show it again.
+  useEffect(() => {
+    if ((location.state as { notice?: string } | null)?.notice)
+      navigate(location.pathname + location.search, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on arrival
+  }, []);
   const staleAfterRestoreRef = useRef(false);
+  // The same fact for rendering (a ref can't be read while rendering).
+  const [editorStale, setEditorStale] = useState(false);
   // Set when this page's own address just changed (CNT-04): the URL follows it, but
   // the page is already loaded, so that one navigation mustn't reload it or remount Puck.
   const movedToRef = useRef<string | null>(null);
@@ -227,6 +237,7 @@ function EditorPage() {
     // Until the restored page is read back, autosave must not write the old content over it.
     dirtyRef.current = false;
     staleAfterRestoreRef.current = true;
+    setEditorStale(true);
     try {
       const fresh = await getPage(page!.slug);
       if (!fresh) {
@@ -234,16 +245,13 @@ function EditorPage() {
         return;
       }
       staleAfterRestoreRef.current = false;
+      setEditorStale(false);
       setHistoryOpen(false);
       latestDataRef.current = fresh.data;
       setPage(fresh);
       setReloads((count) => count + 1);
       setSaveError(null);
-      const left = result.droppedTerms.map((term) => term.name);
-      setNotice(
-        `Restored the version from ${whenLabel(revision.savedAt)}.` +
-          (left.length > 0 ? ` Left out, because they no longer exist: ${left.join(', ')}.` : ''),
-      );
+      setNotice(restoredNotice(result.droppedTerms, revision));
     } catch {
       setSaveError('Restored, but the editor couldn’t reload. Reload this page before editing.');
     }
@@ -291,7 +299,7 @@ function EditorPage() {
           ref={publishButtonRef}
           type="button"
           className="editor-publish"
-          disabled={publishing || staleAfterRestoreRef.current}
+          disabled={publishing || editorStale}
           onClick={() => publishNow()}
         >
           {publishing ? 'Publishing…' : 'Publish'}
