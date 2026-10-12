@@ -5,6 +5,26 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Page revisions: snapshot, list, restore (`GOV-01` built; reviewer and verifier still to run)
+
+Decision in D-062.
+
+- `api`: table `revisions` (migration `20261012170000_add_revisions`), `RevisionRepository`, `RevisionsService`, `RevisionsController`
+  (`GET /content/:slug/revisions`, `GET .../:id`, `POST .../:id/restore`), pure rules in `revisions/revision-rules.ts`
+  (reason, throttle, pruning at 50, term split), spec fakes in `revision-test-kit.ts`. `ContentService.update` records after commit
+  through `afterWrite`.
+- `admin`: `HistoryPanel` (+css) opened from a History button in the editor top bar, `lib/revisions.ts` (day grouping, labels, restore
+  warning), `lib/revisionsApi.ts`; `EditorPage` re-reads the page and restarts Puck after a restore.
+- Tests: api 654, admin 176, web unchanged; lint, typecheck and admin build clean.
+- Verified live (cms_wk4, owner via curl and in the admin, light, dark, tablet): three saves in a row gave one autosave row; publish,
+  unpublish and re-publish each a row; restore of a live page changed the public page (dev web, `corrick.lvh.me:3010`), kept it live and
+  recorded a `restore` row; a contributor got 403 on a live page and could restore a draft; Kestrel's owner got 404 for Corrick's list and
+  restore; Esc closes only the confirm and returns focus to its Restore button. The 10-minute window and the 50-row pruning are covered by
+  specs, not waited out live. Test pages removed.
+- Not done: see B-35.
+
+---
+
 ## 2026-10-12 — Term archives, term links and related posts (`TAX-02` built; reviewer and verifier still to run)
 
 Decision in D-061.

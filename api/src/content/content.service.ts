@@ -28,6 +28,7 @@ import { parseSeo, readSeo } from './seo.js';
 import { depthUnder, MAX_DEPTH, planMove, type PathMove, type TreePage } from './page-tree.js';
 import { RESERVED_PREFIXES } from '../content-types/prefix.js';
 import { TermsService, type CheckedAssignment } from '../taxonomy/terms.service.js';
+import { RevisionsService } from '../revisions/revisions.service.js';
 
 @Injectable()
 export class ContentService {
@@ -43,6 +44,7 @@ export class ContentService {
     private readonly redirects: RedirectsService,
     private readonly menus: MenuRepository,
     private readonly terms: TermsService,
+    private readonly revisions: RevisionsService,
   ) {}
 
   /** Pages, or with `typePrefix` the entries of that content type (TYP-01). */
@@ -67,6 +69,11 @@ export class ContentService {
   async getForEdit(userId: string, slug: string) {
     const page = await this.get(userId, slug);
     return this.withTerms(page);
+  }
+
+  /** What would stop this content going live: the publish checks, for content that isn't saved yet (GOV-01 restore). */
+  async publishChecksFor(siteId: string, typeId: string | null, blocks: unknown, data: unknown) {
+    return this.withRequiredFields(this.allowFieldOnlyEntry(checkPublishable(blocks), typeId, data), await this.fieldsOf(siteId, typeId), data);
   }
 
   /** What would stop this page being published, as saved now (CNT-12). */
@@ -273,6 +280,12 @@ export class ContentService {
       throw error;
     }
     const updated = await this.content.findBySlug(membership.siteId, move?.slug ?? slug);
+
+    // A revision of the page as it now is (GOV-01), after the write has committed: a failure is logged and
+    // never reported as a failed save. Not in the write's own transaction (D-062).
+    if (updated) {
+      await this.afterWrite('revision', () => this.revisions.recordSave(membership.siteId, userId, existing.status, dto, updated));
+    }
 
     // Live before or after this write → the public page changed: publish,
     // unpublish, archive, or a save to a live page. Refresh exactly that

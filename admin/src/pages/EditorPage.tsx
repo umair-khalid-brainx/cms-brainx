@@ -6,9 +6,13 @@ import type { EditorComponents } from '../puck/config';
 import { configFor } from '../puck/entryFields';
 import { listContentTypes, type ContentType } from '../lib/typesApi';
 import PageSettingsPanel from '../components/PageSettingsPanel';
+import HistoryPanel from '../components/HistoryPanel';
 import PublishChecksPanel from '../components/PublishChecksPanel';
 import SharePreview from '../components/SharePreview';
 import { ApiError } from '../lib/api';
+import { canPublishContent } from '../lib/roles';
+import type { RestoreResult } from '../lib/revisionsApi';
+import { whenLabel, type RevisionSummary } from '../lib/revisions';
 import { getSession } from '../lib/auth';
 import {
   FieldValuesError,
@@ -31,11 +35,17 @@ function EditorPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  // Said in the status line after a restore, until the next save replaces it.
+  const [notice, setNotice] = useState<string | null>(null);
+  const staleAfterRestoreRef = useRef(false);
   // Set when this page's own address just changed (CNT-04): the URL follows it, but
   // the page is already loaded, so that one navigation mustn't reload it or remount Puck.
   const movedToRef = useRef<string | null>(null);
   // Puck's key: the slug the page was loaded under, not its current one, for the same reason.
   const [puckKey, setPuckKey] = useState('');
+  // Bumped by a restore: the same slug, but Puck must start again from the restored content.
+  const [reloads, setReloads] = useState(0);
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
   const [page, setPage] = useState<Page | null>(null);
   // The content type, when this is an entry: its fields fill the side panel (TYP-02).
@@ -124,6 +134,8 @@ function EditorPage() {
   if (load.status === 'error') return <div className="editor-loading">Couldn&rsquo;t load this page: {load.message}</div>;
 
   function handleChange(data: Data<EditorComponents>) {
+    // After a restore whose reload failed, the editor holds the old content: never save it over the restored one.
+    if (staleAfterRestoreRef.current) return;
     latestDataRef.current = data;
     dirtyRef.current = true;
     window.clearTimeout(timeoutRef.current);
@@ -139,6 +151,7 @@ function EditorPage() {
         .then(() => {
           setSavedAt(new Date());
           setSaveError(null);
+          setNotice(null);
         })
         .catch((error: unknown) => {
           // Answered after the page moved: the move saved this edit first, so the old
@@ -147,9 +160,7 @@ function EditorPage() {
           dirtyRef.current = true;
           // A value the API refused is named; the blocks beside it were saved all the same.
           setSaveError(
-            error instanceof FieldValuesError
-              ? `Fields not saved: ${error.message}`
-              : 'Could not save — check your connection',
+            error instanceof FieldValuesError ? `Fields not saved: ${error.message}` : 'Could not save — check your connection',
           );
         });
     }, AUTOSAVE_DELAY_MS);
@@ -164,7 +175,8 @@ function EditorPage() {
   // caught by the API's own check; a new warning in them is not shown.
   async function publishNow(skipWarnings = false) {
     window.clearTimeout(timeoutRef.current);
-    if (!latestDataRef.current || publishing) return;
+    // After a restore whose reload failed the editor holds the old content: never publish it over the restore.
+    if (!latestDataRef.current || publishing || staleAfterRestoreRef.current) return;
     setPublishing(true);
     try {
       if (!skipWarnings) {
@@ -208,6 +220,35 @@ function EditorPage() {
     dirtyRef.current = false;
   }
 
+  // A restore replaced the page on the server (GOV-01): read it again and start the editor over from it.
+  // Anything still on the autosave timer is dropped: the restore already kept (or replaced) what was there.
+  async function handleRestored(result: RestoreResult, revision: RevisionSummary) {
+    window.clearTimeout(timeoutRef.current);
+    // Until the restored page is read back, autosave must not write the old content over it.
+    dirtyRef.current = false;
+    staleAfterRestoreRef.current = true;
+    try {
+      const fresh = await getPage(page!.slug);
+      if (!fresh) {
+        setSaveError('Restored, but the editor couldn’t reload. Reload this page before editing.');
+        return;
+      }
+      staleAfterRestoreRef.current = false;
+      setHistoryOpen(false);
+      latestDataRef.current = fresh.data;
+      setPage(fresh);
+      setReloads((count) => count + 1);
+      setSaveError(null);
+      const left = result.droppedTerms.map((term) => term.name);
+      setNotice(
+        `Restored the version from ${whenLabel(revision.savedAt)}.` +
+          (left.length > 0 ? ` Left out, because they no longer exist: ${left.join(', ')}.` : ''),
+      );
+    } catch {
+      setSaveError('Restored, but the editor couldn’t reload. Reload this page before editing.');
+    }
+  }
+
   function handleSettingsSaved(saved: PageSummary) {
     const moved = saved.slug !== page!.slug;
     setPage((current) => current && { ...current, ...saved });
@@ -229,11 +270,14 @@ function EditorPage() {
         </Link>
         <span className="editor-title">Editing: {page.title}</span>
         <span className="editor-status" role="status">
-          {saveError ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
+          {saveError ?? notice ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
         </span>
         <span className="editor-site">{getSession()?.memberships[0]?.siteName ?? 'No site'}</span>
         <button type="button" className="editor-secondary" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
           {type?.singularName ?? 'Page'} settings
+        </button>
+        <button type="button" className="editor-secondary" aria-haspopup="dialog" onClick={() => setHistoryOpen(true)}>
+          History
         </button>
         <SharePreview slug={page.slug} />
         {/* This is the only Publish button — Puck's own native one (rendered
@@ -243,7 +287,13 @@ function EditorPage() {
             live Publish buttons stacked on top of each other. `onPublish`
             stays wired on <Puck> below regardless, so Puck's suppressed
             button would still work if the override were ever removed. */}
-        <button ref={publishButtonRef} type="button" className="editor-publish" disabled={publishing} onClick={() => publishNow()}>
+        <button
+          ref={publishButtonRef}
+          type="button"
+          className="editor-publish"
+          disabled={publishing || staleAfterRestoreRef.current}
+          onClick={() => publishNow()}
+        >
           {publishing ? 'Publishing…' : 'Publish'}
         </button>
       </header>
@@ -266,12 +316,23 @@ function EditorPage() {
         onSaved={handleSettingsSaved}
       />
 
+      <HistoryPanel
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        slug={page.slug}
+        status={page.status}
+        kind={type?.singularName ?? 'Page'}
+        canRestoreLive={canPublishContent(getSession()?.memberships[0]?.role)}
+        flushPending={flushPending}
+        onRestored={handleRestored}
+      />
+
       <div className="editor-puck">
         {/* Keyed to remount Puck when another page loads — Puck owns its own
             internal state and won't otherwise notice a new page. Keyed by the
             slug it loaded under, so changing this page's address doesn't. */}
         <Puck
-          key={puckKey}
+          key={`${puckKey}:${reloads}`}
           config={puckConfig}
           data={page.data}
           iframe={{ waitForStyles: true }}

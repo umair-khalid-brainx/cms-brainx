@@ -1,0 +1,329 @@
+/* The editor's History panel (GOV-01). Same sheet and palette as Page settings (#2271b1, light and dark). */
+
+.history {
+  --hp-bg: #fff;
+  --hp-text: #1e1e1e;
+  --hp-muted: #50575e;
+  --hp-border: #dcdcde;
+  --hp-soft: #f6f7f7;
+  --hp-accent: #2271b1;
+  --hp-accent-hover: #135e96;
+  --hp-accent-text: #fff;
+  --hp-warning-bg: #fcf9e8;
+  --hp-warning-edge: #dba617;
+  --hp-error: #b32d2e;
+  --hp-live-bg: #edfaef;
+  --hp-live-text: #0a4b1c;
+  --hp-draft-bg: #f0f0f1;
+  --hp-draft-text: #3c434a;
+
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(28rem, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--hp-border);
+  background: var(--hp-bg);
+  color: var(--hp-text);
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.16);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  .history {
+    --hp-bg: #22272b;
+    --hp-text: #f0f0f1;
+    --hp-muted: #a7aaad;
+    --hp-border: #3c434a;
+    --hp-soft: #1d2327;
+    --hp-accent: #72aee6;
+    --hp-accent-hover: #9ec2e6;
+    --hp-accent-text: #1d2327;
+    --hp-warning-bg: #3a3214;
+    --hp-error: #f86368;
+    --hp-live-bg: #14301c;
+    --hp-live-text: #8fdca2;
+    --hp-draft-bg: #2c3338;
+    --hp-draft-text: #c3c4c7;
+  }
+}
+
+.history::backdrop,
+.history-confirm::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .history[open] {
+    animation: history-in 200ms ease-out;
+  }
+}
+
+@keyframes history-in {
+  from {
+    transform: translateX(2rem);
+    opacity: 0;
+  }
+}
+
+.history-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.75rem 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--hp-border);
+}
+
+.history-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.history-close {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--hp-muted);
+  cursor: pointer;
+}
+
+.history-close:hover {
+  color: var(--hp-text);
+  background: var(--hp-soft);
+}
+
+.history-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 1.25rem 2rem;
+}
+
+.history-intro {
+  margin: 1rem 0;
+  color: var(--hp-muted);
+}
+
+.history-note {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 4px solid var(--hp-warning-edge);
+  background: var(--hp-warning-bg);
+  font-size: 0.8125rem;
+}
+
+.history-state {
+  margin: 1.5rem 0;
+  color: var(--hp-muted);
+}
+
+.history-state p {
+  margin: 0 0 0.75rem;
+}
+
+.history-day {
+  margin-top: 1.25rem;
+}
+
+.history-day h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hp-muted);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--hp-border);
+  border-radius: 4px;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.history-row + .history-row {
+  border-top: 1px solid var(--hp-border);
+}
+
+.history-row-main {
+  min-width: 0;
+}
+
+.history-row-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.history-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-badge,
+.history-status {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.history-badge {
+  background: var(--hp-soft);
+  border: 1px solid var(--hp-border);
+}
+
+.history-badge-publish {
+  background: var(--hp-live-bg);
+  border-color: transparent;
+  color: var(--hp-live-text);
+}
+
+.history-badge-restore,
+.history-badge-before_restore {
+  border-color: var(--hp-accent);
+  color: var(--hp-accent);
+  background: transparent;
+}
+
+.history-status {
+  color: var(--hp-muted);
+}
+
+.history-author,
+.history-title {
+  margin: 0.1rem 0 0;
+  color: var(--hp-muted);
+  overflow-wrap: anywhere;
+}
+
+.history-current {
+  flex: none;
+  color: var(--hp-muted);
+  font-size: 0.8125rem;
+}
+
+.history-button {
+  min-height: 2.75rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--hp-accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--hp-accent);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.history-button:hover:not(:disabled) {
+  background: var(--hp-soft);
+}
+
+.history-button-primary {
+  background: var(--hp-accent);
+  color: var(--hp-accent-text);
+}
+
+.history-button-primary:hover:not(:disabled) {
+  background: var(--hp-accent-hover);
+  border-color: var(--hp-accent-hover);
+}
+
+.history-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.history button:focus-visible {
+  outline: 2px solid var(--hp-accent);
+  outline-offset: 2px;
+}
+
+/* The confirm sits centred over the sheet. */
+.history-confirm {
+  /* The CSS reset zeroes a dialog's margin, which is what centres it. */
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--hp-border);
+  border-radius: 6px;
+  background: var(--hp-bg);
+  color: var(--hp-text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.3);
+}
+
+.history-confirm-inner {
+  padding: 1.25rem;
+}
+
+.history-confirm h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.history-confirm p {
+  margin: 0 0 0.6rem;
+}
+
+.history-confirm-live {
+  padding: 0.6rem 0.75rem;
+  border-left: 4px solid var(--hp-warning-edge);
+  background: var(--hp-warning-bg);
+  font-weight: 600;
+}
+
+.history-confirm-error {
+  color: var(--hp-error);
+  font-weight: 500;
+}
+
+.history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-button {
+    transition: none;
+  }
+}

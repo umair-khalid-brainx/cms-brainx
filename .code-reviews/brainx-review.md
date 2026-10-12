@@ -1,38 +1,34 @@
 ---
-diff_hash: 654a0804cbabbc5c916aea24cf8470504934bfc84a14c1e389bb47e79af78f06
-reviewed_at: 2026-10-12T12:06:39Z
+diff_hash: 0cdcb8c414a6efe548a65374aa058d01fddc89b6ad949b68ce4fa478e043c8e6
+reviewed_at: 2026-10-12T16:02:33Z
 ---
 
 ## Summary
 
-TAX-02: category and tag archives, term chips and "Related" entries. `api` adds
-`GET /public/sites/:subdomain/terms/:kind/:slug?page=` (`PublicService.getTermArchive`): kind, slug and
-page validated (`term-view.ts`'s `parsePage`), term looked up by `siteId` + kind + slug, then
-`ContentRepository.findPublishedByTerm` pages published entries of types that still have that kind on,
-newest first with an `id` tiebreak, count and rows in one `$transaction`; past-the-end is a 404. Entry
-responses gain `categories`, `tags` and `related` (`termsOf`: same type, category matches first, tag
-matches fill to 3, deduplicated by `mergeRelated`; no queries for a type with neither kind). Every new
-repository method is `siteId`-scoped, including the joined term (`term: { siteId }`). Revalidation:
-`ContentService.update` refreshes the site tag when an entry of an opted-in type goes live/off, or is
-retagged/moved while live, inside `afterWrite` so a failure never fails the save; `TermsService`
-refreshes the site after a rename or delete (`RevalidationService` never throws). `cms-blocks` adds
-`TermArchive`, `RelatedEntries`, chips in `EntryHeader`, `termHref`, and extracts `EntryRows` from
-`EntryList` for reuse; colours only via `--site-*`. `web` adds `/category/[slug]/[[...rest]]` and
-`/tag/[slug]/[[...rest]]` (ISR, `revalidate = 60`, pages in the path, not `?page=`, so they stay
-cacheable per host), sharing `archiveRoute.tsx`; `noindex, follow` metadata; archive fetched with the
-site tag. `category`/`tag` are already in `RESERVED_PREFIXES`, now covered by specs. Docs, tickets and
-the previous review file's deletion are staged.
+GOV-01: page and entry revisions. `api` adds a `revisions` table (migration + `Revision` model; `site_id`, `content_id`
+cascade, `author_id` SetNull, index `(content_id, created_at desc)`), `RevisionRepository` (every method `siteId`-scoped;
+insert + prune beyond 50 in one `$transaction`; in-place `overwrite` via `updateMany`), pure rules in `revision-rules.ts`
+(`reasonForSave`, `decideRecording` with a 10-minute same-author autosave window, key-order-insensitive `snapshotsEqual`,
+`splitRestorableTerms`), and `RevisionsService` + `RevisionsController` (`GET /content/:slug/revisions`, `GET .../:id`,
+`POST .../:id/restore`). `ContentService.update` records a revision of the page as it now is, after the write, inside
+`afterWrite` so a failure never fails the save. Restore keeps status and address, records `before_restore` first, re-sanitises
+blocks, normalises SEO via `readSeo`, drops terms deleted since (reported as `droppedTerms`), needs `content:publish` for a
+live page and holds a live page to the publish checks (`ContentService.publishChecksFor`, passed in as a callback to avoid a
+service cycle), then revalidates page, listing and (when terms changed) the site. `admin` adds a History panel (native modal
+`<dialog>`, grouped by day, nested confirm dialog), `revisions.ts` helpers with tests, `revisionsApi.ts`, and editor wiring
+that flushes pending edits before listing/restoring and remounts Puck from the re-read page after a restore. Docs (D-062),
+tickets and the previous review file's deletion are staged.
 
-Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md),
-`web/`, `admin/` and `cms-blocks/` as React (react.md). One git repository, so one review.
+Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md) and `admin/` as React
+(react.md). One git repository, so one review.
 
-Cross-project contract check: `api`'s `PublicTermArchive` (`term {name, slug, kind}, entries, page,
-pageCount, total`) matches `cms-blocks`' `TermArchiveView`; `PublicEntry.categories/tags/related` match
-`EntryView`'s new optional fields (optional, so older cached answers still render). `web`'s
-`archivePage` only accepts `page/N` for N ≥ 2, a subset of what `parsePage` accepts, so `web` never asks
-for a page the API would refuse as malformed.
+Cross-project contract check: `api`'s list rows (`id, createdAt, reason, status, title, author{id,name}|null`) match
+`admin`'s `RevisionSummary`; restore's `{restored, from{id,createdAt}, droppedTerms[{name,kind}]}` matches `RestoreResult`.
+Tenant scoping holds: revisions are read by `siteId` + `contentId` + `id`, terms by `findByIds(siteId, …)`, and the page by
+the caller's membership. Field kinds are immutable (`field-definitions.ts`), so writing stored `data` back unparsed is safe.
 
-Checked: api unit tests for `public`, `taxonomy`, `content` pass (465); `web` typechecks.
+Verified: `api` vitest `src/revisions` + `content.service.spec.ts` 157/157 pass; `admin` `revisions.test.ts` 12/12 pass;
+`admin` `tsc -b` clean.
 
 ## Findings
 
@@ -40,42 +36,49 @@ Checked: api unit tests for `public`, `taxonomy`, `content` pass (465); `web` ty
 
 ### High (0)
 
-### Medium (0)
-
-### Low (1)
-- **api/src/public/public.service.ts:301** — `filesForRows` repeats `filesFor`'s body line for line (name collection, empty check, `findByFilenames`, map building); only the source of the field definitions differs. *(maintainability)*
+### Medium (1)
+- **admin/src/pages/EditorPage.tsx:190** — After a restore whose re-read fails, `staleAfterRestoreRef` only blocks `handleChange`; `publishNow` still sends `latestDataRef.current`, which holds the pre-restore content, through `saveDraft` and `publishPage`. *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: `filesFor(siteId, fields, datas)` is exactly `filesForRows(siteId, datas.map((data) => ({ fields, data })))`. Keeping one implementation and making the other a one-line wrapper (or replacing the callers) means a future change to the `FileInfo` shape or the lookup is made once. No functional impact.
+  - ai_reasoning: `handleRestored` sets `staleAfterRestoreRef.current = true` and, when `getPage` fails or returns null, leaves it set and shows "Reload this page before editing". The Publish button stays enabled, and `publishNow` (and Puck's wired `onPublish`) never checks the flag. One click writes the old editor content over the restore and publishes it. The restore is lost from the page; it survives only as a revision. Fix: return early from `publishNow` (and disable the button) while `staleAfterRestoreRef.current` is true, or move the guard into a shared "can write" check that `publishNow` and `flushPending` both use.
+
+### Low (3)
+- **api/src/revisions/revisions.service.ts:143** — A restore whose term is deleted between `findByIds` and the write fails on the FK with Prisma `P2003` and surfaces as a 500. `ContentService.update` maps the same race to a 409 "A category or tag was just deleted". *(consistency)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: `content.update(siteId, slug, …, links)` runs `contentTerm.createMany` inside its transaction. A term removed in that window violates the FK, the transaction rolls back (so no data corruption), but the error is uncaught and the admin shows the generic "Couldn't restore" after a 500. A `before_restore` row has already been written. Catch `P2003` when `links` is set and throw the same `ConflictException` as `update()`.
+- **api/src/revisions/revisions.service.ts:108** — `checkLive` is optional, so `restore()` silently skips the live-page publish checks for any caller that doesn't pass it. *(maintainability)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: D-062 makes "a live page is held to the publish checks" a rule, but the service only enforces it when the controller remembers to supply the callback. Today the controller always does. A future caller (a bulk restore, a GOV-02 "restore from compare" route) could leave it out and nothing would fail. Make the parameter required, or inject the checks behind a small interface/token so the rule can't be skipped.
+- **api/src/revisions/revision.repository.ts:67** — An autosave overwrite replaces the row's content but keeps its `createdAt`, so the History list labels a version with the time of the first save in its 10-minute window while it holds the state of the last one. *(correctness)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: "Restore the version from 10:00" can restore content saved at 10:09. Keeping `createdAt` fixed is what anchors the window (bumping it would let continuous editing extend one row forever), so the fix is not to bump it. Instead, add an `updated_at` (`@updatedAt`) column and show that time in the list and confirm. Or document in the panel that an autosave row holds the latest state within its window. The order of the list is unaffected because only the latest row is ever overwritten.
 
 ## Reviewed files
+- .code-reviews/brainx-review.md (deletion of previous review)
+- admin/src/components/HistoryPanel.css
+- admin/src/components/HistoryPanel.tsx
+- admin/src/lib/revisions.test.ts
+- admin/src/lib/revisions.ts
+- admin/src/lib/revisionsApi.ts
+- admin/src/pages/EditorPage.tsx
+- api/prisma/migrations/20261012170000_add_revisions/migration.sql
+- api/prisma/schema.prisma
 - api/src/content/content.module.ts
-- api/src/content/content.repository.ts
-- api/src/content/content.service.ts
 - api/src/content/content.service.spec.ts
-- api/src/content/slug.spec.ts
-- api/src/public/public.controller.ts
-- api/src/public/public.service.ts
-- api/src/public/public.service.spec.ts
-- api/src/public/term-view.ts
-- api/src/public/term-view.spec.ts
-- api/src/taxonomy/terms.service.ts
-- api/src/taxonomy/terms.service.spec.ts
-- admin/src/puck/entry-render.test.ts
-- cms-blocks/src/EntryHeader.tsx
-- cms-blocks/src/EntryList.tsx
-- cms-blocks/src/RelatedEntries.tsx
-- cms-blocks/src/TermArchive.tsx
-- cms-blocks/src/entry.ts
-- cms-blocks/src/index.ts
-- web/src/app/preview/[subdomain]/[token]/page.tsx
-- web/src/app/sites/[subdomain]/[[...path]]/page.tsx
-- web/src/app/sites/[subdomain]/category/[slug]/[[...rest]]/page.tsx
-- web/src/app/sites/[subdomain]/tag/[slug]/[[...rest]]/page.tsx
-- web/src/lib/archive.ts
-- web/src/lib/archive.test.ts
-- web/src/lib/publicApi.ts
-- web/src/lib/seo.ts
-- web/src/site/archiveRoute.tsx
-- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/STATUS.md, tickets/TAX-02.md (docs, skimmed)
-- .code-reviews/brainx-review.md (staged deletion of the previous review, skipped)
+- api/src/content/content.service.ts
+- api/src/revisions/revision-rules.spec.ts
+- api/src/revisions/revision-rules.ts
+- api/src/revisions/revision-test-kit.ts
+- api/src/revisions/revision.repository.ts
+- api/src/revisions/revisions.controller.ts
+- api/src/revisions/revisions.service.spec.ts
+- api/src/revisions/revisions.service.ts
+- docs/BACKLOG.md (skimmed)
+- docs/DECISIONS.md (D-062 read in full)
+- docs/WORKLOG.md (skimmed)
+- tickets/GOV-01.md (skimmed)
+- tickets/STATUS.md (skimmed)
+- tickets/TAX-02.md (skimmed)

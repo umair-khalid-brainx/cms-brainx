@@ -17,6 +17,9 @@ import type { RedirectsService } from '../redirects/redirects.service.js';
 import { ContentService } from './content.service.js';
 import { TermsService, type TermLinks } from '../taxonomy/terms.service.js';
 import { fakeTermRepository } from '../taxonomy/term-test-kit.js';
+import { RevisionsService } from '../revisions/revisions.service.js';
+import { fakeRevisionRepository } from '../revisions/revision-test-kit.js';
+import type { TermRepository } from '../taxonomy/term.repository.js';
 
 type Row = {
   id?: string;
@@ -139,6 +142,7 @@ function fakeContent(
       key === 'landing' ? { key, blocks: [{ type: 'hero', headline: 'Start here' }, { type: 'richText', html: '<p>x</p>' }] } : null,
     ),
   };
+  const revisionKit = fakeRevisionRepository();
   const service = new ContentService(
     content as unknown as ContentRepository,
     users as unknown as UserRepository,
@@ -149,8 +153,17 @@ function fakeContent(
     redirects as unknown as RedirectsService,
     menus as unknown as MenuRepository,
     new TermsService(termKit.repo, users as unknown as UserRepository, revalidation as unknown as RevalidationService),
+    // The real service over an in-memory table: every save below records its revision the way production does.
+    new RevisionsService(
+      revisionKit.repo,
+      content as unknown as ContentRepository,
+      termKit.repo as unknown as TermRepository,
+      types as unknown as ContentTypeRepository,
+      users as unknown as UserRepository,
+      revalidation as unknown as RevalidationService,
+    ),
   );
-  return { service, table, content, revalidation, types, layouts, redirects, menus, termKit };
+  return { service, table, content, revalidation, types, layouts, redirects, menus, termKit, revisionKit };
 }
 
 const blocks = [{ type: 'hero', headline: 'Hello' }];
@@ -1433,5 +1446,55 @@ describe('ContentService refreshes term archives and related lists (TAX-02)', ()
     const { service, revalidation } = setup();
     await service.update('owner', 'draft-gala', { status: 'published' });
     expect(revalidation.site).not.toHaveBeenCalled();
+  });
+});
+
+describe('ContentService records revisions (GOV-01)', () => {
+  function setup() {
+    const kit = fakeContent(
+      [
+        { siteId: 'site-a', title: 'About', slug: 'about', path: '/about', status: 'draft', blocks },
+        { siteId: 'site-a', title: 'Team', slug: 'team', path: '/team', status: 'draft', blocks },
+      ],
+      { owner: { siteId: 'site-a', role: 'owner' } },
+    );
+    return kit;
+  }
+
+  it('records one revision for two plain saves in a row, holding the newer one', async () => {
+    const { service, revisionKit } = setup();
+    await service.update('owner', 'about', { blocks: [{ type: 'hero', headline: 'First' }] });
+    await service.update('owner', 'about', { blocks: [{ type: 'hero', headline: 'Second' }] });
+    expect(revisionKit.rows).toHaveLength(1);
+    expect(revisionKit.rows[0]).toMatchObject({ reason: 'autosave', blocks: [{ type: 'hero', headline: 'Second' }] });
+  });
+
+  it('records a publish revision holding the state after the write, with the status it now has', async () => {
+    const { service, revisionKit } = setup();
+    await service.update('owner', 'about', { blocks: [{ type: 'hero', headline: 'Live' }], status: 'published' });
+    expect(revisionKit.rows).toHaveLength(1);
+    expect(revisionKit.rows[0]).toMatchObject({ reason: 'publish', status: 'published', title: 'About', authorId: 'owner' });
+  });
+
+  it('records a status revision when a page is unpublished or archived', async () => {
+    const { service, revisionKit } = setup();
+    await service.update('owner', 'about', { status: 'archived' });
+    expect(revisionKit.rows.map((r) => [r.reason, r.status])).toEqual([['status', 'archived']]);
+  });
+
+  it('records nothing for a move, a failed save, or a duplicate', async () => {
+    const { service, revisionKit } = setup();
+    await service.update('owner', 'about', { slug: 'about-us' });
+    await expect(service.update('owner', 'missing', { title: 'x' })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.update('owner', 'about-us', { seo: { canonicalUrl: 'not a url' } })).rejects.toBeInstanceOf(BadRequestException);
+    await service.duplicate('owner', 'about-us');
+    expect(revisionKit.rows).toHaveLength(0);
+  });
+
+  it('never fails the save when the revision cannot be written', async () => {
+    const { service, revisionKit, table } = setup();
+    revisionKit.repo.findLatest.mockRejectedValueOnce(new Error('revisions table down'));
+    await expect(service.update('owner', 'about', { title: 'Still saved' })).resolves.toMatchObject({ title: 'Still saved' });
+    expect(table.find((r) => r.slug === 'about')?.title).toBe('Still saved');
   });
 });

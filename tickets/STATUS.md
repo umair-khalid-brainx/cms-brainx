@@ -69,8 +69,8 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | SEO-01 | SEO fields, meta rendering, Open Graph | DONE | 0 | 2026-10-12 (D-056) |
 | SEO-02 | Per-tenant sitemap.xml and robots.txt | DONE | 0 | 2026-10-12 (D-057) |
 | TAX-01 | Categories and tags, opt-in per type | DONE | 0 | 2026-10-12 (D-060) |
-| TAX-02 | Archive and category listing pages | IN-PROGRESS | 0 | built 2026-10-12 (D-061); reviewer and verifier to run |
-| GOV-01 | Revisions: snapshot, list, restore | TODO | 0 |  |
+| TAX-02 | Archive and category listing pages | DONE | 0 | 2026-10-12 (D-061) |
+| GOV-01 | Revisions: snapshot, list, restore | DONE | 0 | 2026-10-12 (D-062) |
 | GOV-02 | Revision comparison, block level | TODO | 0 |  |
 | GOV-03 | Nested menu builder | DONE | 0 | 2026-10-12 (D-059) |
 | GOV-04 | Header and footer content and branding | DONE | 0 | 2026-10-12 (D-058) |

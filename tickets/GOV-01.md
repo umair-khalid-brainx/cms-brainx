@@ -7,12 +7,13 @@
 Every save keeps a revision that can be listed and restored.
 ## Definition of Done
 _Confirmed with the user 2026-10-09 (`docs/WEEK4_PLAN.md`, D-052)._
-- [ ] A `revisions` table, read and written through the scoped repository layer
-- [ ] Publish, status change and restore always record a revision of title, blocks, field values, SEO and terms
-- [ ] Autosave records at most one revision per page per user every 10 minutes, updating the latest one inside the window
-- [ ] The last 50 revisions per page are kept
-- [ ] The editor's History panel lists revisions with time, author and reason, grouped by day
-- [ ] Restore saves the current state as a revision, then replaces the content with the snapshot, keeping the page's status; a live page's confirm dialog says it will change on the site straight away
-- [ ] All tests pass. Reviewer approved. Verifier passed.
+- [x] A `revisions` table, read and written through the scoped repository layer
+- [x] Publish, status change and restore always record a revision of title, blocks, field values, SEO and terms
+- [x] Autosave records at most one revision per page per user every 10 minutes, updating the latest one inside the window
+- [x] The last 50 revisions per page are kept
+- [x] The editor's History panel lists revisions with time, author and reason, grouped by day
+- [x] Restore saves the current state as a revision, then replaces the content with the snapshot, keeping the page's status; a live page's confirm dialog says it will change on the site straight away
+- [x] All tests pass.
+- [x] Reviewer approved. Verifier passed. (2026-10-12; review fixes: live-page restore runs the publish checks, editor reload failure blocks stale autosave, notice shown on live pages)
 ## Technical notes
 New `revisions` table, scoped through the repository layer.

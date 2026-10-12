@@ -13,6 +13,6 @@ _Confirmed with the user 2026-10-09 (`docs/WEEK4_PLAN.md`, D-052)._
 - [x] Under a published entry: up to 3 newest published entries of the same type sharing a category, else a tag; absent when there are none
 - [x] Publishing or retagging an entry refreshes its term archives; colours only via `--site-*` (invariant 2)
 - [x] All tests pass.
-- [ ] Reviewer approved. Verifier passed.
+- [x] Reviewer approved. Verifier passed. (2026-10-12; reviewer's moved-entry refresh fix made)
 ## Technical notes
 Plan: archives ship noindex by default, as WordPress does.

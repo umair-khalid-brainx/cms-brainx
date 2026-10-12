@@ -8,6 +8,59 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-062 — 2026-10-12 — Revisions: full snapshots, taken after the save, one autosave row per 10 minutes (`GOV-01`)
+
+**Options considered:**
+
+1. **Store diffs between versions.** Small rows, but every read has to replay a chain, and one lost or corrupt row breaks every version
+   after it. GOV-02 compares two whole versions anyway.
+2. **Store a full snapshot per revision** (chosen). A page is a few KB of JSON; 50 of them per page is cheap, each row reads on its own,
+   and restore and compare need no replay.
+3. **Take the snapshot before the write** (the state being replaced). The newest revision would then never equal the page, and the
+   latest edit would exist nowhere in history until the next save.
+
+**Decision:**
+
+- **Table `revisions`** (`site_id`, `content_id` cascade, `title`, `blocks`, `data`, `seo`, `terms`, `status`, `reason`, `author_id`
+  SetNull, `created_at`; index `(content_id, created_at desc)`), read and written only by `RevisionRepository`, every method taking `siteId`.
+  `terms` holds `{id, name, kind}`, not bare ids, so history still names a term deleted since.
+- **Not in a snapshot:** slug, parent and path (an address is not content; restoring an old one would collide with redirects and with
+  other pages), and the status as something to restore. The status *at that moment* is stored and shown, but restore keeps the page's own.
+- **When:** the snapshot is the page **as it is after** the save, so the newest revision always equals the current page. Reasons:
+  `publish` (any request for `published`, a re-publish included), `status` (any other status change), `autosave` (content changed, status
+  did not), `restore` (the result of a restore) and `before_restore` (the page as it stood just before a restore replaced it). A move
+  or an empty request records nothing. Pure rules in `revision-rules.ts`.
+- **Throttle:** `publish`, `status` and `restore` always insert. An autosave overwrites, in place, the latest revision of the page when
+  that is the same user's autosave less than 10 minutes old, so the newest state is the one kept; otherwise it inserts. It must be the
+  latest of all: after a publish or another user's save a new row starts, so the list stays in time order. An autosave identical to the
+  latest revision is skipped. After each insert the oldest beyond 50 are deleted in the same transaction.
+- **Atomicity:** the revision is written **after** the content write has committed, through `afterWrite`, not inside the write's
+  transaction. A failure to record is logged and never fails or rolls back a save the person has already been told succeeded (same
+  rule as revalidation and redirects). Cost accepted: a crash between the two loses one revision, not content. Two simultaneous
+  autosaves of one page by one user could both insert; harmless, the pruning bounds it.
+- **Restore** (`POST /content/:slug/revisions/:id/restore`): keeps the current state first (`before_restore`, unless the latest revision
+  already holds exactly it), replaces title, blocks, data, SEO and terms, keeps status, slug, parent and path, then records a `restore`
+  revision. Blocks go through `sanitizeBlocks` again (invariant 5); SEO through `readSeo`. Field values are written as they were
+  stored. A **draft** restore never blocks (nothing is public, and publishing runs the checks later). A **live** page is held to the
+  publish checks (`ContentService.publishChecksFor`: block rules and required fields), because a restore must not put a page on the
+  site in a state that couldn't be published today (a block type since removed, a field since made required); it answers 422 with
+  the problems and writes nothing (review fix, 2026-10-12). Terms: only kinds the type still uses are touched (D-060); a term deleted since is dropped and
+  named in the answer (`droppedTerms`), not an error.
+- **Permissions:** list and read need `content:read`; restore needs `content:write` and, **when the page is live, `content:publish`**.
+  `update()` has no separate rule for editing a live page's content (a contributor's autosave goes straight to it), so there was nothing
+  to reuse; a restore swaps a whole page on the site in one click, so it is held to the level of publishing. A contributor can still
+  restore a draft.
+- **Live page:** restore revalidates its page and, for an entry, its type listing; and the whole site when a live entry's terms changed
+  (the archives, D-061). A draft revalidates nothing.
+- **Admin:** a History panel (same sheet as Page settings) listing versions by day; Restore opens a confirm that says a live page changes
+  on the site straight away. Before a restore, and when History opens, the editor saves what it still holds; if that fails the confirm
+  says unsaved edits will be replaced. After it the editor re-reads the page and starts Puck again from the restored content.
+
+**Cost accepted:** a page's first revision is its state after its first save, so the content from before GOV-01 is not in history.
+No backfill. Compare is GOV-02.
+
+---
+
 ## D-061 — 2026-10-12 — Archives and related posts: noindex, one site tag, category first (`TAX-02`)
 
 **Options considered:**
