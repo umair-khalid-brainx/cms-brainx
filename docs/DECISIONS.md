@@ -8,6 +8,40 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-059 — 2026-10-12 — Menus: saved whole, pages by id, buttons first (`GOV-03`)
+
+**Decision (the week 4 plan, D-052; the parts worth recording):**
+
+- **Two menus per site, header and footer** (`MenuItem`, location, position), each a list of top items with at most one level of
+  children, up to 20 and 20. An item is **a page by id** (so it follows the page's slug, parent and moves) **or a custom link**
+  (a path, an anchor, an `http(s)` address, `mailto:` or `tel:`; never a script, a protocol-relative or any other scheme).
+  The title is editable and starts as the page's.
+- **Saved whole.** `PUT /menus/:location` takes the tree the editor ended up with, checks all of it (every page must be a page
+  or entry of this site, any status), and replaces the stored menu in **one transaction under a per-site lock**; nothing changes
+  if any part is refused. A site-wide refresh follows. `site:manage` to save; every role may read.
+- **What a visitor sees** (`api/src/menus/menu-tree.ts`, tested): a page item shows at the page's **current** address; an item
+  whose page is **not published is not shown**, whatever its status (draft, archived, gone). A top item whose own page is hidden
+  but which has shown items under it stays as a **heading with no link**, so those items aren't lost; with none, it goes.
+- **A menu change, or a page in a menu going live, off or moving, refreshes the whole site** (by the site's cache tag, D-058),
+  because the header and footer are on every page. A page that isn't in any menu costs one count query.
+- **Footer:** each top item is a group's title (a link when it has an address of its own), the items under it its links.
+- **The builder moves items with buttons first** (up, down, put under the item above, move out) and, with a mouse, by dragging a
+  handle: before an item, after it, or inside it (making it a child, only where the two-level rule allows; otherwise it falls back
+  to the nearest allowed place). No drag library: `@dnd-kit` is only a dependency of Puck, with a beta API, and native
+  drag events don't work on touch, which is why the buttons are the primary way and work for a keyboard, a screen reader and a
+  finger alike. Changes are announced in a live region; focus follows the item.
+- **The header navigation** is the disclosure pattern: a link plus a separate toggle button (Esc closes it and returns focus to the
+  button; a click or tap elsewhere closes it); on a wide screen hover opens it too; on a narrow screen a "Menu" button opens
+  a list with everything shown and no toggles.
+- **Menus live in `ContentModule`** with redirects (D-055), for the same reason: moving or hiding a page changes them.
+
+**Costs and limits:** the picker adds pages, not entries (use a link to a post's address); no menu for the archive or category
+pages (`TAX-02` adds those addresses as links); one header and one footer per site, no other locations; two administrators saving
+the same menu at once: the last save wins whole, never half of each; drag and drop is mouse-only; unsaved edits are guarded
+against closing or reloading the tab but not against clicking another admin screen (B-32).
+
+---
+
 ## D-058 — 2026-10-12 — Site identity: stored once, refreshed by tag (`GOV-04`)
 
 **Decision (the week 4 plan, D-052; the logo and the refresh method are the parts worth recording):**

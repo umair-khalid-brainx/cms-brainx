@@ -40,6 +40,11 @@ export class ContentRepository {
     return this.prisma.content.findFirst({ where: { siteId, slug } });
   }
 
+  /** The address and status of these pages and entries of the site, by id (menus, GOV-03). */
+  findFactsByIds(siteId: string, ids: readonly string[]) {
+    return this.prisma.content.findMany({ where: { siteId, id: { in: [...ids] } }, select: { id: true, path: true, status: true } });
+  }
+
   countChildren(siteId: string, id: string) {
     return this.prisma.content.count({ where: { siteId, parentId: id } });
   }

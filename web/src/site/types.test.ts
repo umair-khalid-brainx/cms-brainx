@@ -21,11 +21,19 @@ describe('settingsFromSite (GOV-04)', () => {
     assert.equal(settings.footer.note, 'Grown since 1980.');
   });
 
-  it('has no logo when the site has none, and leaves the menus to GOV-03', () => {
+  it('has no logo when the site has none, and no navigation or footer groups when it has no menus', () => {
     const settings = settingsFromSite({ ...site, logo: null, tagline: '', footerNote: '' });
     assert.equal(settings.logoUrl, null);
     assert.equal(settings.tagline, '');
     assert.deepEqual(settings.nav, []);
     assert.deepEqual(settings.footer.groups, []);
+  });
+
+  it('takes the header menu as the navigation and the footer menu as the footer’s groups (GOV-03)', () => {
+    const header = [{ label: 'About', href: '/about', children: [{ label: 'Team', href: '/about/team' }] }];
+    const footer = [{ label: 'Visit', href: null, children: [{ label: 'Directions', href: '/find-us' }] }];
+    const settings = settingsFromSite(site, { header, footer });
+    assert.deepEqual(settings.nav, header);
+    assert.deepEqual(settings.footer.groups, footer);
   });
 });

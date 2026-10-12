@@ -11,23 +11,35 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           ) : null}
         </div>
 
-        {settings.footer.groups.map((group) => (
-          <div key={group.title} className="flex flex-col gap-3">
+        {settings.footer.groups.map((group, groupIndex) => (
+          <div key={groupIndex} className="flex flex-col gap-3">
             <h2 className="font-[family-name:var(--site-font-utility)] text-[0.6875rem] uppercase tracking-[0.16em] text-[var(--site-muted)]">
-              {group.title}
+              {group.href ? (
+                // A group title that is a page or link of its own (with nothing under it, or with).
+                <a
+                  href={group.href}
+                  className="outline-none transition-colors hover:text-[var(--site-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
+                >
+                  {group.label}
+                </a>
+              ) : (
+                group.label
+              )}
             </h2>
-            <ul className="flex flex-col gap-2 text-sm">
-              {group.links.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="text-[var(--site-muted)] outline-none transition-colors hover:text-[var(--site-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {group.children.length > 0 ? (
+              <ul className="flex flex-col gap-2 text-sm">
+                {group.children.map((link, linkIndex) => (
+                  <li key={linkIndex}>
+                    <a
+                      href={link.href}
+                      className="text-[var(--site-muted)] outline-none transition-colors hover:text-[var(--site-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent)]"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ))}
       </div>

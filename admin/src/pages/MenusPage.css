@@ -1,0 +1,84 @@
+/* The Menus screen (GOV-03): a title and a tab for each menu. The editor itself is in MenuEditor.css. */
+
+.menus-header {
+  margin: 0 0 1rem;
+}
+
+.menus-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.menus-announcer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.menus-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid #c3c4c7;
+  margin: 0 0 1.25rem;
+}
+
+.menus-tab {
+  border: none;
+  background: none;
+  padding: 0.6rem 1rem;
+  min-height: 2.75rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #50575e;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.menus-tab:hover {
+  color: #1e1e1e;
+}
+
+.menus-tab--active {
+  color: #2271b1;
+  border-bottom-color: #2271b1;
+}
+
+.menus-tab:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: -2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .menus-title {
+    color: #ededed;
+  }
+
+  .menus-tabs {
+    border-bottom-color: #3c434a;
+  }
+
+  .menus-tab {
+    color: #b0b0b0;
+  }
+
+  .menus-tab:hover {
+    color: #ededed;
+  }
+
+  .menus-tab--active {
+    color: #6ab6f2;
+    border-bottom-color: #6ab6f2;
+  }
+
+  .menus-tab:focus-visible {
+    outline-color: #6ab6f2;
+  }
+}

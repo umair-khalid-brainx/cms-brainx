@@ -5,6 +5,33 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Header and footer menus (`GOV-03` done)
+
+Decision in D-059.
+
+- `api`: `MenuItem` + `MenuLocation` (migration `20261012150000_add_menu_items`). `api/src/menus/`: `menu-tree.ts` (+spec) rules for a
+  menu (two levels, 20/20, a page or a link, safe links) and `publicMenu`/`storedPageIds` (what a visitor sees); `MenuRepository`
+  (`replaceTree` in one transaction under an advisory lock, `findTree`, `findForPublic`, `usesPages`); `MenusService`
+  (all pages checked against the site first; a page deleted mid-save is a clear 400); `GET`/`PUT /menus/:location`
+  (`content:read` / `site:manage`); in `ContentModule`. `ContentService.update` refreshes the whole site when a page in a menu goes live,
+  off or moves. `PublicService.getMenus` + `GET /public/sites/:subdomain/menus`; `ContentRepository.findFactsByIds`.
+- `web`: `getMenus` (site-tagged), `settingsFromSite(site, menus)`; `site/SiteNav.tsx` (disclosure dropdowns, Esc, outside click,
+  mobile Menu); `SiteHeader` uses it; `SiteFooter` renders groups (title a link when it has an address, no empty list).
+- `admin`: `lib/menuEditor.ts` (+test) pure tree operations and the link check; `lib/menusApi.ts`; `components/MenuEditor.tsx/.css`;
+  `pages/MenusPage.tsx/.css` (tabs, both editors mounted, beforeunload); `/menus` route and nav item (`site:manage`).
+- Tests: api 520, admin 137, web 22 pass; typecheck, lint, builds clean.
+- Verified: curl on two hosts (saving, refusals, a Contributor 403, the other site's owner and page ids refused, page items following a
+  rename and a move, unpublished pages hidden, headings, the whole site refreshed on the next request); production build on
+  `*.localhost`: header hover, keyboard (Enter, Tab, Esc returning focus), tap and outside tap, mobile Menu; admin in the browser:
+  buttons, drag and drop, invalid link, save, focus, light/dark, tablet.
+- Also verified against a production build: refreshing by the site's tag updates every page's header on the next request (the
+  GOV-04 design; dev mode proves nothing about the cache, web/CLAUDE.md).
+
+**Not done:** unsaved menu edits are guarded against a tab close but not an in-app navigation
+(B-32). The picker adds pages, not entries; drag and drop is mouse-only.
+
+---
+
 ## 2026-10-12 — Site identity: title, tagline, footer note and logo (`GOV-04` done)
 
 Decision in D-058.

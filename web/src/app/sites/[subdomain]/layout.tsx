@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getSite } from '@/lib/publicApi';
+import { getMenus, getSite } from '@/lib/publicApi';
 import { SiteChrome } from '@/site/SiteChrome';
 import { settingsFromSite } from '@/site/types';
 
@@ -14,8 +14,8 @@ import { settingsFromSite } from '@/site/types';
  */
 export default async function SiteLayout({ children, params }: LayoutProps<'/sites/[subdomain]'>) {
   const { subdomain } = await params;
-  const site = await getSite(subdomain);
+  const [site, menus] = await Promise.all([getSite(subdomain), getMenus(subdomain).catch(() => null)]);
   if (!site) notFound();
 
-  return <SiteChrome settings={settingsFromSite(site)}>{children}</SiteChrome>;
+  return <SiteChrome settings={settingsFromSite(site, menus)}>{children}</SiteChrome>;
 }

@@ -8,6 +8,8 @@ import { parseStoredFields, type FieldDefinition } from '../content-types/field-
 import type { Prisma } from '../generated/prisma/client.js';
 import { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import { MediaRepository } from '../media/media.repository.js';
+import { MenuRepository } from '../menus/menu.repository.js';
+import { publicMenu, storedPageIds, type PublicMenuItem } from '../menus/menu-tree.js';
 import { RedirectRepository } from '../redirects/redirect.repository.js';
 import { readSeo } from '../content/seo.js';
 import { mediaValue } from '../content-types/field-values.js';
@@ -91,6 +93,7 @@ export class PublicService {
     private readonly types: ContentTypeRepository,
     private readonly config: ConfigService,
     private readonly redirects: RedirectRepository,
+    private readonly menus: MenuRepository,
   ) {}
 
   async getSite(subdomain: string): Promise<PublicSite> {
@@ -107,6 +110,18 @@ export class PublicService {
       footerNote: settings.footerNote,
       logo: logo && { url: logo.url },
     };
+  }
+
+  /**
+   * The header and footer menus (GOV-03): page items at the page's current address, and nothing that
+   * points at a page that isn't published. Read from this site's own items and pages only.
+   */
+  async getMenus(subdomain: string): Promise<Record<'header' | 'footer', PublicMenuItem[]>> {
+    const siteId = await this.findSiteId(subdomain);
+    const stored = await this.menus.findForPublic(siteId);
+    const ids = storedPageIds(stored.header, stored.footer);
+    const pages = new Map((ids.length > 0 ? await this.content.findFactsByIds(siteId, ids) : []).map((page) => [page.id, page]));
+    return { header: publicMenu(stored.header, pages), footer: publicMenu(stored.footer, pages) };
   }
 
   /**

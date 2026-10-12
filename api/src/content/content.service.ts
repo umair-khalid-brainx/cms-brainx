@@ -19,6 +19,7 @@ import { ContentTypeRepository } from '../content-types/content-type.repository.
 import { parseStoredFields, visibleFields, type FieldDefinition } from '../content-types/field-definitions.js';
 import { mergeEntryData, missingRequired, parseEntryData } from '../content-types/field-values.js';
 import { PreviewLinkRepository } from './preview-link.repository.js';
+import { MenuRepository } from '../menus/menu.repository.js';
 import { RedirectsService } from '../redirects/redirects.service.js';
 import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
@@ -39,6 +40,7 @@ export class ContentService {
     private readonly types: ContentTypeRepository,
     private readonly layouts: StarterLayoutRepository,
     private readonly redirects: RedirectsService,
+    private readonly menus: MenuRepository,
   ) {}
 
   /** Pages, or with `typePrefix` the entries of that content type (TYP-01). */
@@ -245,6 +247,17 @@ export class ContentService {
       // An entry also sits in its type's listing (`/events`), which changed with it (TYP-03).
       if (existing.typeId) await this.revalidation.page(membership.site.subdomain, `/${existing.path.split('/')[1]}`);
     }
+    // A menu points at pages (GOV-03): when one that is in a menu goes live or off, or moves, the header
+    // and footer of every page of the site change, so the whole site is refreshed.
+    const wentLiveOrOff = (existing.status === 'published') !== (updated?.status === 'published');
+    if (wentLiveOrOff || moves.length > 0) {
+      // After the save has committed, so a failure to ask is logged and never reported as a failed save.
+      await this.afterWrite('menu refresh', async () => {
+        if (await this.menus.usesPages(membership.siteId, [...new Set([existing.id, ...moves.map((m) => m.id)])])) {
+          await this.revalidation.site(membership.site.subdomain);
+        }
+      });
+    }
     // Live pages below a moved one changed address too (CNT-06): gone from the old, new at the new.
     for (const below of moves) {
       if (below.id === existing.id || below.status !== 'published') continue;
@@ -343,6 +356,11 @@ export class ContentService {
     // Its child pages would lose their place (CNT-05); the database refuses it too.
     if ((await this.content.countChildren(siteId, existing.id)) > 0) {
       throw new ConflictException('Move or delete the pages under this one first.');
+    }
+    // A menu item for this page, and everything under it, would go with it (GOV-03): take the page out of the menu first.
+    const menus = await this.menus.locationsUsing(siteId, existing.id);
+    if (menus.length > 0) {
+      throw new ConflictException(`This page is in the ${menus.join(' and ')} menu. Remove it from the menu first, then delete it.`);
     }
     try {
       await this.content.delete(siteId, slug);

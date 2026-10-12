@@ -24,6 +24,12 @@ export class PublicController {
     return this.publicSite.getPage(subdomain, path);
   }
 
+  // The header and footer menus, with unpublished pages left out (GOV-03).
+  @Get('menus')
+  getMenus(@Param('subdomain') subdomain: string) {
+    return this.publicSite.getMenus(subdomain);
+  }
+
   // The addresses for this site's sitemap.xml (SEO-02).
   @Get('sitemap')
   getSitemap(@Param('subdomain') subdomain: string) {

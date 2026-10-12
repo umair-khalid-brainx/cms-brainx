@@ -7,6 +7,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { MediaRepository } from '../media/media.repository.js';
 import type { SubmissionRepository } from '../submissions/submission.repository.js';
+import type { MenuRepository } from '../menus/menu.repository.js';
 import type { RedirectRepository } from '../redirects/redirect.repository.js';
 import { PublicService } from './public.service.js';
 
@@ -64,6 +65,7 @@ function setup() {
     {} as ContentTypeRepository,
     { get: () => undefined } as unknown as ConfigService,
     {} as RedirectRepository,
+    {} as MenuRepository,
   );
   return { service, previewLinks };
 }
@@ -144,6 +146,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
     return { service, media };
   }
@@ -182,6 +185,7 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
 
     const page = await service.getPreview('alpha', TOKEN);
@@ -240,6 +244,7 @@ describe('PublicService entries and listings (TYP-03)', () => {
       types as unknown as ContentTypeRepository,
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
     return { service, content, media };
   }
@@ -319,6 +324,7 @@ describe('PublicService.getRedirect (GOV-05)', () => {
     {} as ContentTypeRepository,
     { get: () => undefined } as unknown as ConfigService,
     redirects as unknown as RedirectRepository,
+    {} as MenuRepository,
   );
 
   it('answers where an old address goes, normalising the path it is asked about', async () => {
@@ -371,6 +377,7 @@ describe('PublicService.getPage SEO (SEO-01)', () => {
       {} as ContentTypeRepository,
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
   }
 
@@ -420,6 +427,7 @@ describe('PublicService.getSitemap (SEO-02)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
     return { service, content };
   }
@@ -456,6 +464,7 @@ describe('PublicService.getSitemap past the limit (SEO-02)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
     const { entries } = await service.getSitemap('alpha');
     expect(entries).toHaveLength(50_000);
@@ -489,6 +498,7 @@ describe('PublicService.getSite branding (GOV-04)', () => {
       {} as ContentTypeRepository,
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
   }
 
@@ -564,6 +574,7 @@ describe('PublicService.getPage looks the logo up only when it would be the pict
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
+      {} as MenuRepository,
     );
     return { service, media };
   }
@@ -580,3 +591,60 @@ describe('PublicService.getPage looks the logo up only when it would be the pict
     expect(media.findImage).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('PublicService.getMenus (GOV-03)', () => {
+  const stored = {
+    header: [
+      { label: 'About', contentId: 'live', url: null, children: [{ label: 'Team', contentId: 'draft', url: null }, { label: 'Map', contentId: null, url: '/find-us' }] },
+      { label: 'Hidden', contentId: 'draft', url: null, children: [] },
+    ],
+    footer: [{ label: 'Shop', contentId: null, url: 'https://shop.example.com', children: [] }],
+  };
+
+  function setup() {
+    const menus = { findForPublic: vi.fn(async (siteId: string) => (siteId === 'site-a' ? stored : { header: [], footer: [] })) };
+    const content = {
+      findFactsByIds: vi.fn(async (siteId: string, ids: readonly string[]) =>
+        siteId === 'site-a'
+          ? [{ id: 'live', path: '/company', status: 'published' }, { id: 'draft', path: '/draft', status: 'draft' }].filter((page) => ids.includes(page.id))
+          : [],
+      ),
+    };
+    const service = new PublicService(
+      sites,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async (sub: string) => ({ alpha: 'site-a', beta: 'site-b' })[sub] ?? null) } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      {} as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
+      menus as unknown as MenuRepository,
+    );
+    return { service, menus, content };
+  }
+
+  it('shows page items at the page’s current address and leaves out pages that aren’t published', async () => {
+    const { service, content } = setup();
+    expect(await service.getMenus('alpha')).toEqual({
+      header: [{ label: 'About', href: '/company', children: [{ label: 'Map', href: '/find-us' }] }],
+      footer: [{ label: 'Shop', href: 'https://shop.example.com', children: [] }],
+    });
+    expect(content.findFactsByIds).toHaveBeenCalledWith('site-a', expect.arrayContaining(['live', 'draft']));
+  });
+
+  it('never mixes two sites, and an unknown site is a 404', async () => {
+    const { service } = setup();
+    expect(await service.getMenus('beta')).toEqual({ header: [], footer: [] });
+    await expect(service.getMenus('nobody')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('asks for no pages at all when no item is a page', async () => {
+    const { service, content, menus } = setup();
+    menus.findForPublic.mockResolvedValueOnce({ header: [], footer: stored.footer });
+    await service.getMenus('alpha');
+    expect(content.findFactsByIds).not.toHaveBeenCalled();
+  });
+});
+

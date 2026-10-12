@@ -1,0 +1,531 @@
+/* One menu of the site (GOV-03): the tree on the left, what can be added on the right. */
+
+.menu-help {
+  max-width: 62ch;
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: #50575e;
+}
+
+.menu-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.menu-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.menu-list--children {
+  margin: 0.5rem 0 0 1.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid #dcdcde;
+}
+
+.menu-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+}
+
+.menu-row--dragging {
+  opacity: 0.45;
+}
+
+/* Where a dragged item will land: a line before or after, or the whole row for "inside". */
+.menu-row--drop-before {
+  box-shadow: 0 -3px 0 0 #2271b1;
+}
+
+.menu-row--drop-after {
+  box-shadow: 0 3px 0 0 #2271b1;
+}
+
+.menu-row--drop-inside {
+  outline: 2px solid #2271b1;
+  outline-offset: 1px;
+  background: #f0f6fc;
+}
+
+.menu-handle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: #787c82;
+  cursor: grab;
+  user-select: none;
+}
+
+.menu-handle:hover {
+  color: #1e1e1e;
+  background: #f0f0f1;
+}
+
+.menu-handle:active {
+  cursor: grabbing;
+}
+
+.menu-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-label {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #1e1e1e;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.menu-label:hover:not(:disabled) {
+  border-color: #c3c4c7;
+}
+
+.menu-label:disabled {
+  color: #50575e;
+}
+
+.menu-meta {
+  margin: 0.1rem 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: #50575e;
+  overflow-wrap: anywhere;
+}
+
+.menu-kind {
+  display: inline-block;
+  margin-right: 0.25rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #f0f0f1;
+  color: #3c434a;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.menu-path {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  color: #50575e;
+}
+
+.menu-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: #fcf9e8;
+  color: #6b4e00;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.menu-badge--info {
+  background: #f0f6fc;
+  color: #135e96;
+}
+
+.menu-tools {
+  display: flex;
+  flex: none;
+  gap: 0.15rem;
+}
+
+.menu-tool {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: #3c434a;
+  cursor: pointer;
+}
+
+.menu-tool:hover:not(:disabled) {
+  background: #f0f0f1;
+  color: #1e1e1e;
+}
+
+.menu-tool--danger:hover:not(:disabled) {
+  background: #fcf0f1;
+  color: #b32d2e;
+}
+
+.menu-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.menu-label:focus-visible,
+.menu-tool:focus-visible,
+.menu-search:focus-visible,
+.menu-add-block input:focus-visible,
+.menu-quiet:focus-visible,
+.menu-save:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+.menu-empty,
+.menu-count {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: #50575e;
+}
+
+.menu-empty {
+  padding: 1.5rem;
+  text-align: center;
+  background: #fff;
+  border: 1px dashed #949494;
+  border-radius: 4px;
+}
+
+.menu-add {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.menu-add-block {
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}
+
+.menu-add-block h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.menu-add-block label {
+  display: block;
+  margin: 0.6rem 0 0.25rem;
+  font-weight: 600;
+}
+
+.menu-add-block input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e1e1e;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.menu-add-block input[aria-invalid='true'] {
+  border-color: #b32d2e;
+}
+
+.menu-pick {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.menu-pick li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid #eee;
+}
+
+.menu-pick li:first-child {
+  border-top: none;
+}
+
+.menu-pick-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.menu-quiet {
+  flex: none;
+  min-height: 2.25rem;
+  padding: 0 0.8rem;
+  border: 1px solid #2271b1;
+  border-radius: 4px;
+  background: transparent;
+  color: #2271b1;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.menu-quiet:hover:not(:disabled) {
+  background: #f0f6fc;
+}
+
+.menu-quiet:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.menu-quiet--solid {
+  margin-top: 0.75rem;
+}
+
+.menu-savebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dcdcde;
+}
+
+.menu-save {
+  min-height: 2.5rem;
+  padding: 0 1.1rem;
+  border: none;
+  border-radius: 4px;
+  background: #2271b1;
+  color: #fff;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.menu-save:hover:not(:disabled) {
+  background: #135e96;
+}
+
+.menu-save:disabled {
+  background: #a7aaad;
+  cursor: default;
+}
+
+.menu-unsaved {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6b4e00;
+}
+
+.menu-saved {
+  font-size: 0.8125rem;
+  color: #00762c;
+}
+
+.menu-error {
+  margin: 0.6rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #b32d2e;
+}
+
+.menu-error-list {
+  padding-left: 1.2rem;
+}
+
+/* Tablet and narrower: the add panel moves under the tree. */
+@media (max-width: 60rem) {
+  .menu-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .menu-add {
+    position: static;
+  }
+}
+
+/* Narrower than a tablet: the row's tools wrap under its label. */
+@media (max-width: 44rem) {
+  .menu-row {
+    flex-wrap: wrap;
+  }
+
+  .menu-tools {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .menu-row {
+    transition: box-shadow 120ms, background-color 120ms;
+  }
+}
+
+/* After the rules above, so these win. */
+@media (prefers-color-scheme: dark) {
+  .menu-help,
+  .menu-meta,
+  .menu-path,
+  .menu-empty,
+  .menu-count,
+  .menu-label:disabled {
+    color: #b0b0b0;
+  }
+
+  .menu-list--children {
+    border-left-color: #3c434a;
+  }
+
+  .menu-row,
+  .menu-add-block,
+  .menu-empty {
+    background: #18191b;
+    border-color: #3c434a;
+  }
+
+  .menu-row--drop-before {
+    box-shadow: 0 -3px 0 0 #6ab6f2;
+  }
+
+  .menu-row--drop-after {
+    box-shadow: 0 3px 0 0 #6ab6f2;
+  }
+
+  .menu-row--drop-inside {
+    outline-color: #6ab6f2;
+    background: #101b26;
+  }
+
+  .menu-handle,
+  .menu-tool {
+    color: #c3c4c7;
+  }
+
+  .menu-handle:hover,
+  .menu-tool:hover:not(:disabled) {
+    background: #2c3338;
+    color: #ededed;
+  }
+
+  .menu-tool--danger:hover:not(:disabled) {
+    background: #3a1d1f;
+    color: #f86368;
+  }
+
+  .menu-label {
+    color: #ededed;
+  }
+
+  .menu-label:hover:not(:disabled) {
+    border-color: #646970;
+  }
+
+  .menu-kind {
+    background: #2c3338;
+    color: #d4d4d4;
+  }
+
+  .menu-badge {
+    background: #3a3214;
+    color: #f0c36d;
+  }
+
+  .menu-badge--info {
+    background: #1d3a52;
+    color: #9ec2e6;
+  }
+
+  .menu-add-block input {
+    background: #1d2327;
+    border-color: #646970;
+    color: #ededed;
+  }
+
+  .menu-add-block input[aria-invalid='true'] {
+    border-color: #f86368;
+  }
+
+  .menu-pick li {
+    border-top-color: #2c3338;
+  }
+
+  .menu-quiet {
+    color: #72aee6;
+    border-color: #72aee6;
+  }
+
+  .menu-quiet:hover:not(:disabled) {
+    background: #101b26;
+  }
+
+  .menu-savebar {
+    border-top-color: #3c434a;
+  }
+
+  .menu-save {
+    background: #72aee6;
+    color: #1d2327;
+  }
+
+  .menu-save:hover:not(:disabled) {
+    background: #9ec2e6;
+  }
+
+  .menu-save:disabled {
+    background: #3c434a;
+    color: #8c8f94;
+  }
+
+  .menu-unsaved {
+    color: #f0c36d;
+  }
+
+  .menu-saved {
+    color: #4fd67a;
+  }
+
+  .menu-error {
+    color: #f86368;
+  }
+
+  .menu-label:focus-visible,
+  .menu-tool:focus-visible,
+  .menu-search:focus-visible,
+  .menu-add-block input:focus-visible,
+  .menu-quiet:focus-visible,
+  .menu-save:focus-visible {
+    outline-color: #6ab6f2;
+  }
+}

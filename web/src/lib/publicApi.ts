@@ -83,6 +83,16 @@ export const getListing = cache((subdomain: string, prefix: string) =>
   getJson<TypeListing>(`/public/sites/${encodeURIComponent(subdomain)}/types/${encodeURIComponent(prefix)}`),
 );
 
+/** One item of a menu as the public site shows it (GOV-03); `href` is `null` for a heading with items under it. */
+export type MenuItem = { label: string; href: string | null; children: { label: string; href: string }[] };
+export type PublicMenus = { header: MenuItem[]; footer: MenuItem[] };
+
+// Tagged with the site, like the site itself: the menus are part of every page's header and footer,
+// so a saved menu, or a page in it going live or off, refreshes them with the rest (GOV-03).
+export const getMenus = cache((subdomain: string) =>
+  getJson<PublicMenus>(`/public/sites/${encodeURIComponent(subdomain)}/menus`, { tags: [siteTag(subdomain)] }),
+);
+
 /** The addresses a site wants search engines to find (SEO-02); `null` for a site that doesn't exist. */
 export type SitemapEntry = { path: string; lastModified: string; canonicalUrl: string | null };
 

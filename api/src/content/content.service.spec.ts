@@ -12,6 +12,7 @@ import type { StarterLayoutRepository } from '../starter-layouts/starter-layout.
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { PreviewLinkRepository } from './preview-link.repository.js';
 import { Prisma } from '../generated/prisma/client.js';
+import type { MenuRepository } from '../menus/menu.repository.js';
 import type { RedirectsService } from '../redirects/redirects.service.js';
 import { ContentService } from './content.service.js';
 
@@ -111,7 +112,9 @@ function fakeContent(
         : null,
     ),
   };
-  const revalidation = { page: vi.fn(async () => {}) };
+  const revalidation = { page: vi.fn(async () => {}), site: vi.fn(async () => {}) };
+  // Whether a menu points at the page (GOV-03); tests that care set it.
+  const menus = { usesPages: vi.fn(async () => false), locationsUsing: vi.fn(async () => [] as string[]) };
   // Redirect rules are tested in api/src/redirects; here only that the content service hands them each move.
   const redirects = { pagesMoved: vi.fn(async () => {}), pathTaken: vi.fn(async () => {}) };
   // Scoped like the real repository: a site only finds its own types.
@@ -137,8 +140,9 @@ function fakeContent(
     types as unknown as ContentTypeRepository,
     layouts as unknown as StarterLayoutRepository,
     redirects as unknown as RedirectsService,
+    menus as unknown as MenuRepository,
   );
-  return { service, table, content, revalidation, types, layouts, redirects };
+  return { service, table, content, revalidation, types, layouts, redirects, menus };
 }
 
 const blocks = [{ type: 'hero', headline: 'Hello' }];
@@ -1108,6 +1112,13 @@ describe('ContentService page tree (CNT-05, CNT-06)', () => {
     await expect(service.remove('alice', 'team')).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('won’t permanently delete a page that a menu points at, and says which menu', async () => {
+    const { service, menus } = setup();
+    await service.update('alice', 'leads', { status: 'archived' });
+    menus.locationsUsing.mockResolvedValueOnce(['header', 'footer']);
+    await expect(service.remove('alice', 'leads')).rejects.toThrow(/header and footer menu/);
+  });
+
   it('puts a copy next to the original, under the same parent', async () => {
     const { service } = setup();
     expect(await service.duplicate('alice', 'team')).toMatchObject({ path: '/about/team-copy', parentId: 'about' });
@@ -1223,6 +1234,43 @@ describe('ContentService SEO settings (SEO-01)', () => {
     await service.update('alice', 'about', { seo: { metaTitle: 'About', canonicalUrl: 'https://example.com/about', noindex: true } });
     const copy = await service.duplicate('alice', 'about');
     expect(table.find((r) => r.slug === copy.slug)?.seo).toMatchObject({ metaTitle: 'About', canonicalUrl: '', noindex: true });
+  });
+});
+
+describe('ContentService refreshes the whole site for a page that is in a menu (GOV-03)', () => {
+  function setup() {
+    return fakeContent(
+      [
+        { id: 'about', siteId: 'site-a', title: 'About', slug: 'about', path: '/about', status: 'published', blocks },
+        { id: 'team', siteId: 'site-a', title: 'Team', slug: 'team', path: '/about/team', status: 'draft', blocks, parentId: 'about' },
+      ],
+      { alice: { siteId: 'site-a', role: 'owner' } },
+    );
+  }
+
+  it('when it goes off, goes live, or is archived, but only if a menu points at it', async () => {
+    const { service, revalidation, menus } = setup();
+    await service.update('alice', 'about', { status: 'draft' });
+    expect(revalidation.site).not.toHaveBeenCalled();
+    menus.usesPages.mockResolvedValueOnce(true);
+    await service.update('alice', 'about', { status: 'published', blocks });
+    expect(revalidation.site).toHaveBeenCalledExactlyOnceWith('a');
+    expect(menus.usesPages).toHaveBeenLastCalledWith('site-a', ['about']);
+  });
+
+  it('when it moves, asking about every page that moved with it', async () => {
+    const { service, revalidation, menus } = setup();
+    menus.usesPages.mockResolvedValueOnce(true);
+    await service.update('alice', 'about', { slug: 'company' });
+    expect(menus.usesPages).toHaveBeenCalledWith('site-a', ['about', 'team']);
+    expect(revalidation.site).toHaveBeenCalledExactlyOnceWith('a');
+  });
+
+  it('not for a plain save of the page’s content', async () => {
+    const { service, revalidation, menus } = setup();
+    await service.update('alice', 'about', { title: 'About us' });
+    expect(menus.usesPages).not.toHaveBeenCalled();
+    expect(revalidation.site).not.toHaveBeenCalled();
   });
 });
 

@@ -1,138 +1,134 @@
 ---
-diff_hash: 9f7e210eb014d5eaf94324bc01c670c525d6beb498c7819b86d21df845db4ec1
+diff_hash: 1565d2b51beec122367fc0a590c591b24638248642975cd6c2ea5a82ac8ceea9
 branch: claude/week-4-cms-tickets-d0f656
 author: Umer
-timestamp: 2026-10-12T10:57:49Z
-reviewed_at: 2026-10-12T11:04:18Z
+timestamp: 2026-10-12T11:28:22Z
+reviewed_at: 2026-10-12T11:32:44Z
 stack: unknown
-resolved_count: 0
+resolved_count: 4
 files:
   - .code-reviews/brainx-review.md
-  - admin/src/components/SiteIdentityCard.tsx
-  - admin/src/data/site.ts
+  - admin/src/App.tsx
+  - admin/src/components/MenuEditor.css
+  - admin/src/components/MenuEditor.tsx
   - admin/src/layouts/AdminLayout.tsx
-  - admin/src/lib/auth.ts
-  - admin/src/lib/siteApi.ts
-  - admin/src/pages/DashboardPage.tsx
-  - admin/src/pages/SettingsPage.css
-  - admin/src/pages/SettingsPage.tsx
-  - api/prisma/migrations/20261012140000_add_site_settings/migration.sql
+  - admin/src/lib/api.ts
+  - admin/src/lib/menuEditor.test.ts
+  - admin/src/lib/menuEditor.ts
+  - admin/src/lib/menusApi.ts
+  - admin/src/pages/MenusPage.css
+  - admin/src/pages/MenusPage.tsx
+  - api/prisma/migrations/20261012150000_add_menu_items/migration.sql
   - api/prisma/schema.prisma
-  - api/src/content-types/field-values.ts
-  - api/src/content/seo.ts
+  - api/src/content/content.module.ts
+  - api/src/content/content.repository.ts
+  - api/src/content/content.service.spec.ts
+  - api/src/content/content.service.ts
+  - api/src/menus/menu-tree.spec.ts
+  - api/src/menus/menu-tree.ts
+  - api/src/menus/menu.repository.ts
+  - api/src/menus/menus.controller.ts
+  - api/src/menus/menus.service.spec.ts
+  - api/src/menus/menus.service.ts
+  - api/src/public/public.controller.ts
   - api/src/public/public.service.spec.ts
   - api/src/public/public.service.ts
-  - api/src/public/seo-view.spec.ts
-  - api/src/public/seo-view.ts
-  - api/src/revalidation/revalidation.service.spec.ts
-  - api/src/revalidation/revalidation.service.ts
-  - api/src/sites/site-settings.spec.ts
-  - api/src/sites/site-settings.ts
-  - api/src/sites/site.repository.ts
-  - api/src/sites/sites.controller.ts
-  - api/src/sites/sites.module.ts
-  - api/src/sites/sites.service.spec.ts
-  - api/src/sites/sites.service.ts
-  - api/src/sites/subdomain-cache.spec.ts
   - docs/BACKLOG.md
   - docs/DECISIONS.md
   - docs/WORKLOG.md
-  - tickets/GOV-04.md
+  - tickets/GOV-03.md
   - tickets/STATUS.md
-  - web/package.json
-  - web/src/app/internal/revalidate/route.ts
-  - web/src/app/sites/[subdomain]/[[...path]]/page.tsx
+  - web/src/app/preview/[subdomain]/[token]/page.tsx
+  - web/src/app/sites/[subdomain]/layout.tsx
   - web/src/lib/publicApi.ts
-  - web/src/lib/seo.test.ts
-  - web/src/lib/seo.ts
   - web/src/site/SiteFooter.tsx
   - web/src/site/SiteHeader.tsx
+  - web/src/site/SiteNav.tsx
   - web/src/site/types.test.ts
   - web/src/site/types.ts
 ---
 
 ## Summary
 
-GOV-04: real Site Identity settings. `api` adds a `sites.settings` JSONB column (migration with `DEFAULT '{}'`, so
-existing rows read as empty), `site-settings.ts` (Zod rules: title 1–100, tagline ≤120, footer note ≤400, logo empty or
-a file of this site's library via the new shared `optionalMediaValue`, which `seo.ts` now reuses), `GET /sites/:siteId`
-now returns the details, and `PATCH /sites/:siteId/settings` (`site:manage`) merges only the sent parts, checks the logo
-is an image in the site's library, writes title + settings in one update, and revalidates the whole site. The public
-`getSite` returns tagline, footer note and the logo as a full address, re-checking the stored logo against the library
-rule on the way out. The site logo becomes the last-resort social image for pages and listings. `RevalidationService`
-gains `site(subdomain)`, which POSTs `{ subdomain }` with no path. `web` tags `getSite`/`getPage` fetches with
-`site:<subdomain>`, and `/__revalidate` with no path calls `revalidateTag` for that tag; the header shows the logo (alt =
-site name) and hides an empty tagline/footer note. `admin` replaces the local-only Site Identity form with
-`SiteIdentityCard` (loads/saves via the API, logo picked from the media library, read-only for non-managers), updates
-the stored session's site name on save, and `AdminLayout` subscribes to session changes so the sidebar name updates
-immediately. The previous commit's review file is removed (staged deletion).
+GOV-03: header and footer menus. `api` adds a `menu_items` table (`MenuItem`: site, location `header|footer`,
+self-relation for one level of children, position, label, and exactly one of `contentId` or `url`).
+`menu-tree.ts` holds the Zod body schema (labels ≤80, ≤20 top items, ≤20 children each, a third level is dropped,
+links limited to `/path`, `#anchor`, `http(s)://`, `mailto:`, `tel:`) and `publicMenu`, which points page items at the
+page's current path, hides unpublished pages, and keeps a top item whose own page is hidden as a heading with no link
+when it has visible children. `MenuRepository.replaceTree` deletes and rewrites one menu in a transaction under a
+`pg_advisory_xact_lock`. `PUT /menus/:location` (`site:manage`) checks every page id against the caller's site, maps a
+mid-save FK failure (P2003) to the same 400, and revalidates the whole site. `GET /menus/:location` (`content:read`).
+`ContentService.update` now revalidates the whole site when a page that is in a menu goes live/off or moves.
+The public API gets `GET /public/sites/:subdomain/menus`. `web` fetches it with the site cache tag, feeds
+`SiteSettings.nav`/`footer.groups`, and adds a client `SiteNav` (hover + toggle-button dropdowns, Esc, outside click,
+mobile Menu button); the footer renders top items as group titles. `admin` adds the Menus screen (tabs, both editors
+kept mounted) and `MenuEditor` (buttons, drag and drop, add page/link, live-region announcements, focus handling).
+The previous commit's review file is removed (staged deletion).
 
 Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md), `admin/` as React
 (react.md), `web/` as Next.js using react.md plus general criteria. One git repository, so one review.
 
-Cross-project contract check: `api`'s `PublicSite` (`tagline`, `footerNote`, `logo: { url } | null`) matches
-`web/src/lib/publicApi.ts` field for field; `api`'s `SiteDetails` (`id, name, subdomain, tagline, footerNote, logo`)
-matches `admin/src/lib/siteApi.ts`; the length limits are duplicated in `admin` with a comment saying to keep them in
-step (repos can't share code). `RevalidationService.site` sends `{ subdomain }` and `web`'s route treats a missing
-`path` as "whole site" while still rejecting a present-but-invalid one. Tenant scoping holds: `siteId` comes from the
-route param checked by the permission guard, the settings write is `where: { id }` on that site, the logo must be in
-`media.findByFilenames(siteId, …)`, and the cache tag includes the subdomain (invariant 6). Using `@Body() body: unknown`
-and parsing in the service instead of `ZodValidationPipe` matches the existing pattern for site-dependent schemas
-(`seo.ts` parses `seoSchema(siteId)` in the service), since the schema needs `siteId`.
+Cross-project contract check: `api`'s `PublicMenuItem` (`label`, `href: string | null`, `children: {label, href}[]`)
+matches `web`'s `MenuItem`; `api`'s `AdminMenuItem` (`label, contentId, url, page, children`) matches `admin`'s
+`ServerItem`; `admin`'s `toPayload` sends exactly one of `contentId`/`url` per item, which is what `menuSchema` requires.
+The limits and `linkProblem` are duplicated in `admin` with a comment saying to keep them in step (repos can't share
+code). Tenant scoping holds: every `MenuRepository` method takes `siteId`; `siteId` comes from the caller's membership;
+page ids are checked with `findFactsByIds(siteId, …)`, and the public read resolves pages only within the site. Public
+hrefs are either a validated stored URL (no `javascript:`/`data:`/`//`) or a page path. `@Body() body: unknown` parsed in
+the service matches the existing pattern for multi-message validation.
 
-Verified: `api` `tsc --noEmit` clean, `api` `vitest run src/sites src/public src/revalidation src/content` 392/392 pass;
-`web` `tsc --noEmit` clean, `web` `npm test` 21/21 pass (new `src/**` glob picks up `site/types.test.ts`); `admin`
-`tsc -b` clean. Not run: a production `next build && next start` check of the tag revalidation.
+Verified: `api` `tsc --noEmit` clean, `api` `vitest run src/menus src/public src/content` 400/400 pass; `admin` `tsc -b`
+clean, `menuEditor.test.ts` 21/21 pass; `web` `tsc --noEmit` clean, `npm test` 22/22 pass. Not run: browser checks.
 
 ## Findings
 
 ### Critical (0)
 
-### High (0)
+### High (1)
+- **api/prisma/schema.prisma:359** — Permanently deleting an archived page that is a top-level menu item deletes that item through the `content` cascade, and the `parent` cascade (line 357) then deletes every item under it, including live pages and links, with no warning and no site refresh. *(correctness)*
+  - status: fixed
+  - dev_reasoning: N/A
+  - ai_reasoning: Fixed. `ContentService.remove()` (content.service.ts:360–364) now calls `menus.locationsUsing(siteId, page.id)` and refuses with a 409 ("This page is in the header menu. Remove it from the menu first, then delete it.") before deleting, the same way it refuses a page with child pages. So the `content` cascade can no longer silently take a top item and its children with it, and no site refresh is needed because the menu doesn't change. Covered by a new spec case (content.service.spec.ts:1118). The cascade remains only as the database's backstop for the narrow race where the page is added to a menu between the check and the delete.
 
-### Medium (1)
-- **api/src/sites/sites.service.ts:45** — The site logo is a new reference to a library file, but the media "used by" check shown before Delete (B-12, `MediaService.usage` → `content.findReferencing`) only looks at page content, so deleting the file that is the site's logo gives no warning, and nothing refreshes the site after the file is removed. *(correctness)*
+### Medium (3)
+- **api/src/content/content.service.ts:253** — The new `menus.usesPages` query runs after the page write has committed but outside the `afterWrite` guard and before the redirect bookkeeping. If it throws, an already-saved update returns a 500 and the redirects and per-page refreshes for a move are skipped. *(consistency)*
+  - status: fixed
+  - dev_reasoning: N/A
+  - ai_reasoning: Fixed. The `usesPages` check and `revalidation.site` call are now wrapped in `afterWrite('menu refresh', …)` (content.service.ts:255–259), so a failed count is logged and the save, the descendant refreshes and `redirects.pagesMoved` all still go through.
+- **admin/src/pages/MenusPage.tsx:32** — A failed page-list fetch is swallowed (`.catch(() => undefined)`), so the Add-a-page panel says "There are no pages yet." and offers nothing to add, instead of saying the list couldn't load. *(error-handling)*
+  - status: fixed
+  - dev_reasoning: N/A
+  - ai_reasoning: Fixed. `MenusPage` keeps a `pagesError` state set by the `listPages` catch (MenusPage.tsx:24, 33) and passes it to `MenuEditor`, whose add panel now shows "Couldn’t load your pages. Reload to try again." as an alert instead of the empty-state message (MenuEditor.tsx:464–467).
+- **admin/src/pages/MenusPage.tsx:43** — Unsaved menu changes are only protected against closing or reloading the browser tab. Clicking another item in the admin sidebar (an in-app React Router navigation) unmounts both editors and silently discards the edits, while the component's doc comment (line 16–17) says leaving with unsaved changes "asks first". *(correctness)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. `api/src/media/media.service.ts` is not in the staged diff; `usage` (line 227) still only calls `content.findReferencing`, so deleting the logo file still gives no warning and no site refresh. An owner picks `logo.png` as the logo, later opens the media library and deletes it. The usage dialog says no pages use it, so they confirm. The file is `rm`'d immediately; cached pages keep pointing `<img>` at it (a broken image in the header) until the 60 s timer, after which `getSite` returns `logo: null` and the header silently falls back to the name. The same applies to the social image fallback. Fix by having `usage` also report "the site's logo" when `readSettings(site.settings).logo` matches the file (and ideally revalidate the site on delete when it does), or clear the logo on delete and revalidate.
+  - ai_reasoning: Still open, partly addressed. The doc comment now says plainly that moving to another admin screen does not ask (MenusPage.tsx:16–17), and the gap is logged as `B-32` in docs/BACKLOG.md, so the code no longer claims something it doesn't do. But the behaviour itself is unchanged: an in-app sidebar click still discards unsaved menu edits with no prompt, and an admin user gets no warning beyond the "Unsaved changes" badge. To resolve, add a navigation guard, or, if deferring to B-32 is the deliberate choice, set `status: skipped` with that reason.
 
-### Low (3)
-- **web/src/app/internal/revalidate/route.ts:35** — `'path' in body` throws a `TypeError` when the JSON body is a primitive (`5`, `"x"`, `true`), so the route returns a 500 instead of the 400 it returns for every other bad body. *(correctness)*
-  - status: open
+### Low (1)
+- **web/src/app/sites/[subdomain]/layout.tsx:17** — The menus fetch now sits in the same `Promise.all` as `getSite`, and `getJson` throws on any non-404 error, so a failure in the (non-essential) menus endpoint takes down every page of the site instead of rendering it without navigation. The same applies to the preview page. *(resilience)*
+  - status: fixed
   - dev_reasoning: N/A
-  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. Line 35 is unchanged: `body !== null && 'path' in body` still throws on a primitive JSON body. `request.json()` happily returns non-object JSON, and the `in` operator throws on primitives. The old code used `body?.path`, which doesn't. The route is behind the shared secret, so only a misbehaving `api` could hit this, hence Low. Fix by checking `typeof body === 'object'` before the `in` test (or reading `body?.path !== undefined`).
-- **api/src/sites/sites.service.ts:46** — "Is this stored path a picture in the site's library" is now implemented twice: here (filename slice + `media.findByFilenames` + `mimetype.startsWith('image/')`) and in `PublicService.libraryImage` (`api/src/public/public.service.ts:214`). *(maintainability)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. `sites.service.ts:46` and `public.service.ts:221` still each do their own filename slice + `findByFilenames` + `image/` check. The two copies must agree on what counts as a usable logo (the save check and the public read); if one changes (e.g. to exclude SVG or check a thumbnail), the other won't follow and a saved logo could be dropped on read or vice versa. A small shared helper (e.g. on `MediaRepository` or in `field-values.ts`'s neighbourhood) taking `(siteId, path)` would keep them in step.
-- **api/src/public/public.service.ts:201** — `seoOf` now looks up the logo in the media table for every page render, even when the page has a chosen social image or a featured picture, so the logo is never used. *(efficiency)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: Re-review 2026-10-12T11:04:18Z: still open. `seoOf` (lines 201–202) still resolves the logo before knowing whether a social image or entry picture exists. One extra indexed query per uncached page render, so Low, but it's avoidable: resolve the logo only when `socialImage` and the entry picture are both missing (e.g. pass a lazy resolver, or compute the entry picture first).
+  - ai_reasoning: Fixed. Both the site layout (layout.tsx:17) and the preview page (page.tsx:30) now call `getMenus(subdomain).catch(() => null)`, so a menus failure renders the site without navigation instead of an error page.
 
 ## Reviewed files
-- api/prisma/migrations/20261012140000_add_site_settings/migration.sql
+- api/prisma/migrations/20261012150000_add_menu_items/migration.sql
 - api/prisma/schema.prisma
-- api/src/content-types/field-values.ts
-- api/src/content/seo.ts
-- api/src/public/public.service.ts, public.service.spec.ts
-- api/src/public/seo-view.ts, seo-view.spec.ts
-- api/src/revalidation/revalidation.service.ts, revalidation.service.spec.ts
-- api/src/sites/site-settings.ts, site-settings.spec.ts
-- api/src/sites/site.repository.ts, sites.controller.ts, sites.module.ts
-- api/src/sites/sites.service.ts, sites.service.spec.ts, subdomain-cache.spec.ts
-- web/package.json
-- web/src/app/internal/revalidate/route.ts
-- web/src/app/sites/[subdomain]/[[...path]]/page.tsx
-- web/src/lib/publicApi.ts, seo.ts, seo.test.ts
-- web/src/site/SiteHeader.tsx, SiteFooter.tsx, types.ts, types.test.ts
-- admin/src/components/SiteIdentityCard.tsx
-- admin/src/data/site.ts, layouts/AdminLayout.tsx, lib/auth.ts, lib/siteApi.ts
-- admin/src/pages/DashboardPage.tsx, SettingsPage.tsx, SettingsPage.css
-- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/GOV-04.md, tickets/STATUS.md (skimmed; docs only)
+- api/src/content/content.module.ts, content.repository.ts, content.service.ts, content.service.spec.ts
+- api/src/menus/menu-tree.ts, menu-tree.spec.ts, menu.repository.ts, menus.controller.ts, menus.service.ts, menus.service.spec.ts
+- api/src/public/public.controller.ts, public.service.ts, public.service.spec.ts
+- web/src/app/preview/[subdomain]/[token]/page.tsx
+- web/src/app/sites/[subdomain]/layout.tsx
+- web/src/lib/publicApi.ts
+- web/src/site/SiteNav.tsx, SiteHeader.tsx, SiteFooter.tsx, types.ts, types.test.ts
+- admin/src/App.tsx, layouts/AdminLayout.tsx, lib/api.ts
+- admin/src/lib/menuEditor.ts, menuEditor.test.ts, menusApi.ts
+- admin/src/components/MenuEditor.tsx
+- admin/src/pages/MenusPage.tsx
+- admin/src/components/MenuEditor.css, admin/src/pages/MenusPage.css (skimmed; styles only)
+- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/GOV-03.md, tickets/STATUS.md (skimmed; docs only)
 - .code-reviews/brainx-review.md (staged deletion of the previous review; not reviewed)
 
 ## Context used
-api/src/common/zod-validation.pipe.ts (body validation pattern), api/src/media/media.service.ts (`usage`/`remove`, the
-B-12 delete check), admin/src/lib/api.ts (`apiGet`/`apiSend` signatures), admin/src/lib/auth.ts `refreshSession`
-(calls `setSession`, so session listeners fire), web callers of `getSite` (layout, page, not-found, robots, preview).
+api/src/content/content.service.ts `remove()` and `afterWrite` (delete path and post-commit guard pattern),
+api/src/revalidation/revalidation.service.ts (`site()` never throws), web/src/lib/publicApi.ts `getJson` (throws on
+non-404 errors), admin/src/lib/contentApi.ts `listPages`, admin/src/main.tsx (`BrowserRouter`, no data router).

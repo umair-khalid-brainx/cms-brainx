@@ -54,7 +54,7 @@ export async function apiGetPublic<T>(path: string): Promise<T> {
 
 /** Authenticated POST/PATCH — for content writes, once a session exists. */
 export async function apiSend<T>(
-  method: 'POST' | 'PATCH',
+  method: 'POST' | 'PATCH' | 'PUT',
   path: string,
   body: unknown,
   accessToken: string,

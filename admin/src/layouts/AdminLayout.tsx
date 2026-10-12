@@ -64,6 +64,17 @@ const navItems = [
     requiresSiteManage: true,
   },
   {
+    // The header and footer menus (GOV-03): changing them changes every page, so owners and administrators only.
+    to: '/menus',
+    label: 'Menus',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M3 5.25A.75.75 0 0 1 3.75 4.5h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.25Zm0 4.75a.75.75 0 0 1 .75-.75h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 10Zm.75 4a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5Z" />
+      </svg>
+    ),
+    requiresSiteManage: true,
+  },
+  {
     // Where old addresses go (GOV-05). Everyone can look; the page itself limits editing.
     to: '/redirects',
     label: 'Redirects',
