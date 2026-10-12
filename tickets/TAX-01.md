@@ -7,11 +7,15 @@
 Categories and tags that a content type can opt into.
 ## Definition of Done
 _Confirmed with the user 2026-10-09 (`docs/WEEK4_PLAN.md`, D-052)._
-- [ ] One flat list of categories and one of tags per site, shared by every type that opts in
-- [ ] A type can switch categories and/or tags on; the seeded Posts type has both on, new types start with both off
-- [ ] Entries of an opted-in type can be given categories (checkboxes) and tags (token input; a new tag can be created while tagging) in Page settings
-- [ ] A Categories & Tags screen adds, renames and deletes terms and shows entry counts; deleting a term unlinks it
-- [ ] Terms from another site, or on a type that hasn't opted in, are refused
-- [ ] All tests pass. Reviewer approved. Verifier passed.
+- [x] One flat list of categories and one of tags per site, shared by every type that opts in
+- [x] A type can switch categories and/or tags on; the seeded Posts type has both on, new types start with both off
+- [x] Entries of an opted-in type can be given categories (checkboxes) and tags (token input; a new tag can be created while tagging) in Page settings
+- [x] A Categories & Tags screen adds, renames and deletes terms and shows entry counts; deleting a term unlinks it
+- [x] Terms from another site, or on a type that hasn't opted in, are refused
+- [x] All tests pass (api 572, admin 153)
+- [x] Reviewer approved. Verifier passed. (2026-10-12: reviewer asked for 3 fixes, all made; verifier passed all items)
+## Verification (2026-10-12)
+Built and exercised live against `cms_wk4`: see `docs/WORKLOG.md` and D-060. Reviewer and verifier have not run yet.
+
 ## Technical notes
 Depends on content types (`TYP-01`).

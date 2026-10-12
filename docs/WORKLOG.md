@@ -5,6 +5,29 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-12 — Categories and tags (`TAX-01` built; reviewer and verifier still to run)
+
+Decision in D-060.
+
+- `api`: `Term`, `ContentTerm`, `TermKind`, `ContentType.hasCategories/hasTags` (migration `20261012160000_add_terms`, also turns both on for
+  built-in Posts; the seed does it for new sites). `api/src/taxonomy/`: `term-rules.ts` (+spec) names, slugs, tag parsing, opt-in and
+  category checks; `TermRepository` (every method takes `siteId`; `findOrCreateTags` with `skipDuplicates`); `TermsService` (lists CRUD,
+  `resolveAssignment`, `forEntry`); `GET/POST/PATCH/DELETE /terms` (`content:read` / `content:publish`); `term-test-kit.ts` in-memory fake.
+  `ContentService` create/update accept `categoryIds` and `tags`, validated before any write and saved in the entry's transaction
+  (`ContentRepository.update(..., links)`); `getForEdit` and the write responses carry `categories` and `tags`. Content-type DTOs, repository
+  and responses carry the two flags.
+- `admin`: `lib/terms.ts` (+test) and `lib/termsApi.ts`; `pages/TaxonomyPage.tsx/.css` at `/taxonomy` (nav item for every role, read-only
+  without publish rights); `components/PageTermsSection.tsx/.css` (checkboxes, token input as an ARIA combobox) in Page settings;
+  two switches in `ContentTypeForm`.
+- Tests: api 572, admin 153 pass (terms rules, the terms service, content integration with fakes, DTOs, admin helpers).
+- Verified live (cms_wk4, API :4011, admin :5174): added a category in the screen, a clash answered 409 with the message, inline rename
+  and its error, dark mode and tablet width; in Page settings of a Post ticked a category, typed new tags (Enter, comma, suggestions,
+  Backspace), saved and read them back from the API; a Contributor got 403 on `/terms` but could create a post with a category and a new
+  tag; the other site's owner saw no terms and a category id from the first site was refused with 400; a page refused tags (tests).
+- Not done: duplicating an entry does not copy its terms; archives and related posts are `TAX-02`.
+
+---
+
 ## 2026-10-12 — Header and footer menus (`GOV-03` done)
 
 Decision in D-059.

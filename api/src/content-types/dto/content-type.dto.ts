@@ -20,6 +20,8 @@ export const createContentTypeSchema = z.object({
   singularName: name('a singular name'),
   prefix,
   fields: z.array(fieldInputSchema).max(MAX_FIELDS).optional(),
+  hasCategories: z.boolean().optional(),
+  hasTags: z.boolean().optional(),
 });
 
 export type CreateContentTypeDto = z.infer<typeof createContentTypeSchema>;
@@ -30,6 +32,8 @@ export const updateContentTypeSchema = z
     singularName: name('a singular name').optional(),
     prefix: prefix.optional(),
     fields: z.array(fieldInputSchema).max(MAX_FIELDS).optional(),
+    hasCategories: z.boolean().optional(),
+    hasTags: z.boolean().optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'Provide at least one field to update' });
 

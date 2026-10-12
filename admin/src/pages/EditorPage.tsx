@@ -260,6 +260,8 @@ function EditorPage() {
         page={page}
         kind={type?.singularName ?? 'Page'}
         isEntry={type !== null}
+        hasCategories={type?.hasCategories}
+        hasTags={type?.hasTags}
         flushPending={flushPending}
         onSaved={handleSettingsSaved}
       />

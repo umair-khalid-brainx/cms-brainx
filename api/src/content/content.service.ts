@@ -27,6 +27,7 @@ import { normaliseSlug, slugProblem } from './slug.js';
 import { parseSeo, readSeo } from './seo.js';
 import { depthUnder, MAX_DEPTH, planMove, type PathMove, type TreePage } from './page-tree.js';
 import { RESERVED_PREFIXES } from '../content-types/prefix.js';
+import { TermsService, type CheckedAssignment } from '../taxonomy/terms.service.js';
 
 @Injectable()
 export class ContentService {
@@ -41,6 +42,7 @@ export class ContentService {
     private readonly layouts: StarterLayoutRepository,
     private readonly redirects: RedirectsService,
     private readonly menus: MenuRepository,
+    private readonly terms: TermsService,
   ) {}
 
   /** Pages, or with `typePrefix` the entries of that content type (TYP-01). */
@@ -61,6 +63,12 @@ export class ContentService {
     return page;
   }
 
+  /** The editor's read: the page, and for an entry its categories and tags (TAX-01). */
+  async getForEdit(userId: string, slug: string) {
+    const page = await this.get(userId, slug);
+    return this.withTerms(page);
+  }
+
   /** What would stop this page being published, as saved now (CNT-12). */
   async checks(userId: string, slug: string) {
     const page = await this.get(userId, slug);
@@ -73,10 +81,19 @@ export class ContentService {
 
   async create(userId: string, dto: CreateContentDto) {
     const { siteId, site } = await this.resolveMembership(userId);
-    const created = await this.createRow(userId, siteId, dto);
+    let created;
+    try {
+      created = await this.createRow(userId, siteId, dto);
+    } catch (error) {
+      // A category deleted between the check and the insert: the foreign key refuses the whole create.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003' && (dto.categoryIds?.length || dto.tags?.length)) {
+        throw new ConflictException('A category or tag was just deleted. Reload the page and try again.');
+      }
+      throw error;
+    }
     // A page always wins over a redirect from its address (GOV-05).
     await this.afterWrite('create', () => this.redirects.pathTaken(siteId, site.subdomain, created.path));
-    return created;
+    return this.withTerms(created);
   }
 
   private async createRow(userId: string, siteId: string, dto: CreateContentDto) {
@@ -91,8 +108,12 @@ export class ContentService {
       startingBlocks = structuredClone(layout.blocks) as typeof dto.blocks;
     }
     if (dto.parentId && type) throw new BadRequestException('Only pages can sit under another page.');
+    // Categories and tags are checked before anything is written (TAX-01).
+    const checked = await this.terms.checkAssignment(siteId, type, { categoryIds: dto.categoryIds, tags: dto.tags });
     // Reserved words and type prefixes only matter at the top of the site.
     const slug = await this.uniqueSlug(siteId, dto.slug ?? dto.title, !type && !dto.parentId);
+    // New tags are created only now, after every other check, right before the write.
+    const links = await this.terms.materialise(siteId, checked);
     const row = {
       title: dto.title,
       slug,
@@ -101,6 +122,8 @@ export class ContentService {
       authorId: userId,
       // Sanitise on write (BLK-05, invariant 5): what is stored is already safe.
       blocks: sanitizeBlocks(startingBlocks) as Prisma.InputJsonValue,
+      // Written with the entry, in the same statement.
+      ...(links && { terms: { create: links.flatMap((link) => link.termIds.map((termId) => ({ termId }))) } }),
     };
     // An entry lives under its type's address; a page at the top (TYP-01).
     if (!dto.parentId) {
@@ -147,6 +170,14 @@ export class ContentService {
       const parsed = parseSeo(dto.seo, membership.siteId);
       if (!parsed.ok) throw new BadRequestException(parsed.problems);
       seo = parsed.seo;
+    }
+
+    // Categories and tags (TAX-01): checked against the entry's type before anything is written, and
+    // written in the same transaction as the entry.
+    let checkedLinks: CheckedAssignment | null = null;
+    if (dto.categoryIds !== undefined || dto.tags !== undefined) {
+      const type = existing.typeId ? await this.types.findById(membership.siteId, existing.typeId) : null;
+      checkedLinks = await this.terms.checkAssignment(membership.siteId, type, { categoryIds: dto.categoryIds, tags: dto.tags });
     }
 
     // A new slug or parent moves the page, and every page below it, to a new address
@@ -198,7 +229,7 @@ export class ContentService {
     }
 
     // The slug the client sent is never written as-is: only the normalised one, with its path.
-    const { slug: _requestedSlug, parentId: _requestedParent, ...changes } = dto;
+    const { slug: _requestedSlug, parentId: _requestedParent, categoryIds: _categoryIds, tags: _tags, ...changes } = dto;
     const write = {
       ...changes,
       ...(move && { slug: move.slug, parentId: move.parentId }),
@@ -212,11 +243,13 @@ export class ContentService {
     };
     // Every address that changed: the page's own and, for a page, every page below it (CNT-06).
     let moves: PathMove[] = [];
+    // New tags are created only now, after every check above, so a refused save leaves none behind.
+    const links = await this.terms.materialise(membership.siteId, checkedLinks);
     try {
       if (move?.inTree) {
         moves = (await this.content.updateInTree(membership.siteId, slug, write, move.inTree)).moves;
       } else {
-        await this.content.update(membership.siteId, slug, { ...write, ...(move && { path: move.path }) });
+        await this.content.update(membership.siteId, slug, { ...write, ...(move && { path: move.path }) }, links ?? undefined);
         if (move) {
           const everPublished = existing.status === 'published' || Boolean(existing.publishedAt);
           moves = [{ id: existing.id, oldPath: existing.path, newPath: move.path, status: existing.status, everPublished }];
@@ -228,6 +261,11 @@ export class ContentService {
       // Too long in the queue behind other moves on this site (Prisma's transaction timeout).
       if (move && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2028') {
         throw new ConflictException('The site is busy with another move. Try again.');
+      }
+      // A category deleted between the check above and the write: the foreign key refuses it, and the
+      // whole save (entry included) was rolled back.
+      if (links && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException('A category or tag was just deleted. Reload the page and try again.');
       }
       if (move && isUniqueViolation(error)) {
         throw move.slug === existing.slug ? new ConflictException('Another page took that address just now. Try again.') : takenSlug(move.slug);
@@ -274,7 +312,8 @@ export class ContentService {
       ),
     );
     // A move also says which addresses changed, old → new, for the editor.
-    return move ? { ...updated, moved: moves.map((m) => ({ from: m.oldPath, to: m.newPath })) } : updated;
+    const result = updated ? await this.withTerms(updated) : updated;
+    return move ? { ...result, moved: moves.map((m) => ({ from: m.oldPath, to: m.newPath })) } : result;
   }
 
   // A copy is always a fresh draft (CNT-10): duplicating a live page must
@@ -400,6 +439,13 @@ export class ContentService {
     const membership = user?.memberships[0];
     if (!membership) throw new ForbiddenException('No site membership');
     return membership;
+  }
+
+  /** An entry with its categories and tags; a page comes back as it is (TAX-01). */
+  private async withTerms<T extends { id: string; siteId: string; typeId: string | null }>(row: T) {
+    if (!row.typeId) return row;
+    const type = await this.types.findById(row.siteId, row.typeId);
+    return { ...row, ...(await this.terms.forEntry(row.siteId, row.id, type)) };
   }
 
   /** The custom fields of an entry's type; none for a page. */

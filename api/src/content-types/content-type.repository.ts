@@ -27,7 +27,7 @@ export class ContentTypeRepository {
 
   create(
     siteId: string,
-    data: { name: string; singularName: string; prefix: string; isBuiltIn?: boolean; fields?: Prisma.InputJsonValue },
+    data: { name: string; singularName: string; prefix: string; isBuiltIn?: boolean; fields?: Prisma.InputJsonValue; hasCategories?: boolean; hasTags?: boolean },
   ) {
     return this.prisma.contentType.create({ data: { ...data, siteId } });
   }
@@ -35,7 +35,7 @@ export class ContentTypeRepository {
   update(
     siteId: string,
     id: string,
-    data: { name?: string; singularName?: string; fields?: Prisma.InputJsonValue },
+    data: { name?: string; singularName?: string; fields?: Prisma.InputJsonValue; hasCategories?: boolean; hasTags?: boolean },
   ) {
     return this.prisma.contentType.updateMany({ where: { id, siteId }, data });
   }

@@ -4,6 +4,7 @@ import { getSession } from '../lib/auth';
 import { FieldValuesError, listArchivedPages, listPages, updatePageSettings, type PageSummary } from '../lib/contentApi';
 import { hasLiveBelow, parentChoices } from '../lib/pageTree';
 import PageSeoSection from './PageSeoSection';
+import PageTermsSection from './PageTermsSection';
 import { canPublishContent } from '../lib/roles';
 import { normaliseSlug, parentPath } from '../lib/slug';
 import { siteUrl } from '../data/site';
@@ -17,6 +18,9 @@ type Props = {
   kind: string;
   /** Entries live under their type's address, so only pages get a parent (CNT-05). */
   isEntry: boolean;
+  /** What the entry's type has switched on (TAX-01); both false for a page. */
+  hasCategories?: boolean;
+  hasTags?: boolean;
   /** Saves whatever the editor hasn't autosaved yet, so a move never strands an edit at the old address. */
   flushPending: () => Promise<void>;
   onSaved: (page: PageSummary) => void;
@@ -30,7 +34,7 @@ type Props = {
  * A native modal <dialog>: the browser keeps focus inside it, closes it on Esc
  * and hands focus back to the button that opened it.
  */
-function PageSettingsPanel({ open, onClose, page, kind, isEntry, flushPending, onSaved }: Props) {
+function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories = false, hasTags = false, flushPending, onSaved }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   // Bumped on every open, so the fields start from what's saved each time instead
   // of keeping a half-typed draft from last time.
@@ -145,6 +149,17 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, flushPending, o
               />
             )}
           </section>
+
+          {isEntry && (hasCategories || hasTags) ? (
+            <PageTermsSection
+              key={`terms-${session}-${page.slug}`}
+              page={page}
+              hasCategories={hasCategories}
+              hasTags={hasTags}
+              announce={setAnnouncement}
+              onSaved={onSaved}
+            />
+          ) : null}
 
           {/* Keyed like the fields above, so it starts from what's saved on every open and after a move. */}
           <PageSeoSection

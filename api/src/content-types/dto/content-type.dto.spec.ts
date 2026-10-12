@@ -21,3 +21,15 @@ describe('content type DTOs', () => {
     expect(createContentTypeSchema.safeParse({ name: 'a'.repeat(61), singularName: 'x', prefix: 'xx' }).success).toBe(false);
   });
 });
+
+describe('content type opt-ins (TAX-01)', () => {
+  it('accepts hasCategories and hasTags on create and update, and defaults to leaving them out', () => {
+    expect(createContentTypeSchema.parse({ name: 'Events', singularName: 'Event', prefix: 'events' })).not.toHaveProperty('hasTags');
+    expect(createContentTypeSchema.parse({ name: 'Events', singularName: 'Event', prefix: 'events', hasTags: true }).hasTags).toBe(true);
+    expect(updateContentTypeSchema.parse({ hasCategories: false }).hasCategories).toBe(false);
+  });
+
+  it('refuses a non-boolean', () => {
+    expect(updateContentTypeSchema.safeParse({ hasTags: 'yes' }).success).toBe(false);
+  });
+});

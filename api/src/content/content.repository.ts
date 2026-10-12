@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SITEMAP_LIMIT } from '../public/sitemap-view.js';
+import type { TermLinks } from '../taxonomy/terms.service.js';
 
 const TREE_FIELDS = { id: true, parentId: true, slug: true, path: true, status: true, publishedAt: true } as const;
 // Waiting for the site's tree lock counts against the transaction's time, so allow more
@@ -105,11 +106,24 @@ export class ContentRepository {
     return this.prisma.content.create({ data: { ...data, siteId } });
   }
 
-  update(siteId: string, slug: string, data: Prisma.ContentUncheckedUpdateManyInput) {
+  update(siteId: string, slug: string, data: Prisma.ContentUncheckedUpdateManyInput, links?: TermLinks) {
     // `updateMany` rather than `update` because it takes a where clause with
     // `siteId` — this keeps the write scoped to the tenant without a second
     // existence check.
-    return this.prisma.content.updateMany({ where: { siteId, slug }, data });
+    if (!links || links.length === 0) return this.prisma.content.updateMany({ where: { siteId, slug }, data });
+    // The entry and its terms land together or not at all (TAX-01). For each kind asked about, the old
+    // links of that kind go and the new set is written; the other kind is untouched.
+    return this.prisma.$transaction(async (tx) => {
+      // Found before the update: the update may change the slug this lookup goes by.
+      const entry = await tx.content.findFirst({ where: { siteId, slug }, select: { id: true } });
+      const written = await tx.content.updateMany({ where: { siteId, slug }, data });
+      if (written.count === 0 || !entry) return written;
+      for (const { kind, termIds } of links) {
+        await tx.contentTerm.deleteMany({ where: { contentId: entry.id, term: { siteId, kind } } });
+        await tx.contentTerm.createMany({ data: termIds.map((termId) => ({ contentId: entry.id, termId })), skipDuplicates: true });
+      }
+      return written;
+    });
   }
 
   /**

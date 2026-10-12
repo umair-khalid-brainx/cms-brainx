@@ -8,6 +8,48 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-060 — 2026-10-12 — Categories and tags: flat site-wide lists, opt-in per type, slug is the identity (`TAX-01`)
+
+**Options considered:**
+
+1. **Per-type lists** (Posts have their own categories, Events theirs). Clean separation, but the archives of `TAX-02` and a
+   "News" shared by posts and case studies would need a list per type to maintain.
+2. **Hierarchical categories** (parent/child, as WordPress). Not asked for; it adds a tree to keep acyclic and a nested picker.
+3. **One flat list of categories and one of tags per site, shared by every type that opts in** (chosen, D-052). A type switches
+   each on (`ContentType.hasCategories`, `hasTags`); the seeded Posts type has both on, new types start with both off.
+
+**Decision:**
+
+- **Schema:** `Term { siteId, kind, name, slug }`, unique `(siteId, kind, slug)`; `ContentTerm { contentId, termId }` with
+  composite key and both foreign keys `ON DELETE CASCADE`, so deleting a term or an entry only unlinks. A data migration turns
+  both flags on for existing built-in Posts types; the seed does it for new sites.
+- **The slug is the identity.** It is derived from the name (`normaliseSlug`, reserved words not needed). "News" and "news"
+  are the same term, so a tag typed while tagging is matched case-insensitively and reused. The cost: names that differ only in
+  symbols ("C++", "C#") collide; the message says the name is taken. **Rename changes the name and the slug together**
+  (409 if another term of that kind has the new slug); nothing public links to a term until `TAX-02`, so no redirect is needed
+  yet and `TAX-02` should revisit it. A term name is 1-60 characters, tidied (spaces collapsed); an entry has at most 20 tags.
+- **Who may do what:** managing the lists (create, rename, delete) needs `content:publish`, the same tier as Redirects; anyone
+  with `content:write` can assign existing terms and **create a new tag while tagging**, as in WordPress, because the new tag is
+  part of the entry's own save. Categories must already exist.
+- **Assigning:** `categoryIds: string[]` and `tags: string[]` (names) on `POST` and `PATCH /content`; each is saved whole and
+  `undefined` means unchanged. Refused with 400 before anything is written when the entry is a page, its type has not opted in
+  to that kind, or a category id is not a category of this site (another site's id is simply not found). An **empty** list for
+  a kind the type has switched off is a no-op, so an editor that does not show the kind can still send it. The entry's fields
+  and its links are written in **one transaction** (`ContentRepository.update`, nested create on `create`). New tags are created
+  just before it with `createMany ... skipDuplicates`, so two people typing the same new tag both get the one that won; if the
+  save then fails, an unused tag stays on the list (harmless, deletable).
+- **Reading:** `GET /content/:slug` and the create and update responses carry `categories` and `tags` (`{id, name, slug}`), only
+  for the kinds the type has on. The list endpoints and the public API are unchanged (`TAX-02` does the public side).
+- **Switching an opt-in off keeps the links.** They stop showing and stop being accepted; switching back on restores them.
+  Deleting data on a toggle would be unrecoverable, and keeping it costs a few rows.
+- **Admin:** `/taxonomy` (tabs, add, inline rename, delete with "N entries will lose it", counts; everyone can look, those who
+  can publish edit); Page settings gets a "Categories and tags" section with its own save, like Search and sharing, shown only
+  when the entry's type uses them; the type form gets two switches.
+
+**Cost accepted:** one list per site means every type that opts in shares it; the entry counts count entries of every status.
+
+---
+
 ## D-059 — 2026-10-12 — Menus: saved whole, pages by id, buttons first (`GOV-03`)
 
 **Decision (the week 4 plan, D-052; the parts worth recording):**

@@ -28,9 +28,19 @@ export type ContentType = {
   entryCount: number;
   /** The address can't change: the type is built in or already has entries. */
   locked: boolean;
+  /** Entries can be given categories and/or tags (TAX-01). */
+  hasCategories: boolean;
+  hasTags: boolean;
 };
 
-export type ContentTypeInput = { name: string; singularName: string; prefix: string; fields?: ContentFieldInput[] };
+export type ContentTypeInput = {
+  name: string;
+  singularName: string;
+  prefix: string;
+  fields?: ContentFieldInput[];
+  hasCategories?: boolean;
+  hasTags?: boolean;
+};
 
 function requireToken(): string {
   const token = getSession()?.accessToken;

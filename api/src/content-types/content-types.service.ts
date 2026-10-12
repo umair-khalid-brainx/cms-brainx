@@ -66,7 +66,7 @@ export class ContentTypesService {
     if (dto.name !== undefined && dto.name !== type.name) await this.assertNameFree(siteId, dto.name, id);
 
     const { prefix, fields: incoming, ...others } = dto;
-    const rest: { name?: string; singularName?: string; fields?: FieldDefinition[] } = { ...others };
+    const rest: { name?: string; singularName?: string; fields?: FieldDefinition[]; hasCategories?: boolean; hasTags?: boolean } = { ...others };
     if (incoming) rest.fields = this.checkedFields(incoming, parseStoredFields(type.fields)).stored;
     try {
       // The address first: it is the step that can be refused, so nothing else is saved when it is.

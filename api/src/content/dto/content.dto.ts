@@ -17,6 +17,9 @@ export const createContentSchema = z.object({
   blocks: z.array(blockSchema).default([]),
   // The key of a starter layout (`landing`): the new page starts with its blocks (TYP-04). Not with `blocks`.
   layout: z.string().min(1).max(64).optional(),
+  // Entries of a type that uses them (TAX-01). Categories by id; tags by name, a new name makes a new tag.
+  categoryIds: z.array(z.string().min(1)).max(200).optional(),
+  tags: z.array(z.string().max(500)).max(100).optional(),
 });
 
 export type CreateContentDto = z.infer<typeof createContentSchema>;
@@ -35,6 +38,9 @@ export const updateContentSchema = z
     blocks: z.array(blockSchema).optional(),
     // Values of a content type's custom fields, by field key (TYP-02). Entries only.
     data: z.record(z.string(), z.unknown()).optional(),
+    // The entry's categories and tags, each saved whole (TAX-01). Left out means unchanged.
+    categoryIds: z.array(z.string().min(1)).max(200).optional(),
+    tags: z.array(z.string().max(500)).max(100).optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'Provide at least one field to update' });
 

@@ -5,6 +5,7 @@ import type { EditorComponents } from '../puck/config';
 import { ApiError, apiDelete, apiGet, apiSend } from './api';
 import { getSession } from './auth';
 import { readSeo, type Seo } from './seo';
+import type { TermRef } from './terms';
 
 // Replaces the old localStorage-backed pagesStore.ts (D-019) now that CNT-01
 // is real: content lives in Postgres via `api`, reached over `/content`.
@@ -29,6 +30,9 @@ export type PageSummary = {
   path: string;
   status: PageStatus;
   archivedAt: string | null;
+  /** An entry's categories and tags, of the kinds its type uses (TAX-01); empty for pages. */
+  categories: TermRef[];
+  tags: TermRef[];
 };
 
 // What `GET /content/:slug/checks` and a refused publish (422) return —
@@ -64,6 +68,8 @@ type ContentRecord = {
   typeId: string | null;
   /** Values of the type's custom fields, by key (TYP-02). */
   data: Record<string, unknown>;
+  categories?: TermRef[];
+  tags?: TermRef[];
 };
 
 function decapitalize(value: string): string {
@@ -158,6 +164,8 @@ function toSummary(record: ContentRecord): PageSummary {
     path: record.path,
     status: record.status,
     archivedAt: record.archivedAt,
+    categories: record.categories ?? [],
+    tags: record.tags ?? [],
   };
 }
 
@@ -273,7 +281,7 @@ export async function setPageStatus(slug: string, status: PageStatus): Promise<P
 // for the person; the record that comes back has the slug actually saved.
 export async function updatePageSettings(
   slug: string,
-  changes: { title?: string; slug?: string; parentId?: string | null; seo?: Seo },
+  changes: { title?: string; slug?: string; parentId?: string | null; seo?: Seo; categoryIds?: string[]; tags?: string[] },
 ): Promise<PageSummary> {
   const session = requireSession();
   const record = await apiSend<ContentRecord>('PATCH', `/content/${slug}`, changes, session.accessToken);

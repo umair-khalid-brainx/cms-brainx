@@ -55,6 +55,9 @@ export function ContentTypeForm({
   const [singularTouched, setSingularTouched] = useState(editing)
   const [prefixTouched, setPrefixTouched] = useState(editing)
   const [rows, setRows] = useState<Row[]>(() => toRows(type?.fields))
+  // New types start with both off (TAX-01).
+  const [hasCategories, setHasCategories] = useState(type?.hasCategories ?? false)
+  const [hasTags, setHasTags] = useState(type?.hasTags ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const firstField = useRef<HTMLInputElement>(null)
@@ -62,8 +65,13 @@ export function ContentTypeForm({
   const addressLocked = Boolean(type?.locked)
   const fieldsChanged = JSON.stringify(stripRows(rows)) !== JSON.stringify(stripRows(toRows(type?.fields)))
   const dirty = !type
-    ? name !== '' || singularName !== '' || prefix !== '' || rows.length > 0
-    : name !== type.name || singularName !== type.singularName || prefix !== type.prefix || fieldsChanged
+    ? name !== '' || singularName !== '' || prefix !== '' || rows.length > 0 || hasCategories || hasTags
+    : name !== type.name ||
+      singularName !== type.singularName ||
+      prefix !== type.prefix ||
+      fieldsChanged ||
+      hasCategories !== type.hasCategories ||
+      hasTags !== type.hasTags
 
   useEffect(() => {
     firstField.current?.focus()
@@ -112,10 +120,10 @@ export function ContentTypeForm({
     try {
       // The field list only goes when this person changed it: sending a stale copy would undo
       // another admin's new field just because someone renamed the type.
-      const input = { name, singularName, prefix, ...(fieldsChanged || !type ? { fields: stripRows(rows) } : {}) }
+      const input = { name, singularName, prefix, hasCategories, hasTags, ...(fieldsChanged || !type ? { fields: stripRows(rows) } : {}) }
       const saved = type ? await updateContentType(type.id, input) : await createContentType(input)
       // The list endpoint adds the counts and the lock; the caller reloads it.
-      onSaved({ ...(type ?? { entryCount: 0, locked: false, isBuiltIn: false }), ...saved })
+      onSaved({ ...(type ?? { entryCount: 0, locked: false, isBuiltIn: false, hasCategories: false, hasTags: false }), ...saved })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save this content type')
       setSaving(false)
@@ -217,6 +225,44 @@ export function ContentTypeForm({
                 )}
             </p>
           </div>
+
+          <fieldset className="type-form-fields type-form-optins">
+            <legend>Categories and tags</legend>
+            <p className="type-form-hint">
+              Ways to group entries. Everything of this kind shares one list per site, managed under Categories &amp; Tags.
+            </p>
+            <label className="type-field-required">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={hasCategories}
+                aria-describedby={`${id}-categories-hint`}
+                onChange={(event) => setHasCategories(event.target.checked)}
+              />
+              Categories
+            </label>
+            <p id={`${id}-categories-hint`} className="type-form-hint">
+              Pick from a fixed list, like “News” or “Guides”. Good for the main topics.
+            </p>
+            <label className="type-field-required">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={hasTags}
+                aria-describedby={`${id}-tags-hint`}
+                onChange={(event) => setHasTags(event.target.checked)}
+              />
+              Tags
+            </label>
+            <p id={`${id}-tags-hint`} className="type-form-hint">
+              Free-form labels typed while editing, like “summer” or “accessibility”.
+            </p>
+            {editing && (
+              <p className="type-form-hint">
+                Switching one off hides it on entries but doesn’t delete anything: switch it back on and they return.
+              </p>
+            )}
+          </fieldset>
 
           <fieldset className="type-form-fields">
             <legend>Fields</legend>

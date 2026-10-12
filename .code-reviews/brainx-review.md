@@ -1,134 +1,121 @@
 ---
-diff_hash: 1565d2b51beec122367fc0a590c591b24638248642975cd6c2ea5a82ac8ceea9
+diff_hash: bc3e19b402cf0b79f3b3814fedad2a80329bd5dd96aecad487112000ee90ab0f
 branch: claude/week-4-cms-tickets-d0f656
 author: Umer
-timestamp: 2026-10-12T11:28:22Z
-reviewed_at: 2026-10-12T11:32:44Z
+timestamp: 2026-10-12T11:52:07Z
+reviewed_at: 2026-10-12T11:52:07Z
 stack: unknown
-resolved_count: 4
+resolved_count: 2
 files:
   - .code-reviews/brainx-review.md
   - admin/src/App.tsx
-  - admin/src/components/MenuEditor.css
-  - admin/src/components/MenuEditor.tsx
+  - admin/src/components/ContentTypeForm.css
+  - admin/src/components/ContentTypeForm.tsx
+  - admin/src/components/PageSettingsPanel.tsx
+  - admin/src/components/PageTermsSection.css
+  - admin/src/components/PageTermsSection.tsx
   - admin/src/layouts/AdminLayout.tsx
-  - admin/src/lib/api.ts
-  - admin/src/lib/menuEditor.test.ts
-  - admin/src/lib/menuEditor.ts
-  - admin/src/lib/menusApi.ts
-  - admin/src/pages/MenusPage.css
-  - admin/src/pages/MenusPage.tsx
-  - api/prisma/migrations/20261012150000_add_menu_items/migration.sql
+  - admin/src/lib/contentApi.ts
+  - admin/src/lib/terms.test.ts
+  - admin/src/lib/terms.ts
+  - admin/src/lib/termsApi.ts
+  - admin/src/lib/typesApi.ts
+  - admin/src/pages/EditorPage.tsx
+  - admin/src/pages/TaxonomyPage.css
+  - admin/src/pages/TaxonomyPage.tsx
+  - api/prisma/migrations/20261012160000_add_terms/migration.sql
   - api/prisma/schema.prisma
+  - api/prisma/seed.ts
+  - api/src/content-types/content-type.repository.ts
+  - api/src/content-types/content-types.service.ts
+  - api/src/content-types/dto/content-type.dto.spec.ts
+  - api/src/content-types/dto/content-type.dto.ts
+  - api/src/content/content.controller.ts
   - api/src/content/content.module.ts
   - api/src/content/content.repository.ts
   - api/src/content/content.service.spec.ts
   - api/src/content/content.service.ts
-  - api/src/menus/menu-tree.spec.ts
-  - api/src/menus/menu-tree.ts
-  - api/src/menus/menu.repository.ts
-  - api/src/menus/menus.controller.ts
-  - api/src/menus/menus.service.spec.ts
-  - api/src/menus/menus.service.ts
-  - api/src/public/public.controller.ts
-  - api/src/public/public.service.spec.ts
-  - api/src/public/public.service.ts
+  - api/src/content/dto/content.dto.ts
+  - api/src/taxonomy/dto/term.dto.ts
+  - api/src/taxonomy/term-rules.spec.ts
+  - api/src/taxonomy/term-rules.ts
+  - api/src/taxonomy/term-test-kit.ts
+  - api/src/taxonomy/term.repository.ts
+  - api/src/taxonomy/terms.controller.ts
+  - api/src/taxonomy/terms.service.spec.ts
+  - api/src/taxonomy/terms.service.ts
   - docs/BACKLOG.md
   - docs/DECISIONS.md
   - docs/WORKLOG.md
-  - tickets/GOV-03.md
   - tickets/STATUS.md
-  - web/src/app/preview/[subdomain]/[token]/page.tsx
-  - web/src/app/sites/[subdomain]/layout.tsx
-  - web/src/lib/publicApi.ts
-  - web/src/site/SiteFooter.tsx
-  - web/src/site/SiteHeader.tsx
-  - web/src/site/SiteNav.tsx
-  - web/src/site/types.test.ts
-  - web/src/site/types.ts
+  - tickets/TAX-01.md
 ---
 
 ## Summary
 
-GOV-03: header and footer menus. `api` adds a `menu_items` table (`MenuItem`: site, location `header|footer`,
-self-relation for one level of children, position, label, and exactly one of `contentId` or `url`).
-`menu-tree.ts` holds the Zod body schema (labels ≤80, ≤20 top items, ≤20 children each, a third level is dropped,
-links limited to `/path`, `#anchor`, `http(s)://`, `mailto:`, `tel:`) and `publicMenu`, which points page items at the
-page's current path, hides unpublished pages, and keeps a top item whose own page is hidden as a heading with no link
-when it has visible children. `MenuRepository.replaceTree` deletes and rewrites one menu in a transaction under a
-`pg_advisory_xact_lock`. `PUT /menus/:location` (`site:manage`) checks every page id against the caller's site, maps a
-mid-save FK failure (P2003) to the same 400, and revalidates the whole site. `GET /menus/:location` (`content:read`).
-`ContentService.update` now revalidates the whole site when a page that is in a menu goes live/off or moves.
-The public API gets `GET /public/sites/:subdomain/menus`. `web` fetches it with the site cache tag, feeds
-`SiteSettings.nav`/`footer.groups`, and adds a client `SiteNav` (hover + toggle-button dropdowns, Esc, outside click,
-mobile Menu button); the footer renders top items as group titles. `admin` adds the Menus screen (tabs, both editors
-kept mounted) and `MenuEditor` (buttons, drag and drop, add page/link, live-region announcements, focus handling).
-The previous commit's review file is removed (staged deletion).
+TAX-01: categories and tags. `api` adds a `term_kind` enum, a `terms` table (site, kind, name, slug; unique per
+site+kind+slug) and a `content_terms` join (both sides cascade), plus `has_categories`/`has_tags` opt-ins on
+`content_types` (the built-in Posts type starts with both on, in the migration and the seed). `term-rules.ts` holds the
+database-free rules (tidying, 60-char names, slug identity so "News" = "news", ≤20 tags per entry, opt-in check,
+category-id check). `TermRepository` is fully `siteId`-scoped; `findOrCreateTags` uses `createMany({ skipDuplicates })`
+then re-reads, so two people typing the same new tag converge. `TermsController` (`/terms`): list at `content:read`;
+create/rename/delete at `content:publish`; delete is 204. `TermsService.checkAssignment` refuses before any write (type
+not opted in, a page, a foreign or non-category id, bad tag names), and `materialise` creates new tags only after every
+other check in `ContentService.create/update`. Entry and links are written together: nested `terms.create` on create, a
+`$transaction` in `ContentRepository.update` that replaces each requested kind's links. `GET /content/:slug` now
+returns `categories`/`tags` (`getForEdit`), as do create and update. `admin` adds the Categories & Tags screen (tabs,
+add/rename/delete with counts in the confirm), the opt-in switches in `ContentTypeForm`, and a `PageTermsSection` in
+Page settings (category checkboxes, an ARIA-combobox tag input with suggestions). The previous commit's review file is
+removed (staged deletion).
 
-Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md), `admin/` as React
-(react.md), `web/` as Next.js using react.md plus general criteria. One git repository, so one review.
+Stacks: no root marker (three independent projects, D-012). Reviewed `api/` as NestJS (nestjs.md) and `admin/` as React
+(react.md). One git repository, so one review. No `web` changes.
 
-Cross-project contract check: `api`'s `PublicMenuItem` (`label`, `href: string | null`, `children: {label, href}[]`)
-matches `web`'s `MenuItem`; `api`'s `AdminMenuItem` (`label, contentId, url, page, children`) matches `admin`'s
-`ServerItem`; `admin`'s `toPayload` sends exactly one of `contentId`/`url` per item, which is what `menuSchema` requires.
-The limits and `linkProblem` are duplicated in `admin` with a comment saying to keep them in step (repos can't share
-code). Tenant scoping holds: every `MenuRepository` method takes `siteId`; `siteId` comes from the caller's membership;
-page ids are checked with `findFactsByIds(siteId, …)`, and the public read resolves pages only within the site. Public
-hrefs are either a validated stored URL (no `javascript:`/`data:`/`//`) or a page path. `@Body() body: unknown` parsed in
-the service matches the existing pattern for multi-message validation.
+Cross-project contract check: `api`'s term rows (`id, kind, name, slug, entryCount`) match `admin`'s `Term`; `forEntry`'s
+`{ categories, tags }` of `{ id, name, slug }` match `TermRef`; `admin` sends `categoryIds` (ids) and `tags` (names) only
+for the kinds the type has on, which is what `checkAssignment` expects. Admin limits (60 chars, 20 tags) mirror the API
+with a comment naming the source. Tenant scoping holds: every `TermRepository` method takes `siteId`; category ids are
+resolved with `findByIds(siteId, …)`; tag ids come from `findOrCreateTags(siteId, …)`; the link delete is filtered by
+`term: { siteId, kind }`. `PageTermsSection` is a sibling of the other settings forms, not nested in one.
 
-Verified: `api` `tsc --noEmit` clean, `api` `vitest run src/menus src/public src/content` 400/400 pass; `admin` `tsc -b`
-clean, `menuEditor.test.ts` 21/21 pass; `web` `tsc --noEmit` clean, `npm test` 22/22 pass. Not run: browser checks.
+Verified: `api` `tsc --noEmit` clean, `vitest run src/taxonomy src/content src/content-types` 359/359 pass; `admin`
+`tsc -b` clean, `terms.test.ts` 16/16 pass. Not run: browser checks, migration against a database.
 
 ## Findings
 
 ### Critical (0)
 
-### High (1)
-- **api/prisma/schema.prisma:359** — Permanently deleting an archived page that is a top-level menu item deletes that item through the `content` cascade, and the `parent` cascade (line 357) then deletes every item under it, including live pages and links, with no warning and no site refresh. *(correctness)*
-  - status: fixed
-  - dev_reasoning: N/A
-  - ai_reasoning: Fixed. `ContentService.remove()` (content.service.ts:360–364) now calls `menus.locationsUsing(siteId, page.id)` and refuses with a 409 ("This page is in the header menu. Remove it from the menu first, then delete it.") before deleting, the same way it refuses a page with child pages. So the `content` cascade can no longer silently take a top item and its children with it, and no site refresh is needed because the menu doesn't change. Covered by a new spec case (content.service.spec.ts:1118). The cascade remains only as the database's backstop for the narrow race where the page is added to a menu between the check and the delete.
+### High (0)
 
-### Medium (3)
-- **api/src/content/content.service.ts:253** — The new `menus.usesPages` query runs after the page write has committed but outside the `afterWrite` guard and before the redirect bookkeeping. If it throws, an already-saved update returns a 500 and the redirects and per-page refreshes for a move are skipped. *(consistency)*
+### Medium (1)
+- **api/src/content/content.repository.ts:119** — When one `PATCH /content/:slug` changes an entry's slug and its categories or tags together, the terms are silently not saved: the transaction updates the row (slug now the new one), then looks the entry up again by the *old* slug, finds nothing, and returns the successful update without writing any links. *(correctness)*
   - status: fixed
   - dev_reasoning: N/A
-  - ai_reasoning: Fixed. The `usesPages` check and `revalidation.site` call are now wrapped in `afterWrite('menu refresh', …)` (content.service.ts:255–259), so a failed count is logged and the save, the descendant refreshes and `redirects.pagesMoved` all still go through.
-- **admin/src/pages/MenusPage.tsx:32** — A failed page-list fetch is swallowed (`.catch(() => undefined)`), so the Add-a-page panel says "There are no pages yet." and offers nothing to add, instead of saying the list couldn't load. *(error-handling)*
-  - status: fixed
-  - dev_reasoning: N/A
-  - ai_reasoning: Fixed. `MenusPage` keeps a `pagesError` state set by the `listPages` catch (MenusPage.tsx:24, 33) and passes it to `MenuEditor`, whose add panel now shows "Couldn’t load your pages. Reload to try again." as an alert instead of the empty-state message (MenuEditor.tsx:464–467).
-- **admin/src/pages/MenusPage.tsx:43** — Unsaved menu changes are only protected against closing or reloading the browser tab. Clicking another item in the admin sidebar (an in-app React Router navigation) unmounts both editors and silently discards the edits, while the component's doc comment (line 16–17) says leaving with unsaved changes "asks first". *(correctness)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: Still open, partly addressed. The doc comment now says plainly that moving to another admin screen does not ask (MenusPage.tsx:16–17), and the gap is logged as `B-32` in docs/BACKLOG.md, so the code no longer claims something it doesn't do. But the behaviour itself is unchanged: an in-app sidebar click still discards unsaved menu edits with no prompt, and an admin user gets no warning beyond the "Unsaved changes" badge. To resolve, add a navigation guard, or, if deferring to B-32 is the deliberate choice, set `status: skipped` with that reason.
+  - ai_reasoning: Fixed. `ContentRepository.update` now looks the entry's id up by the old slug inside the transaction *before* `updateMany` (comment: "Found before the update: the update may change the slug this lookup goes by"), and writes the links against that id, so a slug change and a terms change in one PATCH both land. Re-checked: api `tsc --noEmit` clean; `vitest run src/taxonomy src/content src/content-types` 359/359 pass.
 
 ### Low (1)
-- **web/src/app/sites/[subdomain]/layout.tsx:17** — The menus fetch now sits in the same `Promise.all` as `getSite`, and `getJson` throws on any non-404 error, so a failure in the (non-essential) menus endpoint takes down every page of the site instead of rendering it without navigation. The same applies to the preview page. *(resilience)*
+- **api/src/content/content.service.ts:89** — The P2003 mapping on create only fires when `categoryIds` were sent, so a tag deleted between `materialise` and the insert (a tags-only request) surfaces as a 500; and both the create and update mappings say "A category was just deleted" even when it was a tag. *(error-handling)*
   - status: fixed
   - dev_reasoning: N/A
-  - ai_reasoning: Fixed. Both the site layout (layout.tsx:17) and the preview page (page.tsx:30) now call `getMenus(subdomain).catch(() => null)`, so a menus failure renders the site without navigation instead of an error page.
+  - ai_reasoning: Fixed. The create mapping now fires when `categoryIds` or `tags` were sent (`content.service.ts:89`), and both the create and update messages read "A category or tag was just deleted. Reload the page and try again." (The comment on line 88 still says only "A category"; cosmetic, not a finding.)
 
 ## Reviewed files
-- api/prisma/migrations/20261012150000_add_menu_items/migration.sql
-- api/prisma/schema.prisma
-- api/src/content/content.module.ts, content.repository.ts, content.service.ts, content.service.spec.ts
-- api/src/menus/menu-tree.ts, menu-tree.spec.ts, menu.repository.ts, menus.controller.ts, menus.service.ts, menus.service.spec.ts
-- api/src/public/public.controller.ts, public.service.ts, public.service.spec.ts
-- web/src/app/preview/[subdomain]/[token]/page.tsx
-- web/src/app/sites/[subdomain]/layout.tsx
-- web/src/lib/publicApi.ts
-- web/src/site/SiteNav.tsx, SiteHeader.tsx, SiteFooter.tsx, types.ts, types.test.ts
-- admin/src/App.tsx, layouts/AdminLayout.tsx, lib/api.ts
-- admin/src/lib/menuEditor.ts, menuEditor.test.ts, menusApi.ts
-- admin/src/components/MenuEditor.tsx
-- admin/src/pages/MenusPage.tsx
-- admin/src/components/MenuEditor.css, admin/src/pages/MenusPage.css (skimmed; styles only)
-- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/GOV-03.md, tickets/STATUS.md (skimmed; docs only)
+- api/prisma/migrations/20261012160000_add_terms/migration.sql
+- api/prisma/schema.prisma, api/prisma/seed.ts
+- api/src/content-types/content-type.repository.ts, content-types.service.ts, dto/content-type.dto.ts, dto/content-type.dto.spec.ts
+- api/src/content/content.controller.ts, content.module.ts, content.repository.ts, content.service.ts, content.service.spec.ts, dto/content.dto.ts
+- api/src/taxonomy/dto/term.dto.ts, term-rules.ts, term-rules.spec.ts, term-test-kit.ts, term.repository.ts, terms.controller.ts, terms.service.ts, terms.service.spec.ts
+- admin/src/App.tsx, layouts/AdminLayout.tsx, pages/EditorPage.tsx
+- admin/src/components/ContentTypeForm.tsx, PageSettingsPanel.tsx, PageTermsSection.tsx
+- admin/src/lib/contentApi.ts, terms.ts, terms.test.ts, termsApi.ts, typesApi.ts
+- admin/src/pages/TaxonomyPage.tsx
+- admin/src/components/ContentTypeForm.css, PageTermsSection.css, admin/src/pages/TaxonomyPage.css (skimmed; styles only)
+- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/STATUS.md, tickets/TAX-01.md (skimmed; docs only)
 - .code-reviews/brainx-review.md (staged deletion of the previous review; not reviewed)
 
 ## Context used
-api/src/content/content.service.ts `remove()` and `afterWrite` (delete path and post-commit guard pattern),
-api/src/revalidation/revalidation.service.ts (`site()` never throws), web/src/lib/publicApi.ts `getJson` (throws on
-non-404 errors), admin/src/lib/contentApi.ts `listPages`, admin/src/main.tsx (`BrowserRouter`, no data router).
+api/src/content/content.service.ts `planMove` (an entry's move has no `inTree`, so it goes through `content.update` with
+the old slug) and the post-write `findBySlug`; api/src/content-types/content-type.repository.ts `findMany`/`findById`
+(return full rows, so the opt-in flags reach `admin`); admin/src/components/PageSettingsPanel.tsx (section is not nested
+in another form); admin/src/pages/EditorPage.tsx `setPage` call sites (page state comes from `getForEdit` or a merged
+update result, so `categories`/`tags` are present).

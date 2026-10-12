@@ -240,6 +240,9 @@ async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
       singularName: 'Post',
       prefix: 'blog',
       isBuiltIn: true,
+      // Posts come with both lists on (TAX-01); every other type starts with them off.
+      hasCategories: true,
+      hasTags: true,
       // Req. 3: a summary and a featured image.
       fields: [
         { key: 'excerpt', label: 'Excerpt', kind: 'text', required: false },

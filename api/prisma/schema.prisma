@@ -43,6 +43,7 @@ model Site {
   previewLinks PreviewLink[]
   submissions  Submission[]
   contentTypes ContentType[]
+  terms        Term[]
 
   @@map("sites")
 }
@@ -165,15 +166,16 @@ model Content {
   // `path` is derived from it and recomputed for the whole subtree on a move (CNT-06, invariant 9).
   parentId String? @map("parent_id")
 
-  site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  type        ContentType? @relation(fields: [typeId], references: [id], onDelete: Restrict)
-  author      User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  site        Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  type        ContentType?  @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  author      User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
   // Restrict: a page with children can't be deleted out from under them.
-  parent      Content?     @relation("PageTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children    Content[]    @relation("PageTree")
+  parent      Content?      @relation("PageTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Content[]     @relation("PageTree")
   previewLink PreviewLink?
   submissions Submission[]
   menuItems   MenuItem[]
+  terms       ContentTerm[]
 
   // Matches the actual read pattern (ARCHITECTURE.md: "fetch content by
   // (site_id, path)"). `path` is derived from the parent chain (invariant 9).
@@ -191,19 +193,23 @@ model Content {
 // is unique per site and locked once the type has entries. The built-in "Posts"
 // type (`/blog`) can't be deleted or moved. Fields come with TYP-02.
 model ContentType {
-  id           String   @id @default(cuid())
-  siteId       String   @map("site_id")
+  id            String   @id @default(cuid())
+  siteId        String   @map("site_id")
   // Plural, shown in the sidebar ("Events"); singular for buttons ("Add Event").
-  name         String
-  singularName String   @map("singular_name")
-  prefix       String
-  isBuiltIn    Boolean  @default(false) @map("is_built_in")
+  name          String
+  singularName  String   @map("singular_name")
+  prefix        String
+  isBuiltIn     Boolean  @default(false) @map("is_built_in")
   // The fields entries of this type carry (TYP-02): an array of { key, label, kind,
   // required, options? } over six fixed kinds. Removing one hides it; the values
   // stay in each entry's `data`. See content-types/field-definitions.ts.
-  fields       Json     @default("[]")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  fields        Json     @default("[]")
+  // Whether entries of this type can be given categories and/or tags (TAX-01). Switching one off
+  // only stops them showing and being accepted: the links stay stored (D-060).
+  hasCategories Boolean  @default(false) @map("has_categories")
+  hasTags       Boolean  @default(false) @map("has_tags")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   site    Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
   content Content[]
@@ -361,4 +367,42 @@ model MenuItem {
   @@index([siteId, location, parentId, position])
   @@index([contentId])
   @@map("menu_items")
+}
+
+// The two kinds of term (TAX-01): categories are picked from a list, tags are typed.
+enum TermKind {
+  category
+  tag
+
+  @@map("term_kind")
+}
+
+// One flat list of categories and one of tags per site, shared by every content type that opts in
+// (D-060). `slug` is derived from the name and is what identifies a term: unique per site and kind.
+model Term {
+  id        String   @id @default(cuid())
+  siteId    String   @map("site_id")
+  kind      TermKind
+  name      String
+  slug      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  site    Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  entries ContentTerm[]
+
+  @@unique([siteId, kind, slug])
+  @@map("terms")
+}
+
+// Which entries carry which terms. Both sides cascade: deleting a term or an entry just unlinks.
+model ContentTerm {
+  contentId String @map("content_id")
+  termId    String @map("term_id")
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  term    Term    @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  @@id([contentId, termId])
+  @@index([termId])
+  @@map("content_terms")
 }

@@ -56,7 +56,7 @@ export class ContentController {
   @Get(':slug')
   @RequirePermission('content:read')
   get(@Req() request: AuthenticatedRequest, @Param('slug') slug: string) {
-    return this.content.get(request.user.sub, slug);
+    return this.content.getForEdit(request.user.sub, slug);
   }
 
   @Get(':slug/checks')

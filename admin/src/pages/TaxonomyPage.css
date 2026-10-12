@@ -1,0 +1,266 @@
+/* The Categories & Tags screen (TAX-01). Header and table borrow the Pages list's classes
+   (PagesListPage.css); tabs follow the Menus screen's. */
+
+.taxonomy-intro,
+.taxonomy-hint,
+.taxonomy-empty {
+  max-width: 60ch;
+  font-size: 0.8125rem;
+  color: #50575e;
+}
+
+.taxonomy-intro {
+  margin: -0.5rem 0 1.25rem;
+}
+
+.taxonomy-hint {
+  margin: 0 0 1rem;
+}
+
+.taxonomy-announcer,
+.taxonomy-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.taxonomy-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid #c3c4c7;
+  margin: 0 0 1.25rem;
+}
+
+.taxonomy-tab {
+  border: none;
+  background: none;
+  padding: 0.6rem 1rem;
+  min-height: 2.75rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #50575e;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.taxonomy-tab:hover {
+  color: #1e1e1e;
+}
+
+.taxonomy-tab--active {
+  color: #2271b1;
+  border-bottom-color: #2271b1;
+}
+
+.taxonomy-tab-count {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.taxonomy-tab:focus-visible,
+.taxonomy-add:focus-visible,
+.taxonomy-link:focus-visible,
+.taxonomy-form input:focus-visible,
+.taxonomy-rename input:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+.taxonomy-tab:focus-visible {
+  outline-offset: -2px;
+}
+
+.taxonomy-form {
+  max-width: 28rem;
+  margin: 0 0 1.5rem;
+  font-size: 0.8125rem;
+}
+
+.taxonomy-form label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.taxonomy-form-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.taxonomy-form input,
+.taxonomy-rename input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #8c8f94;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e1e1e;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.taxonomy-form input[aria-invalid='true'] {
+  border-color: #b32d2e;
+}
+
+.taxonomy-add {
+  min-height: 2.5rem;
+  padding: 0 0.9rem;
+  border: none;
+  border-radius: 4px;
+  background: #2271b1;
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.taxonomy-add:hover:not(:disabled) {
+  background: #135e96;
+}
+
+.taxonomy-add:disabled {
+  background: #72aee6;
+  cursor: default;
+}
+
+.taxonomy-error {
+  margin: 0.4rem 0 0;
+  color: #b32d2e;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.taxonomy-row-error {
+  margin: 0 0 0.75rem;
+}
+
+.taxonomy-table-wrap {
+  overflow-x: auto;
+}
+
+.taxonomy-name {
+  font-weight: 500;
+}
+
+.taxonomy-count {
+  color: #50575e;
+  white-space: nowrap;
+}
+
+.taxonomy-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.taxonomy-rename {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+/* Narrow: the input takes a line of its own with Save and Cancel under it, so the table never grows wider. */
+.taxonomy-rename input {
+  flex: 1 1 8rem;
+}
+
+.taxonomy-link {
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: #2271b1;
+  font: inherit;
+  cursor: pointer;
+}
+
+.taxonomy-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.taxonomy-link:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.taxonomy-delete {
+  color: #b32d2e;
+}
+
+/* Tablet and narrower: the slug is secondary, and the rename row needs the room. */
+@media (max-width: 52rem) {
+  .taxonomy-slug {
+    display: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .taxonomy-intro,
+  .taxonomy-hint,
+  .taxonomy-empty,
+  .taxonomy-count {
+    color: #b0b0b0;
+  }
+
+  .taxonomy-tabs {
+    border-bottom-color: #3c434a;
+  }
+
+  .taxonomy-tab {
+    color: #b0b0b0;
+  }
+
+  .taxonomy-tab:hover {
+    color: #ededed;
+  }
+
+  .taxonomy-tab--active {
+    color: #6ab6f2;
+    border-bottom-color: #6ab6f2;
+  }
+
+  .taxonomy-tab:focus-visible,
+  .taxonomy-add:focus-visible,
+  .taxonomy-link:focus-visible,
+  .taxonomy-form input:focus-visible,
+  .taxonomy-rename input:focus-visible {
+    outline-color: #6ab6f2;
+  }
+
+  .taxonomy-form label {
+    color: #ededed;
+  }
+
+  .taxonomy-form input,
+  .taxonomy-rename input {
+    background: #1d2327;
+    border-color: #646970;
+    color: #ededed;
+  }
+
+  .taxonomy-form input[aria-invalid='true'] {
+    border-color: #f86368;
+  }
+
+  .taxonomy-link {
+    color: #6ab6f2;
+  }
+
+  .taxonomy-delete,
+  .taxonomy-error {
+    color: #f86368;
+  }
+}

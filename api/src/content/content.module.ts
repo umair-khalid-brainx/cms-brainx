@@ -16,6 +16,9 @@ import { MenusService } from '../menus/menus.service.js';
 import { RedirectRepository } from '../redirects/redirect.repository.js';
 import { RedirectsController } from '../redirects/redirects.controller.js';
 import { RedirectsService } from '../redirects/redirects.service.js';
+import { TermRepository } from '../taxonomy/term.repository.js';
+import { TermsController } from '../taxonomy/terms.controller.js';
+import { TermsService } from '../taxonomy/terms.service.js';
 
 @Module({
   // AuthModule import brings in JwtModule (re-exported by AuthModule) so
@@ -23,10 +26,10 @@ import { RedirectsService } from '../redirects/redirects.service.js';
   // JwtAuthGuard/PermissionsGuard also need to be listed as this module's own
   // providers.
   imports: [UsersModule, AuthModule, RevalidationModule, StarterLayoutsModule],
-  // Redirects and menus live here rather than in modules of their own: moving or hiding a page
+  // Terms (TAX-01) too: an entry's save assigns them. Redirects and menus live here rather than in modules of their own: moving or hiding a page
   // changes them (GOV-05, GOV-03), and they check page addresses, so they would otherwise import
   // each other.
-  controllers: [ContentController, RedirectsController, MenusController],
+  controllers: [ContentController, RedirectsController, MenusController, TermsController],
   providers: [
     ContentRepository,
     ContentTypeRepository,
@@ -35,6 +38,8 @@ import { RedirectsService } from '../redirects/redirects.service.js';
     RedirectsService,
     MenuRepository,
     MenusService,
+    TermRepository,
+    TermsService,
     ContentService,
     JwtAuthGuard,
     PermissionsGuard,

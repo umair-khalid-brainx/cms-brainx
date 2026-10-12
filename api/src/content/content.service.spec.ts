@@ -15,6 +15,8 @@ import { Prisma } from '../generated/prisma/client.js';
 import type { MenuRepository } from '../menus/menu.repository.js';
 import type { RedirectsService } from '../redirects/redirects.service.js';
 import { ContentService } from './content.service.js';
+import { TermsService, type TermLinks } from '../taxonomy/terms.service.js';
+import { fakeTermRepository } from '../taxonomy/term-test-kit.js';
 
 type Row = {
   id?: string;
@@ -40,7 +42,8 @@ function fakeContent(
   rows: Row[],
   members: Record<string, { siteId: string; role: string }>,
   previewLinks: Partial<PreviewLinkRepository> = {},
-  typeTable: { id: string; siteId: string; prefix: string; fields?: unknown }[] = [],
+  typeTable: { id: string; siteId: string; prefix: string; name?: string; fields?: unknown; hasCategories?: boolean; hasTags?: boolean }[] = [],
+  termKit = fakeTermRepository(),
 ) {
   // Every row gets an id and a parent, as Prisma's do; the page tree (CNT-05) needs both.
   const table = rows.map((row) => ({ parentId: null, ...row, id: row.id ?? `${row.siteId}:${row.slug}` }));
@@ -59,8 +62,11 @@ function fakeContent(
     }),
     create: vi.fn(
       async (siteId: string, data: Omit<Row, 'siteId' | 'status'>) => {
-        const row = { status: 'draft', parentId: null, ...data, siteId, id: data.id ?? `${siteId}:${data.slug}` };
+        const { terms: nested, ...rest } = data as typeof data & { terms?: { create: { termId: string }[] } };
+        const row = { status: 'draft', parentId: null, ...rest, siteId, id: data.id ?? `${siteId}:${data.slug}` };
         table.push(row);
+        // Nested creates are written with the row, like the real one.
+        if (nested) termKit.setLinks(siteId, row.id, [{ kind: 'tag', termIds: nested.create.map((c) => c.termId) }]);
         return row;
       },
     ),
@@ -90,9 +96,10 @@ function fakeContent(
     createInTree: vi.fn(async (siteId: string, plan: (pages: TreeRow[]) => Omit<Row, 'siteId' | 'status'>) =>
       content.create(siteId, plan(pageTree(siteId))),
     ),
-    update: vi.fn(async (siteId: string, slug: string, data: Partial<Row>) => {
+    update: vi.fn(async (siteId: string, slug: string, data: Partial<Row>, links?: TermLinks) => {
       const row = table.find((r) => r.siteId === siteId && r.slug === slug);
       if (row) Object.assign(row, data);
+      if (row && links) termKit.setLinks(siteId, row.id, links);
       return { count: row ? 1 : 0 };
     }),
   };
@@ -141,8 +148,9 @@ function fakeContent(
     layouts as unknown as StarterLayoutRepository,
     redirects as unknown as RedirectsService,
     menus as unknown as MenuRepository,
+    new TermsService(termKit.repo, users as unknown as UserRepository),
   );
-  return { service, table, content, revalidation, types, layouts, redirects, menus };
+  return { service, table, content, revalidation, types, layouts, redirects, menus, termKit };
 }
 
 const blocks = [{ type: 'hero', headline: 'Hello' }];
@@ -1274,3 +1282,97 @@ describe('ContentService refreshes the whole site for a page that is in a menu (
   });
 });
 
+
+describe('ContentService categories and tags (TAX-01)', () => {
+  const types = [
+    { id: 'type-posts', siteId: 'site-a', prefix: 'blog', name: 'Posts', hasCategories: true, hasTags: true },
+    { id: 'type-events', siteId: 'site-a', prefix: 'events', name: 'Events', hasCategories: false, hasTags: false },
+    { id: 'type-theirs', siteId: 'site-b', prefix: 'blog', name: 'Posts', hasCategories: true, hasTags: true },
+  ];
+
+  function setup() {
+    const termKit = fakeTermRepository([
+      { id: 'cat-a', siteId: 'site-a', kind: 'category', name: 'News', slug: 'news' },
+      { id: 'cat-b', siteId: 'site-b', kind: 'category', name: 'Secret', slug: 'secret' },
+    ]);
+    const made = fakeContent(
+      [
+        { siteId: 'site-a', title: 'Hello', slug: 'hello', path: '/blog/hello', status: 'draft', blocks, typeId: 'type-posts' },
+        { siteId: 'site-a', title: 'Gala', slug: 'gala', path: '/events/gala', status: 'draft', blocks, typeId: 'type-events' },
+        { siteId: 'site-a', title: 'About', slug: 'about', path: '/about', status: 'draft', blocks },
+      ],
+      { alice: { siteId: 'site-a', role: 'contributor' }, bob: { siteId: 'site-b', role: 'owner' } },
+      {},
+      types,
+      termKit,
+    );
+    return { ...made, termKit };
+  }
+
+  it('saves categories and a brand-new tag with the entry, and reads them back', async () => {
+    const { service } = setup();
+    const saved = await service.update('alice', 'hello', { title: 'Hello again', categoryIds: ['cat-a'], tags: ['Launch'] });
+    expect(saved).toMatchObject({
+      title: 'Hello again',
+      categories: [{ id: 'cat-a', name: 'News', slug: 'news' }],
+      tags: [{ name: 'Launch', slug: 'launch' }],
+    });
+    expect(await service.getForEdit('alice', 'hello')).toMatchObject({ categories: [{ id: 'cat-a' }], tags: [{ name: 'Launch' }] });
+  });
+
+  it('a save that only retags is allowed, and replaces just the kind it sent', async () => {
+    const { service } = setup();
+    await service.update('alice', 'hello', { categoryIds: ['cat-a'], tags: ['one'] });
+    const saved = await service.update('alice', 'hello', { tags: ['two'] });
+    expect(saved).toMatchObject({ categories: [{ id: 'cat-a' }], tags: [{ name: 'two' }] });
+  });
+
+  it('reuses a tag typed in another case instead of making a second', async () => {
+    const { service, termKit } = setup();
+    await service.update('alice', 'hello', { tags: ['Launch'] });
+    await service.update('alice', 'hello', { tags: ['LAUNCH'] });
+    expect(termKit.terms.filter((t) => t.kind === 'tag')).toHaveLength(1);
+  });
+
+  it('creates no tag when the save is refused for another reason', async () => {
+    const { service, termKit } = setup();
+    await expect(service.update('alice', 'hello', { tags: ['ghost'], slug: 'about' })).rejects.toBeInstanceOf(ConflictException);
+    expect(termKit.terms.filter((t) => t.kind === 'tag')).toHaveLength(0);
+  });
+
+  it('refuses another site’s category and writes nothing, not even the title', async () => {
+    const { service, table } = setup();
+    await expect(service.update('alice', 'hello', { title: 'Changed', categoryIds: ['cat-b'] })).rejects.toBeInstanceOf(BadRequestException);
+    expect(table.find((r) => r.slug === 'hello')?.title).toBe('Hello');
+  });
+
+  it('refuses terms on a type that has not opted in, and on a page', async () => {
+    const { service, termKit } = setup();
+    await expect(service.update('alice', 'gala', { tags: ['x'] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'gala', { categoryIds: ['cat-a'] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update('alice', 'about', { tags: ['x'] })).rejects.toBeInstanceOf(BadRequestException);
+    expect(termKit.terms.filter((t) => t.kind === 'tag')).toEqual([]);
+  });
+
+  it('assigns terms when an entry is created, and refuses them on a page', async () => {
+    const { service } = setup();
+    const created = await service.create('alice', { title: 'New post', type: 'blog', blocks: [], categoryIds: ['cat-a'], tags: [] });
+    expect(created).toMatchObject({ categories: [{ id: 'cat-a' }], tags: [] });
+    await expect(service.create('alice', { title: 'Page', blocks: [], tags: ['x'] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.create('alice', { title: 'Gala 2', type: 'events', blocks: [], tags: ['x'] })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('a page comes back without categories or tags', async () => {
+    const { service } = setup();
+    expect(await service.getForEdit('alice', 'about')).not.toHaveProperty('categories');
+  });
+
+  it('turning a kind off hides the entry’s tags without deleting them', async () => {
+    const { service } = setup();
+    await service.update('alice', 'hello', { tags: ['Launch'] });
+    types[0].hasTags = false;
+    expect(await service.getForEdit('alice', 'hello')).toMatchObject({ tags: [] });
+    types[0].hasTags = true;
+    expect(await service.getForEdit('alice', 'hello')).toMatchObject({ tags: [{ name: 'Launch' }] });
+  });
+});

@@ -75,6 +75,16 @@ const navItems = [
     requiresSiteManage: true,
   },
   {
+    // Categories and tags (TAX-01): everyone can look; the screen itself limits editing to those who can publish.
+    to: '/taxonomy',
+    label: 'Categories & Tags',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path d="M2.5 3.75A1.25 1.25 0 0 1 3.75 2.5h5.1c.33 0 .65.13.88.37l7.4 7.4a1.25 1.25 0 0 1 0 1.77l-5.1 5.1a1.25 1.25 0 0 1-1.77 0l-7.4-7.4a1.25 1.25 0 0 1-.36-.88v-5.1Zm3.5 1.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z" />
+      </svg>
+    ),
+  },
+  {
     // Where old addresses go (GOV-05). Everyone can look; the page itself limits editing.
     to: '/redirects',
     label: 'Redirects',
