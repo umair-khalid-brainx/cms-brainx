@@ -14,24 +14,39 @@ import {
   type PageSummary,
   type PublishChecks,
 } from '../lib/contentApi';
-import { canArchiveContent, canPublishContent } from '../lib/roles';
+import { canArchiveContent, canPublishContent, canWriteContent } from '../lib/roles';
+import { isLocked, scheduleLabel } from '../lib/workflow';
 import { siteUrl } from '../data/site';
 import type { ContentType } from '../lib/typesApi';
 import { orderAsTree } from '../lib/pageTree';
 import './PagesListPage.css';
 
-type Tab = 'active' | 'archived';
+// "In review" is the active list filtered here, not a list of its own (GOV-07).
+type Tab = 'active' | 'review' | 'archived';
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
 
-const STATUS_LABELS: Record<PageStatus, string> = { draft: 'Draft', published: 'Published', archived: 'Archived' };
+const STATUS_LABELS: Record<PageStatus, string> = {
+  draft: 'Draft',
+  published: 'Published',
+  archived: 'Archived',
+  in_review: 'In review',
+  scheduled: 'Scheduled',
+};
+
+// What the status menu can move a page to: review and scheduling have their own steps in the editor (GOV-07).
+const MENU_STATUSES: PageStatus[] = ['draft', 'published', 'archived'];
 
 // The row's dropdown lists every status except the one the page is already
 // in, minus any the user's role can't move to (UI affordance only — the API
 // enforces). Leaving or entering Archived needs the same right as archiving.
+// A page in review or scheduled has no menu: it's locked until that step ends.
+// A live page can be changed only by someone who can publish (GOV-07).
 function statusOptions(current: PageStatus): SelectOption<PageStatus>[] {
   const role = getSession()?.memberships[0]?.role;
   const canArchive = canArchiveContent(role);
-  return (Object.keys(STATUS_LABELS) as PageStatus[])
+  if (isLocked(current) || !canWriteContent(role)) return [];
+  if (current === 'published' && !canPublishContent(role)) return [];
+  return MENU_STATUSES
     .filter((status) => status !== current)
     .filter((status) => status !== 'published' || canPublishContent(role))
     .filter(() => current !== 'archived' || canArchive)
@@ -45,6 +60,11 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
   const noun = contentType ? { plural: contentType.name, singular: contentType.singularName } : { plural: 'Pages', singular: 'Page' };
   const prefix = contentType?.prefix;
   const [tab, setTab] = useState<Tab>('active');
+  // Affordance only (admin/CLAUDE.md invariant 3): a Viewer sees the list without its actions.
+  const role = getSession()?.memberships[0]?.role;
+  const canWrite = canWriteContent(role);
+  // "Edit" where this person can change the page, "Open" where the editor will be read-only (GOV-07).
+  const canEdit = (status: PageStatus) => canWrite && !isLocked(status) && (status !== 'published' || canPublishContent(role));
   const [pages, setPages] = useState<PageSummary[]>([]);
   const [archived, setArchived] = useState<PageSummary[]>([]);
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
@@ -60,10 +80,10 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
     setLoad({ status: 'loading' });
     setJustCopied(null);
     setRefused(null);
-    (tab === 'active' ? listPages(prefix) : listArchivedPages(prefix))
+    (tab === 'archived' ? listArchivedPages(prefix) : listPages(prefix))
       .then((result) => {
         if (cancelled) return;
-        if (tab === 'active') setPages(result);
+        if (tab !== 'archived') setPages(result);
         else setArchived(result);
         setLoad({ status: 'ready' });
       })
@@ -142,23 +162,29 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
     }
   }
 
-  const rows = tab === 'active' ? pages : archived;
+  const inReview = pages.filter((page) => page.status === 'in_review');
+  const rows = tab === 'active' ? pages : tab === 'review' ? inReview : archived;
 
   return (
     <>
       <div className="pages-header">
         <h1 className="pages-title">{noun.plural}</h1>
         <span className="pages-count">
-          {load.status === 'ready' ? `${rows.length} ${tab === 'active' ? noun.plural.toLowerCase() : 'archived'}` : ''}
+          {load.status === 'ready' ? `${rows.length} ${tab === 'active' ? noun.plural.toLowerCase() : tab === 'review' ? 'in review' : 'archived'}` : ''}
         </span>
-        <Link to={contentType ? `/content/${contentType.prefix}/new` : '/pages/new'} className="pages-add">
-          Add {noun.singular}
-        </Link>
+        {canWrite && (
+          <Link to={contentType ? `/content/${contentType.prefix}/new` : '/pages/new'} className="pages-add">
+            Add {noun.singular}
+          </Link>
+        )}
       </div>
 
       <div className="pages-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'active'} className={`pages-tab ${tab === 'active' ? 'pages-tab-active' : ''}`} onClick={() => setTab('active')}>
           {noun.plural}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'review'} className={`pages-tab ${tab === 'review' ? 'pages-tab-active' : ''}`} onClick={() => setTab('review')}>
+          In review
         </button>
         <button type="button" role="tab" aria-selected={tab === 'archived'} className={`pages-tab ${tab === 'archived' ? 'pages-tab-active' : ''}`} onClick={() => setTab('archived')}>
           Archived
@@ -190,11 +216,15 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
 
       {load.status === 'ready' && rows.length === 0 && (
         <p className="pages-loading">
-          {tab === 'active' ? `No ${noun.plural.toLowerCase()} yet.` : `No archived ${noun.plural.toLowerCase()}.`}
+          {tab === 'active'
+            ? `No ${noun.plural.toLowerCase()} yet.`
+            : tab === 'review'
+              ? `Nothing is waiting for review.`
+              : `No archived ${noun.plural.toLowerCase()}.`}
         </p>
       )}
 
-      {load.status === 'ready' && rows.length > 0 && tab === 'active' && (
+      {load.status === 'ready' && rows.length > 0 && tab !== 'archived' && (
         <table className="pages-table">
           <thead>
             <tr>
@@ -206,7 +236,7 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
           </thead>
           <tbody>
             {/* Pages show each child under its parent, like WordPress (CNT-05); entries never nest. */}
-            {(contentType ? pages.map((page) => ({ page, depth: 1 })) : orderAsTree(pages)).map(({ page, depth }) => (
+            {(contentType || tab === 'review' ? rows.map((page) => ({ page, depth: 1 })) : orderAsTree(rows)).map(({ page, depth }) => (
               <tr key={page.slug} className={justCopied?.slug === page.slug ? 'pages-row-new' : undefined}>
                 <td>
                   {depth > 1 ? (
@@ -221,22 +251,29 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
                 </td>
                 <td className="pages-row-path">{page.path}</td>
                 <td>
-                  <span className={`pages-status pages-status-${page.status}`}>{page.status}</span>
+                  <span className={`pages-status pages-status-${page.status}`}>{STATUS_LABELS[page.status]}</span>
+                  {page.status === 'scheduled' && page.publishAt && (
+                    <span className="pages-status-when">
+                      <time dateTime={page.publishAt}>{scheduleLabel(page.publishAt)}</time>
+                    </span>
+                  )}
                 </td>
                 <td className="pages-row-actions">
-                  <Link to={`/editor/${page.slug}`}>Edit</Link>
+                  <Link to={`/editor/${page.slug}`}>{canEdit(page.status) ? 'Edit' : 'Open'}</Link>
                   <a href={siteUrl(page.path)} target="_blank" rel="noreferrer">
                     View
                     <span aria-hidden="true">&#8599;</span>
                   </a>
-                  <button
-                    type="button"
-                    className="pages-row-duplicate"
-                    disabled={busySlug === page.slug}
-                    onClick={() => handleDuplicate(page)}
-                  >
-                    {busySlug === page.slug ? 'Duplicating…' : 'Duplicate'}
-                  </button>
+                  {canWrite && (
+                    <button
+                      type="button"
+                      className="pages-row-duplicate"
+                      disabled={busySlug === page.slug}
+                      onClick={() => handleDuplicate(page)}
+                    >
+                      {busySlug === page.slug ? 'Duplicating…' : 'Duplicate'}
+                    </button>
+                  )}
                   {statusMenu(page)}
                 </td>
               </tr>

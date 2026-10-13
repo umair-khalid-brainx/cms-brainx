@@ -8,6 +8,176 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-068 — 2026-10-13 — Demo content: one seed, in a file per tenant, with real photos and every workflow state (`DEP-03`)
+
+**Where it lives.** `api/prisma/seed-content/corrick.ts` and `kestrel.ts` hold each tenant's content as data;
+`seed-types.ts` its shape; `seed.ts` the machinery (members, library, pages, posts, terms, settings, menus);
+`seed-media/` the files, with `CREDITS.md`. One command, `npm run db:seed`, on any database: repeatable, and a re-run adds
+nothing and overwrites nothing an owner has edited (a page or post is created only when the site has neither its path
+nor its slug, so one an owner moved isn't made twice; menus only into an empty location; settings only where empty).
+To see new demo content on a database seeded before, reset it (`npx prisma migrate reset --force`, then the seed).
+
+**What it shows.** Each requirement area has something to demo: Corrick has 9 pages (one nested, one draft, one in
+review submitted by its contributor), 7 journal posts with featured images, excerpts, authors, categories and tags (one
+scheduled five days ahead by its editor), a 13-file library with alt text, header and footer menus, a logo, SEO and a
+share image on the home page, and two contact forms. Kestrel has 8 pages and 3 posts in the same way. Dates are relative
+to the seed run (posted 3 days ago, scheduled in 5), so the demo always looks current.
+
+**People.** Posts are credited to fictional team members (Maggie Corrick, Sam Doane, Ruth Calder…), created with the
+seed's dev password, never to the real person who owns the dev account.
+
+**Photos.** 20 free-licensed photos (Unsplash and Pexels licences), each approved by the user from a list before any
+download, and checked by eye: of the 25 found, one with a real boat's name and one with an energy company's logo were
+dropped before download, and three more in review (that company's logo on life vests, a brand on buckets, an
+electricity pylon with another country's danger signs). No free photo shows technicians on ropes on a turbine blade, so
+Kestrel's pages show turbines, the crew's gear and the view from the nacelle instead. Photos are reused across pages, as
+a library should be. The two logos are drawn in SVG for this repo.
+
+**Alt text.** Blocks name a picture with empty alt text; the seed fills it from the library entry, so the publish checks
+have nothing to warn about (the editor's picker deliberately leaves it to the page, D-047; the seed writes it out). Search settings go through the app's own `parseSeo`.
+
+**One thing to know.** An image in a block is stored with its full address (what the editor stores), so the seed bakes
+in `API_PUBLIC_URL` as it was when the seed ran. Seed a database with the value the API will be served at.
+
+---
+
+## D-067 — 2026-10-13 — Second tenant in the seed, a route-by-route cross-tenant suite, the canvas in the site's theme (`GOV-08b`, `FND-03`)
+
+**Kestrel is built in the seed, not by hand.** The plan said to build it by hand first to find bugs; writing it
+straight into `prisma/seed.ts` does the same job and leaves something repeatable for `DEP-03`. The seed learned four
+things for it: nested pages (`nested`, the parent found by path), site settings (tagline, footer note, logo, each only where the site has
+none), menus (only into an empty location) and library files (`prisma/seed-media.ts`: copied into `uploads/` with a
+random name and a thumbnail, like an upload; found again by its library title, so a re-run adds nothing). Kestrel's
+logo is drawn in SVG for this repo, so it raises no licensing question.
+
+**Cross-tenant suite (`test/cross-tenant.e2e-spec.ts`).** Two throwaway sites with one of everything (pages, a child,
+an entry with terms, a file, menus, redirects, a preview link, a revision, a submission, a page in review, a domain);
+each owner calls every authenticated route with the other site's slugs, ids and siteId and gets 403/404 (400 for a body
+id), the response never contains the other site's rows, and a full snapshot of the other site (and a hash of its file)
+is unchanged. Public routes for one host never show the other's data. A coverage test reads the routes from the running
+app and fails when one has no row, so a new route can't skip the suite. 65 of 70 routes; the other 5 hold no tenant data
+(service info, health, login, the two invite-token routes). No leak was found.
+
+**Invariant 1 as a test (`FND-03`, `test/tenant-scoping.spec.ts`).** Nothing outside a `*.repository.ts` imports
+`PrismaService`, and every public method of a tenant repository takes `siteId` first. It found two: the health check
+pinged the database itself (now `HealthRepository`) and `MediaRepository.create` took `siteId` inside its data (now
+first). Both exception lists are empty and the test fails if one goes stale.
+
+**The editor's canvas is drawn in the site's own theme (B-16).** `GET /sites/:siteId` returns the stored theme, the
+editor reads it once (`readSiteTheme` checks it is whole) and passes it to `configFor`; until then, or for a site
+without one, a neutral fallback. Before this every site was edited in Corrick's green.
+
+**ISR with two hosts (invariant 6)**, on a production build: refreshing Kestrel's `/about`, directly and through a real
+save in the API, left Kestrel's home and both Corrick pages cache HITs.
+
+Also found and fixed: the Stats block always laid out four columns, leaving an empty cell under three figures.
+
+---
+
+## D-066 — 2026-10-13 — Custom domains: stored on `sites.host` as Pending, with the DNS record to add; nothing served (`DEP-02`)
+
+**What it is.** Settings gets a Domains card: the free address first (Active, with Copy), then the custom domain. An
+Owner or Administrator (`site:manage`, like the subdomain) types a domain; the API cleans it up
+(`https://WWW.Example.com/menu` is `www.example.com`; `münchen.de` is stored as `xn--mnchen-3ya.de`), refuses one that
+isn't a domain or ends in a name that is never public (`.test`, `.local`, …), one on the platform's own root
+(`PUBLIC_ROOT_DOMAIN`, those addresses are the free ones; in production an unset value refuses every domain rather
+than letting a tenant claim `api.<root>`) and one another site has (409; the unique index catches two at once), and
+saves it as **Pending**. The card shows the record to add, named by the full host name (right for `www.example.co.uk`
+too, where cutting it short would guess where the domain begins): a CNAME to the free address, or for what looks like
+a bare domain an ALIAS, with the advice to use `www.` where the provider has no ALIAS. Remove takes it off.
+
+**Where it lives.** `sites.host`, which D-030 kept for exactly this, now nullable, plus `domainStatus` (`pending |
+verified`). The seed's placeholder hosts (`corrick.yourcms.com`) were never domains anyone owned, so the migration clears
+them (and marks any other host Pending); the seed finds its sites through the owner's membership, then by subdomain.
+
+**What it deliberately doesn't do** (the ticket is "UI only"): nothing checks DNS, nothing sets `verified` (a person can,
+in the database, until a platform-operator screen exists, D-014), and `web` doesn't answer on the domain. The card says
+so in plain words ("Not live yet… until the site is served on it, use the free address"), rather than implying the
+domain works. Serving custom domains needs `web` to resolve by host as well as subdomain, TLS for each domain, and nginx;
+that is a scope change.
+
+**Options considered:** (1) display only, no input; rejected by the user, an input with a status is what a client
+expects to see. (2) A separate `custom_domains` table, for several domains per site; one per site is enough for the
+demo and `host` already exists.
+
+---
+
+## D-065 — 2026-10-12 — Review and scheduling: two statuses, a lock, one conditional write per step, an in-process scheduler (`GOV-07`)
+
+**Statuses.** `ContentStatus` gains `in_review` and `scheduled`, rather than a separate review table or flags beside
+`draft`. Every public read already filters on `status = published` (D-030), so neither can leak: the page, listings,
+archives, related posts, sitemap and menus needed no change. A page has one review at a time, so its fields live on
+`content`: `submittedById/At`, `reviewNote`, `reviewedById/At`, `publishAt`, `scheduledById`.
+
+**The lock.** A page in review or scheduled refuses every save to its content, address, status and terms, and every
+restore (409), so the reviewer approves exactly what was submitted and what goes live is what was approved. The lock
+is in the write itself (`WHERE status = <the status read>`), not only a check before it: a save that passed the check
+can't land after the page was submitted or published meanwhile. To change it, the submitter withdraws it (or a
+reviewer sends it back or takes it back to draft, or a publisher unschedules it). The editor opens it read-only
+through Puck's `permissions`. Two things still reach a locked page on purpose: a parent page's move carries it to
+its new address (its own slug doesn't change), and a deleted category or tag comes off it. Neither is its content.
+
+**Live pages need `content:publish` to change at all** (403 otherwise), and so does replacing a file, or changing its
+alt text, when a live page, a page in review or scheduled, or the site's logo uses it (a share image in a page's
+search settings counts as a use, here and in the media library's "used on"). Without this a Contributor's edit to a live
+page went public with no review, which made the workflow optional. The user chose this over a draft copy of a live
+page (WordPress's "pending revision"), which would be a new data model and about a day more.
+
+**Each step is one conditional write** (`ContentRepository.transition`: `UPDATE … WHERE status IN (from)`): two
+reviewers, or the scheduler racing an unschedule, can't both win; the loser gets 409 ("Someone else just changed
+this page"). Approve and schedule run the publish checks first (errors refuse with the same 422 as Publish; the
+editor shows warnings first and they can be passed), and then publish only the version the checks read (the write
+also matches `updatedAt`). Approve also carries the version the reviewer's editor loaded (`version`, required), and
+is refused if the page changed since: withdrawn, edited and resubmitted while the reviewer was reading. "Publish now"
+on a scheduled page is one step of its own, so a failure leaves it scheduled. `archived` and `review-queue` are
+reserved as slugs for every page and entry, since the admin's own `/content/…` routes use them. Each step records a `status` revision (approve-now a `publish` one) with
+who did it; the History panel names them ("Submitted for review", "Back to draft from review", "Unscheduled").
+
+**The scheduler is a timer inside `api`, once a minute** (`ScheduledPublisher`), not `@nestjs/schedule`, a cron entry
+or a queue: nothing new to install or run. It goes through sites one at a time with site-scoped reads (invariant 1),
+claims each due page with the same conditional write (so a second `api` process can't publish it twice), runs the
+publish checks again, and refreshes the public site exactly as a manual publish does (`ContentService.refreshPublic`,
+extracted from `update` for this). A page that fails the checks at its time goes back to draft with a note rather
+than going live broken or retrying every minute. The revision is credited to whoever scheduled it. A page is at most
+about a minute late; one that came due while `api` was down goes live at start. `SCHEDULER_DISABLED=true` turns it off.
+
+**Times** are entered in the browser's time zone (named next to the picker) and stored in UTC. A time must be in the
+future and within two years.
+
+**Roles.** `content:review` for Owner, Administrator, Editor. Author can publish its own work but not approve anyone's.
+Withdraw is allowed to the submitter or a reviewer. Viewer (`content:read` only) opens the editor read-only; the plan
+said it would see previews only, but reading the page in the editor is more useful and changes nothing.
+
+**UI.** A Review screen (a table like Pages, oldest first, whose one action opens the editor: a reviewer always reads
+the page before approving) with a red count in the sidebar; a state strip under the editor's top bar (amber in review,
+violet scheduled, red for a reviewer's note, quoted in full); "Submit for review" replaces Publish for a Contributor.
+
+**Not done:** notifications (email or in-app) when something is submitted or sent back; multi-step approval; review
+comment threads.
+
+---
+
+## D-064 — 2026-10-12 — Week 5 scope: scheduling and Viewer in GOV-07, placeholder tenants, scripts-only deploy
+
+Agreed with the user in the week 5 ticket review (`docs/WEEK5_PLAN.md`).
+
+- **Scheduled publishing goes into `GOV-07`.** Req. 1 ("schedule pages for future publication"), req. 3 ("scheduled status")
+  and req. 8 ("published immediately or scheduled") ask for it and no ticket had it. A reviewer approves to "now" or to a
+  date and time; publishers can schedule directly.
+- **Reviewers are Owner, Administrator and Editor**, through a new `content:review` permission. Author keeps
+  `content:publish` (it can publish directly, as in WordPress) but can't approve someone else's work. A page in review is
+  locked until it's reviewed or withdrawn, so the reviewer approves exactly what was submitted.
+- **A Viewer role is added** (req. 7 lists it; only five roles existed): `content:read` only.
+- **DEC-3 resolved: Corrick Oyster Co. and Kestrel Rigging are kept** as the demo tenants. Swapping them later is a re-seed.
+- **DEC-5 resolved: the production API is `api.<domain>`**, nginx proxying to `127.0.0.1:4000`. 4001 is only this Mac's
+  workaround for Local.
+- **No server or domain yet (DEC-2 open), so `DEP-01b` writes and tests the deploy scripts locally.** `DEP-01a`'s server-side
+  files (nginx, pm2) are written there too; `DEP-01a` stays open until a real box exists.
+- **`FND-03` (tenant invariant tests) is folded into `GOV-08b`'s cross-tenant bug hunt**, which writes those tests anyway.
+- **Custom domains (`DEP-02`) can be entered and are stored as Pending**; nothing verifies DNS or serves the site on them.
+- **Demo photos are free-licensed stock**, each approved by the user before download.
+- **Week 5 is re-estimated** in `docs/WEEK5_PLAN.md` (~5.4 d): GOV-07 0.90, DEP-02 0.30, GOV-08b 0.80, DEP-03 0.80, DEP-01b
+  1.00, DEP-04 1.50. `EXECUTION_PLAN.md`'s table and the ticket headers carry the new numbers.
 ## D-063 — 2026-10-12 — Comparing revisions: client-side block diff, matched by sequence, on its own route (`GOV-02`)
 
 **Options considered:**

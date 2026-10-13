@@ -61,6 +61,30 @@
   color: #fff;
 }
 
+/* Read by screen readers, not shown: "Review 3 waiting" rather than "Review3". */
+.admin-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A count beside a nav item (pages waiting for review, GOV-07): WordPress's own red pill for "needs you". */
+.admin-nav-count {
+  margin-left: auto;
+  min-width: 1.15rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #d63638;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
 .admin-nav-icon {
   width: 18px;
   height: 18px;

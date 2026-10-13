@@ -35,3 +35,8 @@ export const subdomainSchema = z
 export const updateSubdomainSchema = z.object({ subdomain: subdomainSchema });
 
 export type UpdateSubdomainDto = z.infer<typeof updateSubdomainSchema>;
+
+// What the owner typed; SitesService cleans it up and says what's wrong with it in words (DEP-02).
+export const setDomainSchema = z.object({ domain: z.string().max(300) }).strict();
+
+export type SetDomainDto = z.infer<typeof setDomainSchema>;

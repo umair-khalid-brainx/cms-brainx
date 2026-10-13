@@ -1,4 +1,5 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import type { MediaRepository } from '../media/media.repository.js';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
 import type { SiteRepository } from './site.repository.js';
@@ -7,15 +8,28 @@ import type { SubdomainCache } from './subdomain-cache.js';
 
 const SITE_ID = 'cmv51abc123';
 
-function setup(library: { filename: string; mimetype: string }[] = []) {
-  const table: Record<string, { id: string; name: string; subdomain: string; settings: unknown }> = {
-    [SITE_ID]: { id: SITE_ID, name: 'Corrick', subdomain: 'corrick', settings: { tagline: 'Old tagline', footerNote: 'Old note' } },
-    other: { id: 'other', name: 'Kestrel', subdomain: 'kestrel', settings: {} },
+function setup(library: { filename: string; mimetype: string }[] = [], env: Record<string, string> = { PUBLIC_ROOT_DOMAIN: 'yourcms.com' }) {
+  type SiteRow = { id: string; name: string; subdomain: string; settings: unknown; host: string | null; domainStatus: 'pending' | 'verified' | null };
+  const table: Record<string, SiteRow> = {
+    [SITE_ID]: {
+      id: SITE_ID,
+      name: 'Corrick',
+      subdomain: 'corrick',
+      settings: { tagline: 'Old tagline', footerNote: 'Old note' },
+      host: null,
+      domainStatus: null,
+    },
+    other: { id: 'other', name: 'Kestrel', subdomain: 'kestrel', settings: {}, host: 'www.kestrelrigging.com', domainStatus: 'verified' },
   };
   const sites = {
     findById: vi.fn(async (id: string) => table[id] ?? null),
     updateSettings: vi.fn(async (id: string, data: { name?: string; settings: unknown }) => {
       Object.assign(table[id], data);
+      return table[id];
+    }),
+    findByHost: vi.fn(async (host: string) => Object.values(table).find((site) => site.host === host) ?? null),
+    updateDomain: vi.fn(async (id: string, host: string | null) => {
+      Object.assign(table[id], { host, domainStatus: host ? 'pending' : null });
       return table[id];
     }),
   };
@@ -31,6 +45,7 @@ function setup(library: { filename: string; mimetype: string }[] = []) {
     {} as SubdomainCache,
     media as unknown as MediaRepository,
     revalidation as unknown as RevalidationService,
+    { get: (key: string) => env[key] } as unknown as ConfigService,
   );
   return { service, table, sites, revalidation };
 }
@@ -45,6 +60,8 @@ describe('SitesService.getDetails (GOV-04)', () => {
       tagline: 'Old tagline',
       footerNote: 'Old note',
       logo: '',
+      customDomain: null,
+      domainStatus: null,
     });
     expect((await service.getDetails('other')).tagline).toBe('');
   });
@@ -98,5 +115,48 @@ describe('SitesService.updateSettings (GOV-04)', () => {
     await service.updateSettings(SITE_ID, { tagline: 'Mine' });
     expect(table.other.settings).toEqual({});
     expect(table.other.name).toBe('Kestrel');
+  });
+});
+
+describe('SitesService custom domain (DEP-02)', () => {
+  it('saves a cleaned-up domain as pending', async () => {
+    const { service, table } = setup();
+    const result = await service.setDomain(SITE_ID, '  https://WWW.CorrickOysters.com/menu ');
+    expect(result).toMatchObject({ customDomain: 'www.corrickoysters.com', domainStatus: 'pending' });
+    expect(table[SITE_ID]).toMatchObject({ host: 'www.corrickoysters.com', domainStatus: 'pending' });
+  });
+
+  it('refuses the platform’s own root domain and anything under it', async () => {
+    const { service, sites } = setup();
+    await expect(service.setDomain(SITE_ID, 'yourcms.com')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.setDomain(SITE_ID, 'corrick.yourcms.com')).rejects.toBeInstanceOf(BadRequestException);
+    expect(sites.updateDomain).not.toHaveBeenCalled();
+  });
+
+  it('refuses a domain another site has, and says so', async () => {
+    const { service, sites } = setup();
+    await expect(service.setDomain(SITE_ID, 'www.kestrelrigging.com')).rejects.toThrow(new ConflictException('Another site already uses that domain.'));
+    expect(sites.updateDomain).not.toHaveBeenCalled();
+  });
+
+  it('keeps a verified domain as it is when the same one is saved again', async () => {
+    const { service, sites } = setup();
+    expect(await service.setDomain('other', 'WWW.kestrelrigging.com')).toMatchObject({ domainStatus: 'verified' });
+    expect(sites.updateDomain).not.toHaveBeenCalled();
+  });
+
+  it('refuses every domain in production when the root domain isn’t configured', async () => {
+    const { service, sites } = setup([], { NODE_ENV: 'production', PUBLIC_ROOT_DOMAIN: ' ' });
+    await expect(service.setDomain(SITE_ID, 'www.corrickoysters.com')).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(sites.updateDomain).not.toHaveBeenCalled();
+  });
+
+  it('removes the domain and its status', async () => {
+    const { service } = setup();
+    expect(await service.removeDomain('other')).toMatchObject({ customDomain: null, domainStatus: null });
+  });
+
+  it('is a 404 for a site that doesn’t exist', async () => {
+    await expect(setup().service.removeDomain('nope')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

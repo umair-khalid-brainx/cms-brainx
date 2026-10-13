@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 39, IN-PROGRESS 5, TODO 11 (56 tickets). Updated 2026-10-12. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
+**Totals:** BACKLOG 1, DONE 48, IN-PROGRESS 2, TODO 5 (56 tickets). Updated 2026-10-13. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
 
 ## M1 (week 1)
 
@@ -20,13 +20,13 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | CNT-01 | Content CRUD API, tenant-scoped | DONE | 0 |  |
 | CNT-02 | Admin content list and edit screens | DONE | 0 |  |
 | CNT-03 | Publish states and transitions | DONE | 0 |  |
-| FND-03 | Tenant invariant tests | TODO | 0 |  |
+| FND-03 | Tenant invariant tests | DONE | 0 | 2026-10-13, built in GOV-08b (D-067) |
 | FND-04 | Host to site resolution with cache | DONE | 0 |  |
 | XRP-02 | CI pipeline per repository | TODO | 0 |  |
 | CNT-04 | Slug handling and per-site uniqueness | DONE | 0 | 2026-10-09 (D-053) |
 | CNT-05 | Page hierarchy: parent, depth limit, cycle guard | DONE | 0 | 2026-10-12 (D-054) |
 | CNT-06 | Denormalised path and recursive recomputation | DONE | 0 | 2026-10-12 (D-054) |
-| DEP-01a | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | TODO | 0 | Blocked on DEC-2 (domain) |
+| DEP-01a | Skeleton deploy: EC2, nginx, wildcard TLS, pm2 | TODO | 0 | Blocked on DEC-2 (domain); its files are written in DEP-01b |
 
 ## M2 (week 2)
 
@@ -80,11 +80,11 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
 | Ticket | Title | Status | Tries | Note |
 |---|---|---|---|---|
-| GOV-07 | Submit for review and reviewer queue | TODO | 0 |  |
-| GOV-08b | Second tenant branding, content, cross-tenant bug hunt | TODO | 0 |  |
+| GOV-07 | Submit for review and reviewer queue | DONE | 0 | 2026-10-12 (D-065); scheduling and Viewer role included (D-064) |
+| GOV-08b | Second tenant branding, content, cross-tenant bug hunt | DONE | 0 | 2026-10-13 (D-067); B-16 fixed with it |
 | DEP-01b | Deploy script, three-app topology, rollback | TODO | 0 |  |
-| DEP-02 | Domains screen, UI only | TODO | 0 |  |
-| DEP-03 | Realistic seed content for both tenants | TODO | 0 |  |
+| DEP-02 | Domains screen, UI only | DONE | 0 | 2026-10-13 (D-066) |
+| DEP-03 | Realistic seed content for both tenants | DONE | 0 | 2026-10-13 (D-068); copy approved by the user |
 | DEP-04 | Bug fixing and demo rehearsal | TODO | 0 |  |
 
 ## Backlog

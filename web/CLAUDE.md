@@ -38,6 +38,8 @@ from the request `Host` header, SSR + ISR.
   internal tenant route is `/sites/...`, not `/_sites/...`.
 - **`allowedDevOrigins: ["*.lvh.me"]`** in `next.config.ts` is required, or `next dev` blocks its own
   dev assets and HMR on tenant hosts.
+- **`npm run check:isr [port]` checks invariant 6 on a running production build** (GOV-08b): it refreshes a page on
+  one tenant's host and expects the other tenant's cached pages to stay HITs, both ways. Needs `REVALIDATE_SECRET`.
 - **ISR only exists in `next build && next start`.** Under `next dev` every request renders fresh,
   so "my edit showed up" in dev proves nothing about the cache. The `x-nextjs-cache` response header
   says HIT/MISS/STALE (D-039).

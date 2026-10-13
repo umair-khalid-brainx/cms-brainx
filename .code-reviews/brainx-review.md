@@ -1,25 +1,24 @@
 ---
-diff_hash: 42060be8d505c684cc0332422cf73a6b1b65f873428d4b021618854e9616d79c
-reviewed_at: 2026-10-12T16:28:32Z
-stack: unknown at repo root (no package.json); React criteria applied to admin/
+diff_hash: ac425e355a3f4057cd799fb33b1e23555998a14f9c4e71898a6b2edaa99aeab8
+reviewed_at: 2026-10-13T09:57:12Z
 ---
 
 ## Summary
 
-GOV-02: a Compare screen for page versions (`/editor/:slug/compare?from=&to=`).
+DEP-03 (realistic demo content), in `api` only (NestJS criteria; no root `package.json`) plus docs. The seed is split
+into `prisma/seed-types.ts` (the shape), `prisma/seed-content/{corrick,kestrel}.ts` (each tenant's content as data)
+and `seed.ts` (the machinery): team members with the dev password, a media library per site via `ensureMedia`,
+`@media:` references resolved to library URLs with empty alt text filled from the library, nested pages found by
+parent path, in-review and scheduled items with relative dates, SEO through the app's `parseSeo`, posts with excerpt,
+featured image, author and terms, settings and menus written only where empty. 20 photos (Unsplash/Pexels) and a
+Corrick SVG logo with `CREDITS.md`. Docs: D-068, a WORKLOG entry, a CLAUDE.md gotcha on `API_PUBLIC_URL`, DEP-03 DONE.
 
-- **admin**: new pure module `lib/diffBlocks.ts` aligns two block lists in three LCS passes (exact block, then
-  type + main text, then type alone), reports prop-level and word-level changes, and diffs title, field values,
-  SEO and categories/tags. `ComparePage.tsx` shows the result, with a Restore button for the older side. The
-  restore confirm moved out of `HistoryPanel` into a shared `RestoreConfirm.tsx`; the History panel gains a
-  Compare link per version. `revisionsApi.ts` adds `getRevision` and `getCurrentPage`. `EditorPage` now shows a
-  restore notice passed in navigation state and keeps a render-safe `editorStale` flag for the Publish button.
-- **docs/tickets**: D-063, worklog, backlog and GOV-02 status.
-- **Also staged:** 174 vitest cache files under a root-level `node_modules/`.
-
-Checked: `npx vitest run src/lib/diffBlocks.test.ts` passes (25 tests), and `npm run typecheck` in admin is clean.
-The API already has `GET /content/:slug/revisions/:id` (`api/src/revisions/revisions.controller.ts`), so the
-contract the new client calls exists. No API change is in this diff.
+Checked: every block prop used in the content (hero `facts`, cta `note`, featureGrid items without `label`, teamGrid
+`bio`, gallery `caption`, contactForm fields) exists in `cms-blocks/src/types.ts` (invariant 7); every rich-text HTML
+string uses only tags the sanitiser allows; `status` values match `ContentStatus`; slug uniqueness is per site
+(`@@unique([siteId, slug])`), so `alreadyThere`'s slug check matches the constraint; Corrick counts (9 pages, 7 posts,
+13 files, 4 categories, 9 tags) match the content files. `api` `tsc --noEmit` is clean. The seed was not run in this
+review. The Corrick owner's real email is unchanged from the previous seed (moved, not added), so it is not a finding.
 
 ## Findings
 
@@ -27,45 +26,37 @@ contract the new client calls exists. No API change is in this diff.
 
 ### High (0)
 
-### Medium (2)
-- **node_modules/.vitest-cache/005dfe3217882b20c9076283879adc48f8fa8c89:1** — 174 vitest cache files (`node_modules/.vitest-cache/*`, `node_modules/.vite/vitest/*`) at the repo root are staged for commit *(maintainability)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: The root has no `package.json` and `node_modules` has never been committed. These files came from running vitest from the repo root. The root `.gitignore` doesn't list `node_modules/`, so `git add -A` picked them up. If committed, they will change on every test run. Fix: `git rm -r --cached node_modules` and add `node_modules/` to the root `.gitignore`.
-- **admin/src/lib/diffBlocks.ts:460** — The SEO diff shows a false "Hidden from search engines: (empty) → No" between a version saved before SEO was ever set and one saved after *(correctness)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: `Content.seo` defaults to `{}` (`schema.prisma:152`). Saving SEO settings, or restoring any revision (`readSeo` in `revisions.service.ts:153`), stores the full object with `noindex: false`. `describeValue(undefined)` is `null` but `describeValue(false)` is `"No"`, so `diffRecord` reports a change that didn't happen. The same mismatch hits optional boolean block props such as `ordered` (absent vs `false`) in `diffProps`. Fix: fill SEO with its defaults on both sides before diffing, or treat `false` like empty for an optional boolean.
+### Medium (0)
 
-### Low (3)
-- **admin/src/lib/diffBlocks.ts:373** — A block can be labelled "Formatting or links: changed" when only an empty prop appeared or disappeared, or when only a derived prop differs *(correctness)*
+### Low (4)
+- **api/prisma/seed.ts:54** — `termSlug` is a hand copy of `normaliseSlug` (`src/content/slug.ts`), which `taxonomy/term-rules.ts` uses to make a term's slug; the copy already differs (no `SLUG_MAX` truncation). The seed imports `parseSeo` from `src` for exactly this reason, so it could import `normaliseSlug` too. *(maintainability)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: `diffProps` treats `''`, `null` and a missing prop as equal, and it skips `provider`/`videoId`. `exact()` (canonical JSON) does not. So `{heading:'A'}` vs `{heading:'A', subheading:''}` produces no prop changes but different exact keys, and the fallback reports a formatting/link change. Only fall back to that row when the difference is inside a rich-text or link value.
-- **admin/src/pages/ComparePage.tsx:329** — With From = Current and To = the newest saved version, the screen offers "Restore this version" for a version that equals the current page *(consistency)*
+  - ai_reasoning: If the app's slug rule changes, a seeded term's slug stops matching the one the admin derives from the same name, and the admin then creates a second term for it. No effect today: every seed term name is short and ASCII.
+- **api/prisma/seed.ts:198** — Rich-text HTML in pages (and posts at line 242) is stored without `sanitizeBlocks`, while SEO goes through `parseSeo` "so the stored shape is the one a save makes". Invariant 5 says stored HTML is already safe. *(consistency)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: The line above returns `null` for the mirror case (`toId === CURRENT && fromId === revisions[0].id`), with a comment saying such a restore "would change nothing". The swapped order skips that check. Add the same guard: `if (fromId === CURRENT) return toId === revisions[0]?.id ? null : toId;`.
-- **admin/src/pages/EditorPage.tsx:42** — The "Restored the version from …" notice comes back after a browser reload or a back/forward to the editor *(correctness)*
+  - ai_reasoning: Every HTML string in the seed today uses only allowlisted tags (`p`, `ol`, `ul`, `li`, `a href` relative), so sanitising would change nothing now. A later seed edit with a tag outside the allowlist would be stored and rendered as-is, unlike anything saved through the app.
+- **docs/WORKLOG.md:14** — Says "23 photos" and (line 16) "Kestrel: … 12 files"; the diff has 20 photos (as D-068 and CREDITS.md say) and Kestrel's library is 8 photos plus the logo, 9 files. *(docs)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: `location.state` is kept in the history entry, so every remount of that entry reads `notice` again, even long after the restore. Clear it once it has been read, for example `navigate(location.pathname, { replace: true, state: null })` in a mount effect.
+  - ai_reasoning: Stale counts from before three photos were dropped in review; the doc contradicts the code and D-068.
+- **api/prisma/seed-media/CREDITS.md:3** — Cites D-064 (placeholder identities kept) as the decision for the photos; the decision for this content is D-068. *(docs)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: Points a reader at the wrong decision entry.
 
 ## Reviewed files
-- admin/src/App.tsx
-- admin/src/components/HistoryPanel.css
-- admin/src/components/HistoryPanel.tsx
-- admin/src/components/RestoreConfirm.tsx
-- admin/src/lib/diffBlocks.test.ts
-- admin/src/lib/diffBlocks.ts
-- admin/src/lib/revisions.ts
-- admin/src/lib/revisionsApi.ts
-- admin/src/pages/ComparePage.css
-- admin/src/pages/ComparePage.tsx
-- admin/src/pages/EditorPage.tsx
-- docs/BACKLOG.md
+- .code-reviews/brainx-review.md (deletion of the previous review; not reviewed)
+- CLAUDE.md
+- api/prisma/seed-content/corrick.ts
+- api/prisma/seed-content/kestrel.ts
+- api/prisma/seed-media/CREDITS.md
+- api/prisma/seed-media/corrick/logo.svg
+- api/prisma/seed-types.ts
+- api/prisma/seed.ts
 - docs/DECISIONS.md
 - docs/WORKLOG.md
-- tickets/GOV-02.md
+- tickets/DEP-03.md
 - tickets/STATUS.md
-- node_modules/.vite/vitest/** and node_modules/.vitest-cache/** (174 files): skipped as generated cache, raised as a finding
+- api/prisma/seed-media/corrick/*.jpg, api/prisma/seed-media/kestrel/*.jpg (20 binary photos; skipped)

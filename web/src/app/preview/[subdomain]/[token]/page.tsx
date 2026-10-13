@@ -38,7 +38,11 @@ export default async function PreviewPage({ params }: PageProps<'/preview/[subdo
       <strong className="font-semibold">Private preview.</strong>{' '}
       {page.status === 'published'
         ? 'You’re seeing the latest saved version of this page, which may differ from what’s live.'
-        : 'This page isn’t published yet. Only people with this link can see it.'}
+        : page.status === 'in_review'
+          ? 'This page is waiting for review. Only people with this link can see it.'
+          : page.status === 'scheduled'
+            ? 'This page is scheduled and isn’t live yet. Only people with this link can see it.'
+            : 'This page isn’t published yet. Only people with this link can see it.'}
     </div>
   );
 

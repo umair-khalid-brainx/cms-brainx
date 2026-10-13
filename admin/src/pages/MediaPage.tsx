@@ -15,6 +15,8 @@ import {
 } from '../lib/mediaApi';
 import { FileTile } from '../components/FileTile';
 import { MediaDetailsForm } from '../components/MediaDetailsForm';
+import { getSession } from '../lib/auth';
+import { canArchiveContent, canWriteContent } from '../lib/roles';
 import './MediaPage.css';
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
@@ -28,6 +30,11 @@ function formatBytes(bytes: number): string {
 type UsageState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; pages: MediaUsage[] };
 
 function MediaPage() {
+  // Affordance only (admin/CLAUDE.md invariant 3): a Viewer browses without Upload, Replace or Delete (GOV-07),
+  // and Delete follows the API's content:delete.
+  const role = getSession()?.memberships[0]?.role;
+  const canWrite = canWriteContent(role);
+  const canDelete = canArchiveContent(role);
   const [items, setItems] = useState<MediaItem[]>([]);
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
   const [uploading, setUploading] = useState(false);
@@ -203,21 +210,25 @@ function MediaPage() {
         <span className="media-count">
           {load.status === 'ready' ? `${items.length} ${items.length === 1 ? 'file' : 'files'}` : ''}
         </span>
-        <button
-          type="button"
-          className="media-upload-button"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {uploading ? 'Uploading…' : 'Upload'}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={UPLOAD_ACCEPT}
-          className="media-hidden-input"
-          onChange={handleFileSelected}
-        />
+        {canWrite && (
+          <>
+            <button
+              type="button"
+              className="media-upload-button"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? 'Uploading…' : 'Upload'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={UPLOAD_ACCEPT}
+              className="media-hidden-input"
+              onChange={handleFileSelected}
+            />
+          </>
+        )}
       </div>
 
       {load.status === 'error' && <p className="media-error">{load.message}</p>}
@@ -275,7 +286,13 @@ function MediaPage() {
             ) : (
               <img className="media-detail-preview" src={displayUrl(selected)} alt={selected.alt || selected.title || ''} />
             )}
-            <MediaDetailsForm key={selected.id} item={selected} onSaved={handleDetailsSaved} onDirtyChange={handleDirtyChange} />
+            <MediaDetailsForm
+              key={selected.id}
+              item={selected}
+              onSaved={handleDetailsSaved}
+              onDirtyChange={handleDirtyChange}
+              readOnly={!canWrite}
+            />
             <dl className="media-detail-meta">
               <dt>File</dt>
               <dd>{selected.filename}</dd>
@@ -311,31 +328,39 @@ function MediaPage() {
             </div>
             {replaceError && <p className="media-error">{replaceError}</p>}
             {deleteError && <p className="media-error">{deleteError}</p>}
-            <div className="media-detail-actions">
-              <button
-                type="button"
-                className="media-detail-replace"
-                disabled={replacing || deleting}
-                onClick={() => replaceInputRef.current?.click()}
-              >
-                {replacing ? 'Replacing…' : 'Replace file'}
-              </button>
-              <input
-                ref={replaceInputRef}
-                type="file"
-                accept={selected.mimetype}
-                className="media-hidden-input"
-                onChange={handleReplaceSelected}
-              />
-              <button
-                type="button"
-                className="media-detail-delete"
-                disabled={deleting || replacing || usage.status === 'loading'}
-                onClick={() => handleDelete(selected)}
-              >
-                {deleting ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
+            {(canWrite || canDelete) && (
+              <div className="media-detail-actions">
+                {canWrite && (
+                  <>
+                    <button
+                      type="button"
+                      className="media-detail-replace"
+                      disabled={replacing || deleting}
+                      onClick={() => replaceInputRef.current?.click()}
+                    >
+                      {replacing ? 'Replacing…' : 'Replace file'}
+                    </button>
+                    <input
+                      ref={replaceInputRef}
+                      type="file"
+                      accept={selected.mimetype}
+                      className="media-hidden-input"
+                      onChange={handleReplaceSelected}
+                    />
+                  </>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    className="media-detail-delete"
+                    disabled={deleting || replacing || usage.status === 'loading'}
+                    onClick={() => handleDelete(selected)}
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

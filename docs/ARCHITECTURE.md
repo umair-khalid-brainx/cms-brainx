@@ -148,7 +148,7 @@ Each repo owns its own env file; there is no shared config.
 
 | Repo | File | Keys |
 | ---- | ---- | ---- |
-| `api` | `.env` | `DATABASE_URL`, `API_PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS` |
+| `api` | `.env` | `DATABASE_URL`, `API_PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS`, `PUBLIC_ROOT_DOMAIN` (DEP-02), `SCHEDULER_DISABLED` (GOV-07) |
 | `web` | `.env.local` | `NEXT_PUBLIC_API_URL`, `PUBLIC_ROOT_DOMAIN` |
 | `admin` | `.env` | `VITE_API_URL`, `VITE_SITE_URL_TEMPLATE` |
 

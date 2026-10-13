@@ -31,8 +31,8 @@ export class MediaRepository {
     return this.prisma.media.findFirst({ where: { id, siteId }, select: MEDIA_SELECT });
   }
 
-  create(data: Prisma.MediaUncheckedCreateInput) {
-    return this.prisma.media.create({ data, select: MEDIA_SELECT });
+  create(siteId: string, data: Omit<Prisma.MediaUncheckedCreateInput, 'siteId'>) {
+    return this.prisma.media.create({ data: { ...data, siteId }, select: MEDIA_SELECT });
   }
 
   updateSize(siteId: string, id: string, size: number, thumbnailUrl: string | null) {

@@ -408,3 +408,203 @@
     background: #101b26;
   }
 }
+
+/* Custom domain (DEP-02): the domain and its status on one line, then the DNS record as a small table. Amber
+   Pending and green confirmed, the same hues as the Pages list's chips. */
+.domain-heading {
+  margin: 0 0 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.settings-help + .domain-heading {
+  margin-top: 1.25rem;
+}
+
+.domain-copy-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #00762c;
+}
+
+/* Empty, it stays in the accessibility tree (a live region added later is often not announced) but takes no room. */
+.domain-copy-note:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.domain-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.domain-add-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.domain-add-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.domain-current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.domain-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e1e1e;
+  overflow-wrap: anywhere;
+}
+
+.domain-badge {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.domain-badge-pending {
+  background: #fcf3dc;
+  color: #7a5300;
+}
+
+.domain-badge-verified {
+  background: #edfaef;
+  color: #00762c;
+}
+
+.domain-records-title {
+  margin: 0.9rem 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+/* One record as label/value rows: full host names stay whole in this narrow column, where a table squeezed them. */
+.domain-record {
+  margin: 0 0 0.6rem;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}
+
+.domain-record > div {
+  display: grid;
+  grid-template-columns: 4.25rem 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+}
+
+.domain-record > div + div {
+  border-top: 1px solid #dcdcde;
+}
+
+.domain-record dt {
+  font-weight: 600;
+  color: #3c434a;
+}
+
+.domain-record dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.domain-record code {
+  overflow-wrap: anywhere;
+}
+
+.domain-copy {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  background: #fff;
+  color: #2271b1;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.domain-copy:hover {
+  border-color: #2271b1;
+}
+
+.domain-copy:focus-visible {
+  outline: 2px solid #2271b1;
+  outline-offset: 2px;
+}
+
+.domain-remove {
+  margin-top: 0.85rem;
+  border-color: #b32d2e;
+  color: #b32d2e;
+}
+
+.domain-remove:hover:not(:disabled) {
+  background: #fcf0f1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .domain-name,
+  .domain-records-title,
+  .domain-heading {
+    color: #ededed;
+  }
+
+  .domain-copy-note {
+    color: #4fd67a;
+  }
+
+  .domain-badge-pending {
+    background: #33270a;
+    color: #f0c33c;
+  }
+
+  .domain-badge-verified {
+    background: #0a2e14;
+    color: #4fd67a;
+  }
+
+  .domain-record,
+  .domain-record > div + div {
+    border-color: #3c434a;
+  }
+
+  .domain-record dt {
+    color: #b0b0b0;
+  }
+
+  .domain-copy {
+    background: #1d2327;
+    border-color: #646970;
+    color: #72aee6;
+  }
+
+  .domain-remove {
+    border-color: #f86368;
+    color: #f86368;
+  }
+
+  .domain-remove:hover:not(:disabled) {
+    background: #2e1214;
+  }
+}

@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { ContentRepository } from '../content/content.repository.js';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
@@ -19,7 +19,7 @@ type Row = {
   slug: string;
   path: string;
   title: string;
-  status: 'draft' | 'published' | 'archived';
+  status: 'draft' | 'published' | 'archived' | 'in_review' | 'scheduled';
   blocks: unknown;
   data: unknown;
   seo: unknown;
@@ -57,8 +57,9 @@ function setup(rows: Row[] = [page()], typeRows: { id: string; siteId: string; p
       const row = table.find((r) => r.siteId === siteId && r.slug === slug);
       return row ? { ...row } : null;
     }),
-    update: vi.fn(async (siteId: string, slug: string, data: Partial<Row>, links?: TermLinks) => {
-      const row = table.find((r) => r.siteId === siteId && r.slug === slug);
+    // Like the real one: with a status, it writes only while the page still has it (GOV-07).
+    update: vi.fn(async (siteId: string, slug: string, data: Partial<Row>, links?: TermLinks, status?: string) => {
+      const row = table.find((r) => r.siteId === siteId && r.slug === slug && (!status || r.status === status));
       if (row) Object.assign(row, data);
       if (row && links) termKit.setLinks(siteId, row.id, links);
       return { count: row ? 1 : 0 };
@@ -323,6 +324,31 @@ describe('RevisionsService.restore', () => {
 
     expect(s.content.update).not.toHaveBeenCalled();
     expect(s.revisionKit.rows).toHaveLength(before);
+  });
+
+  it.each(['in_review', 'scheduled'] as const)('refuses to restore a %s page with 409, and records nothing', async (status) => {
+    const s = await withHistory();
+    s.table[0].status = status;
+    const before = s.revisionKit.rows.length;
+
+    await expect(s.service.restore('ann', 'about', s.oldId, passes)).rejects.toBeInstanceOf(ConflictException);
+
+    expect(s.content.update).not.toHaveBeenCalled();
+    expect(s.revisionKit.rows).toHaveLength(before);
+    expect(s.current().title).toBe('Newer title');
+  });
+
+  it('replaces nothing when the page went into review between the read and the write (409)', async () => {
+    const s = await withHistory();
+    // The checks run between the read and the write; by then the page was submitted.
+    const intoReview = async () => {
+      s.table[0].status = 'in_review';
+      return { errors: [] };
+    };
+    s.table[0].status = 'published';
+
+    await expect(s.service.restore('ann', 'about', s.oldId, intoReview)).rejects.toBeInstanceOf(ConflictException);
+    expect(s.current().title).toBe('Newer title');
   });
 
   it('lets a contributor restore a draft', async () => {

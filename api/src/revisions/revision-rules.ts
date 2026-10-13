@@ -2,7 +2,8 @@
 // own, so every rule below is a plain function a spec can call.
 
 export type RevisionReason = 'publish' | 'status' | 'restore' | 'autosave' | 'before_restore';
-export type PageStatus = 'draft' | 'published' | 'archived';
+// Every status a page can have, the review ones included (GOV-07).
+export type PageStatus = 'draft' | 'published' | 'archived' | 'in_review' | 'scheduled';
 
 /** The newest revisions kept per page; older ones are deleted after each insert. */
 export const REVISION_LIMIT = 50;

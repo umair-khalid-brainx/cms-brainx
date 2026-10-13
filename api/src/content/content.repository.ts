@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client.js';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, type ContentStatus } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SITEMAP_LIMIT } from '../public/sitemap-view.js';
 import type { TermLinks } from '../taxonomy/terms.service.js';
@@ -16,6 +16,9 @@ function pageTree(client: Prisma.TransactionClient, siteId: string): Promise<Tre
 // Newest first: the order of a type's listing, a term's archive and the related entries. `id` last, so
 // paging through ties never repeats or skips an entry.
 const NEWEST_FIRST: Prisma.ContentOrderByWithRelationInput[] = [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }, { id: 'asc' }];
+
+/** A write refused because the page's status changed after it was read (GOV-07). */
+export const PAGE_CHANGED = 'Someone else just changed this page. Reload it and try again.';
 
 export type TreePageRow = { id: string; parentId: string | null; slug: string; path: string; status: string; publishedAt: Date | null };
 
@@ -48,6 +51,64 @@ export class ContentRepository {
   /** The address and status of these pages and entries of the site, by id (menus, GOV-03). */
   findFactsByIds(siteId: string, ids: readonly string[]) {
     return this.prisma.content.findMany({ where: { siteId, id: { in: [...ids] } }, select: { id: true, path: true, status: true } });
+  }
+
+  /**
+   * A workflow step (GOV-07): moves one page to a new status, with the fields that go with it, only if it is
+   * still in one of `from` (and, with `dueBy`, still due by then). Two reviewers approving at once, or the
+   * scheduler racing an unschedule, can't both win: the loser's count is 0.
+   */
+  transition(
+    siteId: string,
+    id: string,
+    from: readonly ContentStatus[],
+    data: Prisma.ContentUncheckedUpdateManyInput,
+    dueBy?: Date,
+    /** Approve and schedule: the page must be exactly the one the checks read, not one withdrawn, edited and resubmitted since. */
+    unchangedSince?: Date,
+  ) {
+    return this.prisma.content.updateMany({
+      where: { siteId, id, status: { in: [...from] }, ...(dueBy && { publishAt: { lte: dueBy } }), ...(unchangedSince && { updatedAt: unchangedSince }) },
+      data,
+    });
+  }
+
+  /** The pages and entries waiting for review on a site, oldest submission first: a queue (GOV-07). */
+  findInReview(siteId: string) {
+    return this.prisma.content.findMany({
+      where: { siteId, status: 'in_review' },
+      orderBy: [{ submittedAt: { sort: 'asc', nulls: 'first' } }, { id: 'asc' }],
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        path: true,
+        submittedAt: true,
+        updatedAt: true,
+        submittedBy: { select: { id: true, name: true } },
+        type: { select: { name: true, singularName: true, prefix: true } },
+      },
+    });
+  }
+
+  /** The scheduled pages of a site whose time has come, earliest first (GOV-07's scheduler). */
+  findDue(siteId: string, now: Date) {
+    return this.prisma.content.findMany({
+      where: { siteId, status: 'scheduled', publishAt: { lte: now } },
+      orderBy: [{ publishAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  /** Who submitted, reviewed and scheduled a page, by name, for the editor's banners (GOV-07). */
+  findWorkflowPeople(siteId: string, id: string) {
+    return this.prisma.content.findFirst({
+      where: { siteId, id },
+      select: {
+        submittedBy: { select: { id: true, name: true } },
+        reviewedBy: { select: { id: true, name: true } },
+        scheduledBy: { select: { id: true, name: true } },
+      },
+    });
   }
 
   countChildren(siteId: string, id: string) {
@@ -131,7 +192,8 @@ export class ContentRepository {
   }
 
   /**
-   * Pages and entries (any status) whose blocks or custom field values mention `needle` anywhere — used to warn
+   * Pages and entries (any status) whose blocks, custom field values or search settings (a share image, GOV-07)
+   * mention `needle` anywhere — used to warn
    * before deleting a media file a page still uses (MED-02, B-12). A runtime
    * scan of the JSONB as text rather than a usage table kept in sync on every
    * save: always accurate, and cheap at one site's page count.
@@ -141,7 +203,7 @@ export class ContentRepository {
       SELECT id, title, path, status::text AS status
       FROM content
       WHERE site_id = ${siteId}
-        AND (strpos(blocks::text, ${needle}) > 0 OR strpos(data::text, ${needle}) > 0)
+        AND (strpos(blocks::text, ${needle}) > 0 OR strpos(data::text, ${needle}) > 0 OR strpos(seo::text, ${needle}) > 0)
       ORDER BY title`;
   }
 
@@ -149,17 +211,23 @@ export class ContentRepository {
     return this.prisma.content.create({ data: { ...data, siteId } });
   }
 
-  update(siteId: string, slug: string, data: Prisma.ContentUncheckedUpdateManyInput, links?: TermLinks) {
+  /**
+   * With `status`, the write lands only while the page still has the status the caller read: a save that
+   * passed the review lock (GOV-07) can't land after the page was submitted, scheduled or published
+   * meanwhile. The count is then 0.
+   */
+  update(siteId: string, slug: string, data: Prisma.ContentUncheckedUpdateManyInput, links?: TermLinks, status?: ContentStatus) {
     // `updateMany` rather than `update` because it takes a where clause with
     // `siteId` — this keeps the write scoped to the tenant without a second
     // existence check.
-    if (!links || links.length === 0) return this.prisma.content.updateMany({ where: { siteId, slug }, data });
+    const where = { siteId, slug, ...(status && { status }) };
+    if (!links || links.length === 0) return this.prisma.content.updateMany({ where, data });
     // The entry and its terms land together or not at all (TAX-01). For each kind asked about, the old
     // links of that kind go and the new set is written; the other kind is untouched.
     return this.prisma.$transaction(async (tx) => {
       // Found before the update: the update may change the slug this lookup goes by.
       const entry = await tx.content.findFirst({ where: { siteId, slug }, select: { id: true } });
-      const written = await tx.content.updateMany({ where: { siteId, slug }, data });
+      const written = await tx.content.updateMany({ where, data });
       if (written.count === 0 || !entry) return written;
       for (const { kind, termIds } of links) {
         await tx.contentTerm.deleteMany({ where: { contentId: entry.id, term: { siteId, kind } } });
@@ -183,13 +251,18 @@ export class ContentRepository {
     slug: string,
     data: Prisma.ContentUncheckedUpdateManyInput,
     plan: (pages: TreePageRow[]) => T,
+    /** As for `update`: the page must still have this status, or nothing is written (409). */
+    status?: ContentStatus,
   ): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${siteId}))`;
       const planned = plan(await pageTree(tx, siteId));
-      const own = await tx.content.updateMany({ where: { siteId, slug }, data: { ...data, path: planned.path } });
-      // Deleted while we waited for the lock: don't move its children on its behalf.
-      if (own.count === 0) throw new NotFoundException('Page not found');
+      const own = await tx.content.updateMany({ where: { siteId, slug, ...(status && { status }) }, data: { ...data, path: planned.path } });
+      // Deleted, or moved into review or live, while we waited for the lock: don't move its children on its behalf.
+      if (own.count === 0) {
+        if (status) throw new ConflictException(PAGE_CHANGED);
+        throw new NotFoundException('Page not found');
+      }
       if (planned.descendants.length > 0) {
         // The whole subtree in one statement, however many children, so the lock is held briefly.
         const rows = Prisma.join(planned.descendants.map(({ id, path }) => Prisma.sql`(${id}, ${path})`));

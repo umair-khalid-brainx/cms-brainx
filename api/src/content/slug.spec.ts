@@ -44,4 +44,9 @@ describe('slugProblem (CNT-04)', () => {
   it('lets an entry use a reserved word, since it sits under its type’s prefix', () => {
     expect(slugProblem('admin', false)).toBeNull();
   });
+
+  it('refuses the admin’s own route words for every page and entry, at any depth (GOV-07)', () => {
+    expect(slugProblem('review-queue', true)).toMatch(/used by the admin/);
+    expect(slugProblem('archived', false)).toMatch(/used by the admin/);
+  });
 });

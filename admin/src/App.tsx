@@ -12,6 +12,7 @@ import MediaPage from './pages/MediaPage.tsx'
 import TypesPage from './pages/TypesPage.tsx'
 import { CreateEntryPage, TypeEntriesPage } from './pages/TypeEntriesPage.tsx'
 import { ContentTypesProvider } from './lib/ContentTypesContext.tsx'
+import RequireWrite from './lib/RequireWrite.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import MenusPage from './pages/MenusPage.tsx'
 import TaxonomyPage from './pages/TaxonomyPage.tsx'
@@ -21,6 +22,7 @@ import SubmissionsPage from './pages/SubmissionsPage.tsx'
 import SubmissionDetailPage from './pages/SubmissionDetailPage.tsx'
 import EditorPage from './pages/EditorPage.tsx'
 import ComparePage from './pages/ComparePage.tsx'
+import ReviewPage from './pages/ReviewPage.tsx'
 
 function App() {
   return (
@@ -41,10 +43,11 @@ function App() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/pages" element={<PagesListPage />} />
-          <Route path="/pages/new" element={<CreatePagePage />} />
+          <Route path="/pages/new" element={<RequireWrite><CreatePagePage /></RequireWrite>} />
           <Route path="/content/:prefix" element={<TypeEntriesPage />} />
-          <Route path="/content/:prefix/new" element={<CreateEntryPage />} />
+          <Route path="/content/:prefix/new" element={<RequireWrite><CreateEntryPage /></RequireWrite>} />
           <Route path="/types" element={<TypesPage />} />
+          <Route path="/review" element={<ReviewPage />} />
           <Route path="/media" element={<MediaPage />} />
           <Route path="/submissions" element={<SubmissionsPage />} />
           <Route path="/submissions/:id" element={<SubmissionDetailPage />} />

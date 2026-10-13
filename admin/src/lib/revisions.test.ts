@@ -75,6 +75,12 @@ describe('labels', () => {
     expect(reasonLabel({ reason: 'status', status: 'archived' })).toBe('Archived');
     expect(reasonLabel({ reason: 'publish', status: 'published' })).toBe('Published');
     expect(reasonLabel({ reason: 'before_restore', status: 'draft' })).toBe('Before a restore');
+    // Review steps (GOV-07): a move back to draft says where it came from.
+    expect(reasonLabel({ reason: 'status', status: 'in_review' })).toBe('Submitted for review');
+    expect(reasonLabel({ reason: 'status', status: 'scheduled' })).toBe('Scheduled');
+    expect(reasonLabel({ reason: 'status', status: 'draft' }, 'in_review')).toBe('Back to draft from review');
+    expect(reasonLabel({ reason: 'status', status: 'draft' }, 'scheduled')).toBe('Back to draft from the schedule');
+    expect(reasonLabel({ reason: 'status', status: 'draft' }, 'published')).toBe('Unpublished');
   });
 
   it('finds the versions whose title changed from the next older one', () => {

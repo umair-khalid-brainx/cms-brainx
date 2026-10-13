@@ -1,11 +1,11 @@
-// Mirrors api/src/auth/permission.ts's 5 fixed roles — duplicated as a plain
+// Mirrors api/src/auth/permission.ts's 6 fixed roles — duplicated as a plain
 // union, not shared code (no cross-repo imports). This file has zero actual
 // permission logic: per admin/CLAUDE.md invariant 3, checks here are UI
 // affordance only, the API enforces for real. Just role names for a <select>
 // and a coarse "should I even show this control" gate.
-export type Role = 'owner' | 'administrator' | 'editor' | 'author' | 'contributor';
+export type Role = 'owner' | 'administrator' | 'editor' | 'author' | 'contributor' | 'viewer';
 
-export const ROLES: Role[] = ['owner', 'administrator', 'editor', 'author', 'contributor'];
+export const ROLES: Role[] = ['owner', 'administrator', 'editor', 'author', 'contributor', 'viewer'];
 
 export const ROLE_LABELS: Record<Role, string> = {
   owner: 'Owner',
@@ -13,6 +13,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   editor: 'Editor',
   author: 'Author',
   contributor: 'Contributor',
+  viewer: 'Viewer',
 };
 
 /** Options shape the custom Select component (components/Select.tsx) wants. */
@@ -21,7 +22,7 @@ export const ROLE_OPTIONS = ROLES.map((value) => ({ value, label: ROLE_LABELS[va
 // A site has exactly one owner, set at creation — the API rejects any invite
 // or role-change that names 'owner' (see api/src/team/dto), so it's left out
 // of the choices offered here too, not just hidden after the fact.
-export const ASSIGNABLE_ROLES: Role[] = ['administrator', 'editor', 'author', 'contributor'];
+export const ASSIGNABLE_ROLES: Role[] = ['administrator', 'editor', 'author', 'contributor', 'viewer'];
 export const ASSIGNABLE_ROLE_OPTIONS = ASSIGNABLE_ROLES.map((value) => ({ value, label: ROLE_LABELS[value] }));
 
 export function canManageTeam(role: Role | undefined): boolean {
@@ -48,3 +49,23 @@ export function canManageSite(role: Role | undefined): boolean {
 export function canReadSubmissions(role: Role | undefined): boolean {
   return role === 'owner' || role === 'administrator' || role === 'editor';
 }
+
+/** Approving or sending back submitted pages (GOV-07): Owner, Administrator, Editor, matching the API's content:review. */
+export function canReviewContent(role: Role | undefined): boolean {
+  return role === 'owner' || role === 'administrator' || role === 'editor';
+}
+
+/** Anything at all beyond looking: every role but Viewer holds content:write (GOV-07). */
+export function canWriteContent(role: Role | undefined): boolean {
+  return role !== undefined && role !== 'viewer';
+}
+
+/** One line on what each role can do, for the Team screen's role picker. */
+export const ROLE_DESCRIPTIONS: Record<Role, string> = {
+  owner: 'Everything, including the team and site settings',
+  administrator: 'Everything, including the team and site settings',
+  editor: 'Writes, publishes and reviews others’ work',
+  author: 'Writes and publishes; can’t review others’ work',
+  contributor: 'Writes drafts and submits them for review',
+  viewer: 'Looks around; can’t change anything',
+};

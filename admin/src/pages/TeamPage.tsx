@@ -12,7 +12,7 @@ import {
   type Invite,
   type Member,
 } from '../lib/teamApi'
-import { ASSIGNABLE_ROLE_OPTIONS, ROLE_LABELS, type Role } from '../lib/roles'
+import { ASSIGNABLE_ROLE_OPTIONS, ROLE_DESCRIPTIONS, ROLE_LABELS, type Role } from '../lib/roles'
 import Select from '../components/Select'
 import './TeamPage.css'
 
@@ -219,6 +219,10 @@ function TeamPage() {
 
                 <label htmlFor="invite-role">Role</label>
                 <Select id="invite-role" value={role} options={ASSIGNABLE_ROLE_OPTIONS} onChange={setRole} disabled={inviting} />
+                {/* What the chosen role can do, so Contributor and Viewer aren't guesses (GOV-07). */}
+                <p className="team-role-hint" aria-live="polite">
+                  {ROLE_DESCRIPTIONS[role]}
+                </p>
 
                 <button type="submit" className="team-invite-submit" disabled={inviting}>
                   {inviting ? 'Sending…' : 'Send Invite'}

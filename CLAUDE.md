@@ -151,6 +151,18 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 - **Dev servers for a worktree:** run them with `npm --prefix <app> run dev`. `npx --prefix admin vite`
   runs from the repo root and serves a blank page.
 
+- **`api` needs `PUBLIC_ROOT_DOMAIN` too** (D-066), the same value as `web`'s. It refuses a custom domain on the
+  platform's own root; in production, unset or empty, every custom domain is refused (503) rather than letting a
+  tenant claim `api.<root>`. Custom domains are stored as Pending only: nothing serves a site on one yet.
+
+- **Scheduled pages are published by a timer inside `api`, once a minute** (D-065). Only a running `api` publishes
+  them; one that came due while it was down goes live at start. `SCHEDULER_DISABLED=true` turns the timer off (for
+  a second `api` process, say; two running is safe, just wasteful). A page in review or scheduled is locked: every
+  save answers 409 until it is withdrawn, sent back or unscheduled.
+
+- **The seed bakes `API_PUBLIC_URL` into every image in a block** (D-068): blocks store an image's full address. Seed
+  with the value the API is actually served at, or pictures point at a host that has no such file. `npm run db:seed`
+  is repeatable; on an existing database it only adds what is missing, so reset the database to see new demo content.
 - **`API_PUBLIC_URL` must be set to the API's public address in production** (D-050). `api` builds the full
   address of every picture and file on an entry page and in a listing from it, and falls back to
   `http://localhost:4001`; unset, every entry image points at localhost. (`DEP-01b`'s checklist.)

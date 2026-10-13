@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundExce
 import { hasPermission } from '../auth/permission.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { ContentTypeRepository } from '../content-types/content-type.repository.js';
-import { ContentRepository } from '../content/content.repository.js';
+import { ContentRepository, PAGE_CHANGED } from '../content/content.repository.js';
 import { sanitizeBlocks } from '../content/sanitize.js';
 import { readSeo } from '../content/seo.js';
 import { RevalidationService } from '../revalidation/revalidation.service.js';
@@ -21,6 +21,7 @@ import {
   type TermSnapshot,
 } from './revision-rules.js';
 import { RevisionRepository, type RevisionRow } from './revision.repository.js';
+import { lockedBecause } from '../content/workflow-rules.js';
 
 /** The list shows this many, which is also how many are kept. */
 const LIST_LIMIT = 50;
@@ -109,6 +110,9 @@ export class RevisionsService {
     checkLive: (page: PageRow, snapshot: { blocks: unknown; data: unknown }) => Promise<{ errors: unknown[]; warnings?: unknown[] }>,
   ) {
     const { siteId, role, subdomain, page } = await this.pageOf(userId, slug);
+    // A page in review or scheduled is locked, a restore included (GOV-07).
+    const locked = lockedBecause(page.status);
+    if (locked) throw new ConflictException(locked);
     // A live page changes on the site straight away, so it needs the same permission as publishing (D-062).
     if (page.status === 'published' && !hasPermission(role, 'content:publish')) {
       throw new ForbiddenException('Missing permission: content:publish');
@@ -153,6 +157,8 @@ export class RevisionsService {
           seo: readSeo(revision.seo) as Prisma.InputJsonValue,
         },
         links,
+        // Only while it still has the status checked above: not after it went into review or live (GOV-07).
+        page.status,
       );
     } catch (error) {
       // A category or tag deleted between the check above and the write: the foreign key refuses, nothing was replaced.
@@ -161,7 +167,8 @@ export class RevisionsService {
       }
       throw error;
     }
-    if (written.count === 0) throw new NotFoundException('Page not found');
+    // Deleted, or its status changed (into review, say), since it was read: nothing was replaced.
+    if (written.count === 0) throw new ConflictException(PAGE_CHANGED);
 
     const after = await this.content.findBySlug(siteId, page.slug);
     if (!after) throw new NotFoundException('Page not found');

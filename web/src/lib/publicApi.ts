@@ -32,7 +32,8 @@ export type PublicPage = {
   entry?: EntryView;
   seo: PublicSeo;
 };
-export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' };
+// Any status but archived (GOV-07: a reviewer previews a page in review, or a scheduled one).
+export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' | 'in_review' | 'scheduled' };
 
 /**
  * Both reads hit the API's unauthenticated `/public` routes, which only ever

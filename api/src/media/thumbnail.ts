@@ -32,3 +32,8 @@ export async function makeThumbnail(buffer: Buffer, mimetype: string): Promise<B
     throw new InvalidImageError(`File is not a valid ${mimetype} image, or is larger than ${MAX_INPUT_PIXELS / 1_000_000} megapixels`);
   }
 }
+
+/** Sits next to the original in the same site folder: <uuid>.png → <uuid>-thumb.webp. Shared with the seed (GOV-08b). */
+export function thumbnailFilenameFor(filename: string): string {
+  return `${filename.slice(0, filename.lastIndexOf('.'))}-thumb.webp`;
+}

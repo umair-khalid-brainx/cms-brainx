@@ -5,6 +5,96 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-13 — Demo content for both tenants (`DEP-03`)
+
+Decision in D-068.
+
+- **Seed** split into `prisma/seed-types.ts`, `prisma/seed-content/{corrick,kestrel}.ts` and the machinery in `seed.ts`:
+  team members, a media library per site, `@media:` references in blocks, nested pages, workflow states (in review,
+  scheduled), SEO and share image, posts with excerpt, featured image, author, categories and tags. 23 photos and two SVG
+  logos under `prisma/seed-media/` with `CREDITS.md` (23 at first, 20 after review).
+- **Corrick:** 9 pages, 7 posts, 13 files, 4 categories, 9 tags, menus, logo. **Kestrel:** 8 pages, 3 posts, 9 files.
+- **Checked:** a fresh database seeded twice gives the same counts; every published page and post is 200 on its host; the
+  draft, the page in review and the scheduled post are 404; screenshots of both sites on the production build.
+- This worktree's `api/.env` now uses port 4051 (`API_PORT`, `API_PUBLIC_URL`): a seed run with 4001 baked addresses into
+  the blocks that nothing here serves.
+
+- **Review and verifier follow-ups:** a re-run no longer duplicates a page an owner moved (skipped by path or slug); three
+  photos with real branding or another country's signage dropped (20 kept); empty alt text filled from the library so the
+  publish checks pass; SEO through `parseSeo`; posts dated at their publish date; Kestrel home SEO; US spelling for
+  Corrick; an owner's moved or deleted parent or menu target is skipped with a warning instead of stopping the seed.
+- The user judged the copy convincing.
+
+---
+
+## 2026-10-13 — Second tenant, cross-tenant suite, the canvas in each site's theme (`GOV-08b`, `FND-03`, B-16)
+
+Decision in D-067.
+
+- **Kestrel** (seed): logo (SVG drawn for the repo), tagline, footer note, header menu with a Capability dropdown, footer
+  menu in two groups, 8 pages (three under Capability, About with the crew, Contact with a form, a draft). The seed gained
+  nested pages, settings, menus and library files (`prisma/seed-media.ts`); two runs in a row add nothing.
+- **Cross-tenant suite** `api/test/cross-tenant.e2e-spec.ts`: 65 of 70 routes, both directions, the other site snapshotted
+  before and after; a coverage test fails on a route without a row. No leak found. `api` e2e 488 tests.
+- **FND-03** `api/test/tenant-scoping.spec.ts`: no `PrismaService` outside a repository (the health check now has
+  `HealthRepository`), and tenant repositories take `siteId` first (`MediaRepository.create` now does). `api` 790 tests.
+- **B-16**: the site's theme comes with its details; the editor draws the canvas in it. Checked: Kestrel's home opens dark and
+  orange in the editor.
+- **ISR on a production build, two hosts:** refreshing Kestrel's `/about` (directly, and by saving it through the API) left
+  Kestrel's home and two Corrick pages HIT.
+- Found on the way: the Stats block always used four columns (an empty cell under three figures); now by item count.
+  This worktree had no `REVALIDATE_SECRET` in `api/.env` or `web/.env.local`, so on-demand refresh was off; added (dev only).
+
+---
+
+## 2026-10-13 — Domains screen (`DEP-02`)
+
+Decision in D-066.
+
+- **API:** migration `20261012200000_add_custom_domain` (`sites.host` optional, `domain_status`, placeholder hosts
+  cleared); `sites/custom-domain.ts` (clean-up and rules); `PUT/DELETE /sites/:siteId/domain` (`site:manage`); site
+  details carry `customDomain` and `domainStatus`; `PUBLIC_ROOT_DOMAIN` read by `api` too. The seed finds a site through
+  its owner, so a renamed subdomain isn't seeded twice. GOV-07's migration renamed to `20261012190000_…` so both sort
+  after week 4's. `api` 776 tests.
+- **Admin:** Settings → Domains: the free address (Active, Copy), and the custom domain with a Pending badge, the DNS
+  record to add with Copy, bare-domain advice and Remove. `lib/domains.ts`. `admin` 190 tests.
+- **Checked live** (api :4051, admin :5181): messy input cleaned; root domain, non-domains and another site's domain
+  refused; editor 403; Kestrel's owner 403 on Corrick's site; the public site payload never carries the domain; add,
+  bare domain (ALIAS), remove and copy in the browser. Reviewer and verifier asked for a copy button for the free
+  address, full host names in the record, a production guard on the root domain, IDN and reserved endings, a status
+  for any existing host, and a seed that survives a rename; all done.
+
+**Not done:** B-37 (first come, first served; nothing verifies DNS or serves the domain).
+
+---
+
+## 2026-10-12 — Review workflow, scheduling and the Viewer role (`GOV-07`)
+
+Decisions in D-064 (scope) and D-065.
+
+- **API:** migration `20261012190000_add_review_and_scheduling` (`in_review`, `scheduled`, `viewer`, review and schedule
+  columns on `content`); `content:review` for Owner/Administrator/Editor; `content/workflow-rules.ts` (pure rules),
+  `content/workflow.service.ts` (submit, withdraw, approve now or later, reject with a note, schedule, unschedule,
+  publish now, the scheduler's publish), routes under `/content/:slug/…` and `GET /content/review-queue`;
+  `scheduler/` (a once-a-minute timer, `SCHEDULER_DISABLED`). Saves, moves and restores of a page in review or
+  scheduled answer 409, in the write itself; a live page (and a file it uses, or the logo) needs `content:publish`.
+  `ContentService.refreshPublic` extracted from `update` so approve and the scheduler refresh exactly like Publish.
+  `api` 758 tests.
+- **Admin:** Review screen with a red count in the sidebar; a state strip under the editor's top bar with Approve /
+  Send back / Back to draft, Withdraw, Publish now / Unschedule and the reviewer's note; Schedule… and Submit for
+  review in the top bar; the time and send-back dialogs; read-only Puck while locked, for a live page a Contributor
+  can't publish, and for a Viewer; In review and Scheduled chips and an In review tab on Pages; Viewer in the Team
+  picker with a line on what each role does; Media, Dashboard and create screens hide writes from a Viewer.
+  `admin` 187 tests. **Web:** the preview banner says when a page is in review or scheduled.
+- **Checked live** (api :4051, admin :5181, DB `cms_wk5`; test members Contributor, Editor, Author, Viewer made
+  through invites): Contributor submits → Editor sends back with a note → Contributor sees it, resubmits → Editor
+  approves for 70 s ahead; the page stayed 404 until then and went live 17 s after its time, history credited to the
+  Editor. Approve dialog, Send back dialog, Publish now, the locked canvas, the Viewer's read-only editor, dark and
+  light. Reviewer and verifier (general-purpose agents) found: Viewer write buttons still showing, the lock checked
+  before the write rather than in it, approve publishing a version newer than the one checked, a two-call Publish now,
+  no warnings before Approve, and a Contributor changing a live page's files; all fixed with tests.
+
+**Not done:** B-36 (notifications, proposing changes to a live page, two shadowed entry slugs).
 ## 2026-10-12 — Revision comparison (`GOV-02` built; reviewer and verifier still to run)
 
 Decision in D-063.

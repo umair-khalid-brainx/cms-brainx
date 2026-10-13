@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Put, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RequirePermission } from '../auth/permission.decorator.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
-import { updateSubdomainSchema, type UpdateSubdomainDto } from './dto/site.dto.js';
+import { setDomainSchema, updateSubdomainSchema, type SetDomainDto, type UpdateSubdomainDto } from './dto/site.dto.js';
 import { SitesService } from './sites.service.js';
 
 // Explicit :siteId, like TeamController — PermissionsGuard checks the
@@ -26,6 +26,19 @@ export class SitesController {
   @RequirePermission('site:manage')
   updateSettings(@Param('siteId') siteId: string, @Body() body: unknown) {
     return this.sites.updateSettings(siteId, body);
+  }
+
+  // The site's custom domain (DEP-02): saved as pending, display only. Same right as the subdomain.
+  @Put('domain')
+  @RequirePermission('site:manage')
+  setDomain(@Param('siteId') siteId: string, @Body(new ZodValidationPipe(setDomainSchema)) body: SetDomainDto) {
+    return this.sites.setDomain(siteId, body.domain);
+  }
+
+  @Delete('domain')
+  @RequirePermission('site:manage')
+  removeDomain(@Param('siteId') siteId: string) {
+    return this.sites.removeDomain(siteId);
   }
 
   @Patch('subdomain')
