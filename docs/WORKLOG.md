@@ -5,6 +5,26 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-13 — Clients can edit their site's theme (B-40)
+
+Decision in D-069.
+
+- **API:** `PATCH /sites/:siteId/theme` (`site:manage`), `api/src/sites/site-theme.ts` (strict schema, WCAG contrast
+  check), `SitesService.updateTheme`, `SiteRepository.updateTheme`. Whole theme replaced; every problem named;
+  the site's pages are refreshed.
+- **Admin:** Site Theme card on Settings (`ThemeCard`, `ThemePreview`, `lib/themeEdit.ts`): presets, type, corners, spacing,
+  texture, 8 colour fields (picker plus hex), live preview, "Not saved yet" badge, Discard, inline readability warning.
+  Grain and grid textures added to `index.css` so the preview draws them.
+- **Seed audit:** the theme was the only part of the seed a client could not build themselves.
+- **Verified:** api 804 and admin 225 tests pass, both typecheck, lint adds nothing. In a browser, against a scratch
+  database (`cms_theme`; the shared `cms` is behind this branch's migrations): picked Oyster on Kestrel, preview changed,
+  saved, `sites.theme_json` held it; an unreadable pair showed the warning and disabled Save; no horizontal scroll at 390px;
+  dark mode checked.
+- **Not done:** not checked on the public site (no `web` ran for this worktree); no API-level test of the 403 for
+  non-managers beyond the shared guard; no theme history or undo (see B-41).
+
+---
+
 ## 2026-10-13 — Demo content for both tenants (`DEP-03`)
 
 Decision in D-068.

@@ -23,6 +23,11 @@ export class SiteRepository {
     return this.prisma.site.update({ where: { id }, data });
   }
 
+  /** The site's look, written whole (the schema has already checked it). */
+  updateTheme(id: string, themeJson: Prisma.InputJsonValue) {
+    return this.prisma.site.update({ where: { id }, data: { themeJson } });
+  }
+
   /**
    * Every site, just its id and subdomain: the scheduler goes through them one at a time, each with
    * its own site-scoped content reads (GOV-07). Not a tenant read; the scheduler is the platform's.

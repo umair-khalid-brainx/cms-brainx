@@ -40,3 +40,35 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+/* ---- tenant textures ---------------------------------------------------- */
+/* The same two textures `web` paints (web/src/app/globals.css), so the Settings theme preview shows them too.
+   Painted between the site's background and its content, never over it. */
+
+.site-texture-grain,
+.site-texture-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+.site-texture-grain::before,
+.site-texture-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.site-texture-grain::before {
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+.site-texture-grid::before {
+  opacity: 0.36;
+  background-image:
+    repeating-linear-gradient(to right, var(--site-line) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(to bottom, var(--site-line) 0 1px, transparent 1px 88px);
+}

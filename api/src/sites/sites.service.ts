@@ -4,6 +4,7 @@ import { MediaRepository } from '../media/media.repository.js';
 import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { SiteRepository } from './site.repository.js';
 import { readSettings, updateSettingsSchema, type SiteSettings } from './site-settings.js';
+import { contrastProblems, themeSchema } from './site-theme.js';
 import { SubdomainCache } from './subdomain-cache.js';
 import { domainProblem, normaliseDomain } from './custom-domain.js';
 import { ConfigService } from '@nestjs/config';
@@ -111,6 +112,23 @@ export class SitesService {
     const site = await this.sites.updateSettings(siteId, { ...(name !== undefined && { name }), settings });
     await this.revalidation.site(site.subdomain);
     return { id: site.id, name: site.name, subdomain: site.subdomain, ...settings, ...domainOf(site), theme: site.themeJson };
+  }
+
+  /**
+   * The site's look (theme editor). The whole theme is sent and replaced, never merged: a half-written theme
+   * would leave a colour undefined. Refused with every problem named if a field is wrong or body text can't be read
+   * on its background (accent is not checked, B-41). Every page wears the theme, so every page is refreshed.
+   */
+  async updateTheme(siteId: string, body: unknown): Promise<SiteDetails> {
+    await this.getDetails(siteId);
+    const parsed = themeSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException([...new Set(parsed.error.issues.map((issue) => issue.message))]);
+    const problems = contrastProblems(parsed.data);
+    if (problems.length > 0) throw new BadRequestException(problems);
+
+    const site = await this.sites.updateTheme(siteId, parsed.data);
+    await this.revalidation.site(site.subdomain);
+    return this.getDetails(siteId);
   }
 
   /**

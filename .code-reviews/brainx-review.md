@@ -1,24 +1,33 @@
 ---
-diff_hash: ac425e355a3f4057cd799fb33b1e23555998a14f9c4e71898a6b2edaa99aeab8
-reviewed_at: 2026-10-13T09:57:12Z
+diff_hash: 387006e4e70f91b2840aaa48e100112efca725652da7af48ab11120c10e3f664
+reviewed_at: 2026-10-13T15:49:41Z
 ---
 
 ## Summary
 
-DEP-03 (realistic demo content), in `api` only (NestJS criteria; no root `package.json`) plus docs. The seed is split
-into `prisma/seed-types.ts` (the shape), `prisma/seed-content/{corrick,kestrel}.ts` (each tenant's content as data)
-and `seed.ts` (the machinery): team members with the dev password, a media library per site via `ensureMedia`,
-`@media:` references resolved to library URLs with empty alt text filled from the library, nested pages found by
-parent path, in-review and scheduled items with relative dates, SEO through the app's `parseSeo`, posts with excerpt,
-featured image, author and terms, settings and menus written only where empty. 20 photos (Unsplash/Pexels) and a
-Corrick SVG logo with `CREDITS.md`. Docs: D-068, a WORKLOG entry, a CLAUDE.md gotcha on `API_PUBLIC_URL`, DEP-03 DONE.
+B-40 / D-069: clients edit their own site theme. Two repos' worth of code in one git repository, reviewed with
+NestJS criteria for `api/` and React criteria for `admin/` (no root `package.json`, so per-folder detection).
 
-Checked: every block prop used in the content (hero `facts`, cta `note`, featureGrid items without `label`, teamGrid
-`bio`, gallery `caption`, contactForm fields) exists in `cms-blocks/src/types.ts` (invariant 7); every rich-text HTML
-string uses only tags the sanitiser allows; `status` values match `ContentStatus`; slug uniqueness is per site
-(`@@unique([siteId, slug])`), so `alreadyThere`'s slug check matches the constraint; Corrick counts (9 pages, 7 posts,
-13 files, 4 categories, 9 tags) match the content files. `api` `tsc --noEmit` is clean. The seed was not run in this
-review. The Corrick owner's real email is unchanged from the previous seed (moved, not added), so it is not a finding.
+- **api:** `PATCH /sites/:siteId/theme` (`site:manage`), strict Zod schema in `site-theme.ts` (fixed choices,
+  `#rrggbb` colours, no extra keys), a WCAG 4.5:1 check on four text/background pairs, `SitesService.updateTheme`
+  (404 first, validate, contrast, write whole, revalidate the site), `SiteRepository.updateTheme`. Unit tests for
+  schema, contrast and service.
+- **admin:** `ThemeCard` on Settings (presets, 4 radio groups, 8 colour fields with picker + hex, live preview in a
+  `SiteThemeRoot`, Discard, inline readability warning, owner/admin gating as affordance), `ThemePreview`,
+  `lib/themeEdit.ts` mirroring the API's contrast rule, `updateSiteTheme` in `siteApi.ts`, grain/grid textures in
+  `index.css`.
+- **docs:** D-069, B-40/B-41, worklog entry.
+
+Cross-repo contract check: admin sends exactly the `SiteTheme` shape the API's strict schema accepts, and reads the
+400 body's `message` array the service throws; the preset hexes are uppercase and the API regex is case-insensitive.
+Consistent. Validation is server-side and strict, siteId comes from the route behind the permission guard, the
+repository write is the existing site-row pattern. No security or correctness defect found in the save path.
+
+Re-review (2026-10-13T15:49:41Z): the chip, no-theme state and dead `readTheme` findings are fixed; the docs finding
+is fixed except for one stale `readTheme` mention left by the removal.
+
+Verified on re-review: `api` `src/sites` tests 42/42 pass (one fewer: the `readTheme` test went with it), `admin`
+`themeEdit.test.ts` 6/6 pass, both typecheck clean.
 
 ## Findings
 
@@ -26,37 +35,42 @@ review. The Corrick owner's real email is unchanged from the previous seed (move
 
 ### High (0)
 
-### Medium (0)
+### Medium (1)
+- **admin/src/components/ThemeCard.css:448** — The preview's "New" chip draws `--site-ink` text on `--site-accent`, a pair the contrast check never tests and no real block uses. With the shipped Rigging preset (one of the two demo looks) that is #E6EAEF on #F2C230, 1.39:1: the preview shows unreadable text the public site never has, right next to a check that says the theme is readable. *(correctness)*
+  - status: fixed
+  - dev_reasoning: N/A
+  - ai_reasoning: `.tp-chip` no longer has an accent background: accent is now a 1.5px inset ring (a marker, as blocks use it) and the chip is transparent, so its `--site-ink` text sits on the card's `--site-surface`, the ink/surface pair the check already enforces.
 
-### Low (4)
-- **api/prisma/seed.ts:54** — `termSlug` is a hand copy of `normaliseSlug` (`src/content/slug.ts`), which `taxonomy/term-rules.ts` uses to make a term's slug; the copy already differs (no `SLUG_MAX` truncation). The seed imports `parseSeo` from `src` for exactly this reason, so it could import `normaliseSlug` too. *(maintainability)*
+### Low (3)
+- **admin/src/components/ThemeCard.tsx:63** — A site with no whole stored theme is shown with Oyster as its saved theme, but the public site wears its neutral fallback; and because `saved === draft`, Save stays disabled, so the client cannot save the look the card says they already have until they change something. *(correctness)*
+  - status: fixed
+  - dev_reasoning: N/A
+  - ai_reasoning: `saved` now stays `null` when `readSiteTheme` returns null, only `draft` is seeded from the first preset, `changed` is `saved === null || !sameTheme(...)` so Save is enabled at once, and the card says "This site has no theme yet, so it shows a plain default" (ThemeCard.tsx:224).
+- **api/src/sites/site-theme.ts:90** — `readTheme` is exported and tested but nothing in `api` calls it; `getDetails` still returns raw `themeJson`. Dead code that suggests a read-side check exists when it doesn't. *(maintainability)*
+  - status: fixed
+  - dev_reasoning: N/A
+  - ai_reasoning: `readTheme` and its test were removed; no reference to it remains in `api/src` or `admin/src`.
+- **docs/WORKLOG.md:24** — "no theme history or undo (see B-40)" points at the shipped item; the gaps list is B-41. Separately, D-069 and the service comment say "a saved theme can never be unreadable", but accent is used as text on paper (Stats figures, FeatureGrid numbers, PricingTable marks) and that pair is unchecked: 2.1–2.9:1 in three of the four presets. *(maintainability)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: If the app's slug rule changes, a seeded term's slug stops matching the one the admin derives from the same name, and the admin then creates a second term for it. No effect today: every seed term name is short and ASCII.
-- **api/prisma/seed.ts:198** — Rich-text HTML in pages (and posts at line 242) is stored without `sanitizeBlocks`, while SEO goes through `parseSeo` "so the stored shape is the one a save makes". Invariant 5 says stored HTML is already safe. *(consistency)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: Every HTML string in the seed today uses only allowlisted tags (`p`, `ol`, `ul`, `li`, `a href` relative), so sanitising would change nothing now. A later seed edit with a tag outside the allowlist would be stored and rendered as-is, unlike anything saved through the app.
-- **docs/WORKLOG.md:14** — Says "23 photos" and (line 16) "Kestrel: … 12 files"; the diff has 20 photos (as D-068 and CREDITS.md say) and Kestrel's library is 8 photos plus the logo, 9 files. *(docs)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: Stale counts from before three photos were dropped in review; the doc contradicts the code and D-068.
-- **api/prisma/seed-media/CREDITS.md:3** — Cites D-064 (placeholder identities kept) as the decision for the photos; the decision for this content is D-068. *(docs)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: Points a reader at the wrong decision entry.
+  - ai_reasoning: Mostly fixed: the worklog now points at B-41, D-069 and the `updateTheme` comment say accent is not checked, and B-41 item (6) records the accent gap. Still needed: WORKLOG.md:13 lists `readTheme` among what `site-theme.ts` contains, but the fix for the dead-code finding removed it, so the worklog now describes code that does not exist (project rule: the code wins, fix the doc). Drop "`readTheme`" from that line. (Optional: `site-theme.ts`'s `READABLE_PAIRS` comment still says "a saved theme can never be unreadable"; now that B-41 records the gap, "can't have unreadable body text" would match D-069.)
 
 ## Reviewed files
-- .code-reviews/brainx-review.md (deletion of the previous review; not reviewed)
-- CLAUDE.md
-- api/prisma/seed-content/corrick.ts
-- api/prisma/seed-content/kestrel.ts
-- api/prisma/seed-media/CREDITS.md
-- api/prisma/seed-media/corrick/logo.svg
-- api/prisma/seed-types.ts
-- api/prisma/seed.ts
+- admin/src/components/ThemeCard.css
+- admin/src/components/ThemeCard.tsx
+- admin/src/components/ThemePreview.tsx
+- admin/src/index.css
+- admin/src/lib/siteApi.ts
+- admin/src/lib/themeEdit.test.ts
+- admin/src/lib/themeEdit.ts
+- admin/src/pages/SettingsPage.css
+- admin/src/pages/SettingsPage.tsx
+- api/src/sites/site-theme.spec.ts
+- api/src/sites/site-theme.ts
+- api/src/sites/site.repository.ts
+- api/src/sites/sites.controller.ts
+- api/src/sites/sites.service.spec.ts
+- api/src/sites/sites.service.ts
+- docs/BACKLOG.md
 - docs/DECISIONS.md
 - docs/WORKLOG.md
-- tickets/DEP-03.md
-- tickets/STATUS.md
-- api/prisma/seed-media/corrick/*.jpg, api/prisma/seed-media/kestrel/*.jpg (20 binary photos; skipped)

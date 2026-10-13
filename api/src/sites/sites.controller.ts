@@ -28,6 +28,13 @@ export class SitesController {
     return this.sites.updateSettings(siteId, body);
   }
 
+  // The site's look: type set, corners, spacing, texture and 8 colours. Replaced whole; same right as the settings.
+  @Patch('theme')
+  @RequirePermission('site:manage')
+  updateTheme(@Param('siteId') siteId: string, @Body() body: unknown) {
+    return this.sites.updateTheme(siteId, body);
+  }
+
   // The site's custom domain (DEP-02): saved as pending, display only. Same right as the subdomain.
   @Put('domain')
   @RequirePermission('site:manage')

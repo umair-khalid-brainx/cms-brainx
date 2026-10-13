@@ -8,6 +8,32 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-069 — 2026-10-13 — A client edits their own theme: presets, then 8 colours and 4 choices, saved whole, refused if unreadable (B-40)
+
+**The gap.** A site's look (`sites.theme_json`) could only be set by the seed or by SQL, so the two demo tenants had
+looks no client could build. An audit of the seed against admin found it the only such gap: menus, tagline, footer
+note, logo, pages, posts, types, media and team were already editable; the header and footer have one structure for
+every tenant and differ only in that content.
+
+**What was built.** `PATCH /sites/:siteId/theme` (`site:manage`, owner and administrator) and a Site Theme card on
+Settings: four presets (Oyster and Rigging are the two demo looks), the four fixed choices (type set, corners, spacing,
+texture) and the 8 palette colours, beside a live preview drawn in a `SiteThemeRoot` with the same `--site-*` variables
+the blocks read. Presets are starting points, not a stored name: the theme is stored as the same `SiteTheme` JSON as before.
+
+**Options considered.** Presets only (simple, but a client can't build their own look); a blank form with no presets
+(flexible, slow for a new client); presets plus customising (chosen).
+
+**Rules.** The theme is replaced whole, never merged (a half theme leaves a colour undefined). The schema is strict:
+fixed lists, `#rrggbb` colours, no extra fields: still no free fonts or CSS (invariant 8). Four pairs must reach
+WCAG AA 4.5:1 (text on background, text on panel, secondary text on background, text on brand), on the server as well as
+in the preview, so a saved theme can't have unreadable body text. Accent is not checked: blocks use it for markers and display figures, and three of the four presets have under 4.5:1 for accent on the background (B-41). Saving refreshes every page of the site.
+
+**Cost accepted.** The contrast rule and its wording exist twice (`api/src/sites/site-theme.ts`,
+`admin/src/lib/themeEdit.ts`) because the repos share no code; `api` also restates `SiteTheme`. Keep both in step.
+Only two type sets exist, so "build any look" means any colours and shape, not any fonts.
+
+---
+
 ## D-068 — 2026-10-13 — Demo content: one seed, in a file per tenant, with real photos and every workflow state (`DEP-03`)
 
 **Where it lives.** `api/prisma/seed-content/corrick.ts` and `kestrel.ts` hold each tenant's content as data;

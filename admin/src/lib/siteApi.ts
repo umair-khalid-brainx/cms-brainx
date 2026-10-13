@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiSend } from './api';
+import type { SiteTheme } from 'cms-blocks';
 import { getSession, refreshSession } from './auth';
 
 export type SiteSummary = { id: string; name: string; subdomain: string };
@@ -49,6 +50,15 @@ export async function updateSiteSettings(
     memberships: session.memberships.map((m) => (m.siteId === site.id ? { ...m, siteName: site.name } : m)),
   });
   return site;
+}
+
+/**
+ * Saves the site's look: the whole theme replaces the old one. The API refuses a theme with a wrong field or text
+ * that can't be read, naming each problem (400); only owners and administrators may save it (403).
+ */
+export function updateSiteTheme(theme: SiteTheme): Promise<SiteDetails> {
+  const { session, membership } = requireMembership();
+  return apiSend('PATCH', `/sites/${membership.siteId}/theme`, theme, session.accessToken);
 }
 
 /**

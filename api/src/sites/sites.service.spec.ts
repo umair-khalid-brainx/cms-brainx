@@ -27,6 +27,10 @@ function setup(library: { filename: string; mimetype: string }[] = [], env: Reco
       Object.assign(table[id], data);
       return table[id];
     }),
+    updateTheme: vi.fn(async (id: string, themeJson: unknown) => {
+      Object.assign(table[id], { themeJson });
+      return table[id];
+    }),
     findByHost: vi.fn(async (host: string) => Object.values(table).find((site) => site.host === host) ?? null),
     updateDomain: vi.fn(async (id: string, host: string | null) => {
       Object.assign(table[id], { host, domainStatus: host ? 'pending' : null });
@@ -158,5 +162,42 @@ describe('SitesService custom domain (DEP-02)', () => {
 
   it('is a 404 for a site that doesn’t exist', async () => {
     await expect(setup().service.removeDomain('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('SitesService.updateTheme', () => {
+  const good = {
+    typeSet: 'editorial',
+    shape: 'soft',
+    density: 'comfortable',
+    texture: 'grain',
+    palette: { paper: '#D9E0D8', surface: '#F1F4EF', ink: '#13201C', muted: '#556258', line: '#B6C2B5', brand: '#2E4A3E', onBrand: '#F1F4EF', accent: '#C8863C' },
+  };
+
+  it('saves a whole readable theme, returns it, and refreshes the site', async () => {
+    const { service, sites, revalidation } = setup();
+    const site = await service.updateTheme(SITE_ID, good);
+    expect(sites.updateTheme).toHaveBeenCalledWith(SITE_ID, good);
+    expect(site.theme).toEqual(good);
+    expect(revalidation.site).toHaveBeenCalledWith('corrick');
+  });
+
+  it('writes nothing when a field is wrong, and names every problem', async () => {
+    const { service, sites } = setup();
+    const bad = { ...good, shape: 'round', palette: { ...good.palette, brand: 'green' } };
+    await expect(service.updateTheme(SITE_ID, bad)).rejects.toMatchObject({
+      response: { message: ['Choose a corner style from the list.', 'Brand must be a colour like #2E4A3E.'] },
+    });
+    expect(sites.updateTheme).not.toHaveBeenCalled();
+  });
+
+  it('refuses a theme whose text can’t be read', async () => {
+    const { service, sites } = setup();
+    await expect(service.updateTheme(SITE_ID, { ...good, palette: { ...good.palette, ink: good.palette.paper } })).rejects.toBeInstanceOf(BadRequestException);
+    expect(sites.updateTheme).not.toHaveBeenCalled();
+  });
+
+  it('is a 404 for a site that doesn’t exist', async () => {
+    await expect(setup().service.updateTheme('nope', good)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

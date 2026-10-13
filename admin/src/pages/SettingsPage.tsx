@@ -6,6 +6,7 @@ import { updateSubdomain } from '../lib/siteApi'
 import { currentSubdomain, siteAddressParts, siteUrl } from '../data/site'
 import SiteIdentityCard from '../components/SiteIdentityCard'
 import CustomDomainCard from '../components/CustomDomainCard'
+import ThemeCard from '../components/ThemeCard'
 import './SettingsPage.css'
 
 // Site Identity is saved through the API (GOV-04, SiteIdentityCard). Account fields are
@@ -44,6 +45,7 @@ function SettingsPage() {
 
         <SiteAddressCard />
         <CustomDomainCard />
+        <ThemeCard />
       </div>
     </>
   )
