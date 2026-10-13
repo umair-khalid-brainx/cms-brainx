@@ -5,11 +5,32 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-13 — Domains screen (`DEP-02`)
+
+Decision in D-066.
+
+- **API:** migration `20261012200000_add_custom_domain` (`sites.host` optional, `domain_status`, placeholder hosts
+  cleared); `sites/custom-domain.ts` (clean-up and rules); `PUT/DELETE /sites/:siteId/domain` (`site:manage`); site
+  details carry `customDomain` and `domainStatus`; `PUBLIC_ROOT_DOMAIN` read by `api` too. The seed finds a site through
+  its owner, so a renamed subdomain isn't seeded twice. GOV-07's migration renamed to `20261012190000_…` so both sort
+  after week 4's. `api` 776 tests.
+- **Admin:** Settings → Domains: the free address (Active, Copy), and the custom domain with a Pending badge, the DNS
+  record to add with Copy, bare-domain advice and Remove. `lib/domains.ts`. `admin` 190 tests.
+- **Checked live** (api :4051, admin :5181): messy input cleaned; root domain, non-domains and another site's domain
+  refused; editor 403; Kestrel's owner 403 on Corrick's site; the public site payload never carries the domain; add,
+  bare domain (ALIAS), remove and copy in the browser. Reviewer and verifier asked for a copy button for the free
+  address, full host names in the record, a production guard on the root domain, IDN and reserved endings, a status
+  for any existing host, and a seed that survives a rename; all done.
+
+**Not done:** B-37 (first come, first served; nothing verifies DNS or serves the domain).
+
+---
+
 ## 2026-10-12 — Review workflow, scheduling and the Viewer role (`GOV-07`)
 
 Decisions in D-064 (scope) and D-065.
 
-- **API:** migration `20261012171511_add_review_and_scheduling` (`in_review`, `scheduled`, `viewer`, review and schedule
+- **API:** migration `20261012190000_add_review_and_scheduling` (`in_review`, `scheduled`, `viewer`, review and schedule
   columns on `content`); `content:review` for Owner/Administrator/Editor; `content/workflow-rules.ts` (pure rules),
   `content/workflow.service.ts` (submit, withdraw, approve now or later, reject with a note, schedule, unschedule,
   publish now, the scheduler's publish), routes under `/content/:slug/…` and `GET /content/review-queue`;

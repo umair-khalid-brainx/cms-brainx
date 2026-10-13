@@ -25,7 +25,6 @@ type SeedPage = {
 };
 
 type SeedSite = {
-  host: string;
   subdomain: string;
   name: string;
   theme: Prisma.InputJsonValue;
@@ -37,7 +36,6 @@ type SeedSite = {
 // — `api` doesn't depend on that package, so these are hand-written, not imported.
 
 const corrick: SeedSite = {
-  host: 'corrick.yourcms.com',
   subdomain: 'corrick',
   name: 'Corrick Oyster Co.',
   // Matches admin/src/puck/config.tsx — the same theme used everywhere else this demo touches.
@@ -87,7 +85,6 @@ const corrick: SeedSite = {
 // (`f161fd8`); its `/media/*.svg` images no longer exist, so no block here
 // references an image.
 const kestrel: SeedSite = {
-  host: 'kestrel.yourcms.com',
   subdomain: 'kestrel',
   name: 'Kestrel Rigging',
   theme: {
@@ -196,23 +193,31 @@ const kestrel: SeedSite = {
 };
 
 async function seedSite(spec: SeedSite, passwordHash: string): Promise<void> {
-  const site = await prisma.site.upsert({
-    where: { host: spec.host },
-    update: {},
-    create: {
-      host: spec.host,
-      subdomain: spec.subdomain,
-      name: spec.name,
-      themeJson: spec.theme,
-    },
-  });
-
   // Resets the owner's password to DEV_PASSWORD on every run, on purpose.
   const user = await prisma.user.upsert({
     where: { email: spec.owner.email },
     update: { passwordHash },
     create: { email: spec.owner.email, name: spec.owner.name, passwordHash },
   });
+
+  // The site this owner already owns, if any, so a site whose subdomain was renamed since (D-031) isn't seeded a
+  // second time; otherwise by subdomain. Not by `host`: that is a custom domain an owner adds (DEP-02).
+  const owned = await prisma.siteMembership.findFirst({
+    where: { userId: user.id, role: 'owner' },
+    orderBy: { createdAt: 'asc' },
+    select: { site: true },
+  });
+  const site =
+    owned?.site ??
+    (await prisma.site.upsert({
+      where: { subdomain: spec.subdomain },
+      update: {},
+      create: {
+        subdomain: spec.subdomain,
+        name: spec.name,
+        themeJson: spec.theme,
+      },
+    }));
 
   await prisma.siteMembership.upsert({
     where: { userId_siteId: { userId: user.id, siteId: site.id } },

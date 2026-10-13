@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 43, IN-PROGRESS 2, TODO 10 (56 tickets). Updated 2026-10-12.
+**Totals:** BACKLOG 1, DONE 44, IN-PROGRESS 2, TODO 9 (56 tickets). Updated 2026-10-13.
 
 ## M1 (week 1)
 
@@ -83,7 +83,7 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | GOV-07 | Submit for review and reviewer queue | DONE | 0 | 2026-10-12 (D-065); scheduling and Viewer role included (D-064) |
 | GOV-08b | Second tenant branding, content, cross-tenant bug hunt | TODO | 0 |  |
 | DEP-01b | Deploy script, three-app topology, rollback | TODO | 0 |  |
-| DEP-02 | Domains screen, UI only | TODO | 0 |  |
+| DEP-02 | Domains screen, UI only | DONE | 0 | 2026-10-13 (D-066) |
 | DEP-03 | Realistic seed content for both tenants | TODO | 0 |  |
 | DEP-04 | Bug fixing and demo rehearsal | TODO | 0 |  |
 

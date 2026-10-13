@@ -31,6 +31,15 @@ export class SiteRepository {
     return this.prisma.site.findMany({ select: { id: true, subdomain: true }, orderBy: { id: 'asc' } });
   }
 
+  findByHost(host: string) {
+    return this.prisma.site.findUnique({ where: { host } });
+  }
+
+  /** Sets or clears the custom domain and its status together (DEP-02). */
+  updateDomain(id: string, host: string | null) {
+    return this.prisma.site.update({ where: { id }, data: { host, domainStatus: host ? 'pending' : null } });
+  }
+
   updateSubdomain(id: string, subdomain: string) {
     return this.prisma.site.update({ where: { id }, data: { subdomain } });
   }

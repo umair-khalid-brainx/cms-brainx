@@ -18,21 +18,32 @@ datasource db {
 // path recomputation (CNT-05/CNT-06), custom content types (TYP-*), media,
 // SEO, taxonomy, menus, revisions.
 
+// Whether a custom domain's DNS record has been confirmed (DEP-02). Nothing sets `verified` automatically yet.
+enum DomainStatus {
+  pending
+  verified
+
+  @@map("domain_status")
+}
+
 model Site {
-  id        String   @id @default(cuid())
-  // Reserved for real custom domains (DEP-02). The public site is reached by
-  // `subdomain` under a per-environment root domain instead — see D-030.
-  host      String   @unique
+  id           String        @id @default(cuid())
+  // The site's own custom domain (DEP-02, D-066), `www.corrickoysters.com`, null until an owner adds one.
+  // Display only for now: nothing serves the site on it. The public site is reached by `subdomain` under a
+  // per-environment root domain instead — see D-030.
+  host         String?       @unique
+  // Set with `host`: pending until someone confirms its DNS record (by hand, for now); null without a host.
+  domainStatus DomainStatus? @map("domain_status")
   // `corrick` in `corrick.lvh.me` / `corrick.<root domain>`. Editable by
   // owners and administrators (D-031); the rules live in SitesService.
-  subdomain String   @unique
-  name      String
-  themeJson Json     @default("{}") @map("theme_json")
+  subdomain    String        @unique
+  name         String
+  themeJson    Json          @default("{}") @map("theme_json")
   // What the public header and footer show besides the name (GOV-04): tagline, footer note and
   // a logo from the site's media library. Shape and rules: sites/site-settings.ts.
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  settings     Json          @default("{}")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
   memberships  SiteMembership[]
   content      Content[]

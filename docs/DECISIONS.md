@@ -8,6 +8,34 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-066 — 2026-10-13 — Custom domains: stored on `sites.host` as Pending, with the DNS record to add; nothing served (`DEP-02`)
+
+**What it is.** Settings gets a Domains card: the free address first (Active, with Copy), then the custom domain. An
+Owner or Administrator (`site:manage`, like the subdomain) types a domain; the API cleans it up
+(`https://WWW.Example.com/menu` is `www.example.com`; `münchen.de` is stored as `xn--mnchen-3ya.de`), refuses one that
+isn't a domain or ends in a name that is never public (`.test`, `.local`, …), one on the platform's own root
+(`PUBLIC_ROOT_DOMAIN`, those addresses are the free ones; in production an unset value refuses every domain rather
+than letting a tenant claim `api.<root>`) and one another site has (409; the unique index catches two at once), and
+saves it as **Pending**. The card shows the record to add, named by the full host name (right for `www.example.co.uk`
+too, where cutting it short would guess where the domain begins): a CNAME to the free address, or for what looks like
+a bare domain an ALIAS, with the advice to use `www.` where the provider has no ALIAS. Remove takes it off.
+
+**Where it lives.** `sites.host`, which D-030 kept for exactly this, now nullable, plus `domainStatus` (`pending |
+verified`). The seed's placeholder hosts (`corrick.yourcms.com`) were never domains anyone owned, so the migration clears
+them (and marks any other host Pending); the seed finds its sites through the owner's membership, then by subdomain.
+
+**What it deliberately doesn't do** (the ticket is "UI only"): nothing checks DNS, nothing sets `verified` (a person can,
+in the database, until a platform-operator screen exists, D-014), and `web` doesn't answer on the domain. The card says
+so in plain words ("Not live yet… until the site is served on it, use the free address"), rather than implying the
+domain works. Serving custom domains needs `web` to resolve by host as well as subdomain, TLS for each domain, and nginx;
+that is a scope change.
+
+**Options considered:** (1) display only, no input; rejected by the user, an input with a status is what a client
+expects to see. (2) A separate `custom_domains` table, for several domains per site; one per site is enough for the
+demo and `host` already exists.
+
+---
+
 ## D-065 — 2026-10-12 — Review and scheduling: two statuses, a lock, one conditional write per step, an in-process scheduler (`GOV-07`)
 
 **Statuses.** `ContentStatus` gains `in_review` and `scheduled`, rather than a separate review table or flags beside

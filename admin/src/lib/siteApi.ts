@@ -1,4 +1,4 @@
-import { apiGet, apiSend } from './api';
+import { apiDelete, apiGet, apiSend } from './api';
 import { getSession, refreshSession } from './auth';
 
 export type SiteSummary = { id: string; name: string; subdomain: string };
@@ -9,6 +9,10 @@ export type SiteDetails = SiteSummary & {
   footerNote: string;
   /** A picture in the site's media library (`/uploads/<site>/<file>`), or empty. */
   logo: string;
+  /** The site's own domain (DEP-02), null until an owner adds one. Display only: nothing serves the site on it yet. */
+  customDomain: string | null;
+  /** Pending until someone confirms its DNS record; null without a domain. */
+  domainStatus: 'pending' | 'verified' | null;
 };
 
 /** The API's hard limits (api/src/sites/site-settings.ts; the repos can't share code, so keep these in step). */
@@ -70,4 +74,16 @@ export async function updateSubdomain(subdomain: string): Promise<SiteSummary> {
     ),
   });
   return site;
+}
+
+/** Adds or replaces the site's custom domain; the API cleans it up and refuses one that can't be used (DEP-02). */
+export function setCustomDomain(domain: string): Promise<SiteDetails> {
+  const { session, membership } = requireMembership();
+  return apiSend('PUT', `/sites/${membership.siteId}/domain`, { domain }, session.accessToken);
+}
+
+export async function removeCustomDomain(): Promise<SiteDetails> {
+  const { session, membership } = requireMembership();
+  await apiDelete(`/sites/${membership.siteId}/domain`, session.accessToken);
+  return getSiteDetails();
 }
