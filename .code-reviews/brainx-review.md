@@ -1,32 +1,24 @@
 ---
-diff_hash: aed65804f2615b5cd862489b82c160c1250af89144b98d7c468761f18693d807
-reviewed_at: 2026-10-13T09:35:10Z
+diff_hash: ac425e355a3f4057cd799fb33b1e23555998a14f9c4e71898a6b2edaa99aeab8
+reviewed_at: 2026-10-13T09:57:12Z
 ---
 
 ## Summary
 
-GOV-08b / FND-03 / B-16, spanning `api` (NestJS), `admin` (React), `cms-blocks` and `web`. No root `package.json`;
-each project was reviewed against its own stack (NestJS criteria for `api`, React criteria for `admin`/`cms-blocks`,
-generic for `web/scripts`).
+DEP-03 (realistic demo content), in `api` only (NestJS criteria; no root `package.json`) plus docs. The seed is split
+into `prisma/seed-types.ts` (the shape), `prisma/seed-content/{corrick,kestrel}.ts` (each tenant's content as data)
+and `seed.ts` (the machinery): team members with the dev password, a media library per site via `ensureMedia`,
+`@media:` references resolved to library URLs with empty alt text filled from the library, nested pages found by
+parent path, in-review and scheduled items with relative dates, SEO through the app's `parseSeo`, posts with excerpt,
+featured image, author and terms, settings and menus written only where empty. 20 photos (Unsplash/Pexels) and a
+Corrick SVG logo with `CREDITS.md`. Docs: D-068, a WORKLOG entry, a CLAUDE.md gotcha on `API_PUBLIC_URL`, DEP-03 DONE.
 
-`api`: the seed builds Kestrel out as a second tenant (nested pages found by parent path, settings and menus written
-only where empty, a library logo via the new `prisma/seed-media.ts`, which mirrors `MediaService.store`: row first,
-file and thumbnail second, row removed if the write fails). `thumbnailFilenameFor` moves to `thumbnail.ts` so the seed
-shares it. Invariant 1 is now a test (`test/tenant-scoping.spec.ts`, TypeScript-AST based, both exception lists empty);
-the two breaches it found are fixed: `HealthRepository` holds the DB ping, and `MediaRepository.create(siteId, data)`
-takes `siteId` first and spreads it last so the data can't override it. A route-by-route cross-tenant e2e suite with
-a controller-metadata coverage check. `GET/PATCH /sites/:siteId[/settings]` now also return the stored `theme`.
-`admin`: the editor fetches site details once, validates the theme (`readSiteTheme`) and draws the Puck canvas in it,
-with a neutral fallback replacing the hard-coded Corrick theme. `cms-blocks`: Stats picks its column count from the
-number of items (literal class names, no hex values). `web`: an `npm run check:isr` two-host ISR script.
-
-Cross-repo contract checked: admin's `SiteDetails.theme: unknown` matches the API's `theme: site.themeJson`;
-`updateSiteSettings` sends only `name/tagline/footerNote/logo`, so the new `theme` field is never posted back.
-`CreatePagePage` still imports `config`, but only for block labels, so the fallback root doesn't change it.
-
-Verified: `api` `tsc --noEmit` clean (covers `prisma/seed*.ts`); `test/tenant-scoping.spec.ts` + `src/media` specs
-86/86 pass; `admin` `tsc -b` clean, `siteTheme.test.ts` 2/2 pass; `cms-blocks` `tsc --noEmit` clean. The DB-backed
-`cross-tenant.e2e-spec.ts` and `check-isr-two-hosts.mjs` were not run in this review (read only).
+Checked: every block prop used in the content (hero `facts`, cta `note`, featureGrid items without `label`, teamGrid
+`bio`, gallery `caption`, contactForm fields) exists in `cms-blocks/src/types.ts` (invariant 7); every rich-text HTML
+string uses only tags the sanitiser allows; `status` values match `ContentStatus`; slug uniqueness is per site
+(`@@unique([siteId, slug])`), so `alreadyThere`'s slug check matches the constraint; Corrick counts (9 pages, 7 posts,
+13 files, 4 categories, 9 tags) match the content files. `api` `tsc --noEmit` is clean. The seed was not run in this
+review. The Corrick owner's real email is unchanged from the previous seed (moved, not added), so it is not a finding.
 
 ## Findings
 
@@ -36,43 +28,35 @@ Verified: `api` `tsc --noEmit` clean (covers `prisma/seed*.ts`); `test/tenant-sc
 
 ### Medium (0)
 
-### Low (3)
-- **api/prisma/seed.ts:463** — `parentId` holds the parent row (`{ id, typeId }`), not an id, and the error thrown when the parent is an entry says "no page at … seeded before it", which is wrong for that case. *(maintainability)*
+### Low (4)
+- **api/prisma/seed.ts:54** — `termSlug` is a hand copy of `normaliseSlug` (`src/content/slug.ts`), which `taxonomy/term-rules.ts` uses to make a term's slug; the copy already differs (no `SLUG_MAX` truncation). The seed imports `parseSeo` from `src` for exactly this reason, so it could import `normaliseSlug` too. *(maintainability)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Behaviour is correct (an entry parent is refused, and `parentId?.id` is used for the write), but `parentId.typeId` reads oddly, and a seed author who points a page under an entry gets told the parent is missing. Rename to `parent` and split the message: "no page at X seeded before it" vs "X is an entry, not a page".
-- **docs/DECISIONS.md:15** — D-067 says the seed's nested pages find their parent "by slug"; the code finds it by path (`page.path` minus its last segment, `siteId_path` lookup). *(consistency)*
+  - ai_reasoning: If the app's slug rule changes, a seeded term's slug stops matching the one the admin derives from the same name, and the admin then creates a second term for it. No effect today: every seed term name is short and ASCII.
+- **api/prisma/seed.ts:198** — Rich-text HTML in pages (and posts at line 242) is stored without `sanitizeBlocks`, while SEO goes through `parseSeo` "so the stored shape is the one a save makes". Invariant 5 says stored HTML is already safe. *(consistency)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: The project rule is that the code wins and the doc is fixed in the same pass. The `SeedPage.nested` and `SeedMenuItem` comments in `seed.ts` already say "by path"; D-067 is new in this diff, so it can still be corrected in place to "by path".
-- **web/scripts/check-isr-two-hosts.mjs:45** — The comment says "Twice" but the loop warms every page three times (`round < 3`). *(maintainability)*
+  - ai_reasoning: Every HTML string in the seed today uses only allowlisted tags (`p`, `ol`, `ul`, `li`, `a href` relative), so sanitising would change nothing now. A later seed edit with a tag outside the allowlist would be stored and rendered as-is, unlike anything saved through the app.
+- **docs/WORKLOG.md:14** — Says "23 photos" and (line 16) "Kestrel: … 12 files"; the diff has 20 photos (as D-068 and CREDITS.md say) and Kestrel's library is 8 photos plus the logo, 9 files. *(docs)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: Harmless at runtime; a reader can't tell whether 3 is deliberate (e.g. to get past a STALE) or a leftover. Make the comment and the count agree.
+  - ai_reasoning: Stale counts from before three photos were dropped in review; the doc contradicts the code and D-068.
+- **api/prisma/seed-media/CREDITS.md:3** — Cites D-064 (placeholder identities kept) as the decision for the photos; the decision for this content is D-068. *(docs)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: Points a reader at the wrong decision entry.
 
 ## Reviewed files
-- admin/src/lib/siteApi.ts
-- admin/src/lib/siteTheme.test.ts
-- admin/src/lib/siteTheme.ts
-- admin/src/pages/EditorPage.tsx
-- admin/src/puck/config.tsx
-- admin/src/puck/entryFields.tsx
-- api/prisma/seed-media.ts
-- api/prisma/seed-media/kestrel/logo.svg
+- .code-reviews/brainx-review.md (deletion of the previous review; not reviewed)
+- CLAUDE.md
+- api/prisma/seed-content/corrick.ts
+- api/prisma/seed-content/kestrel.ts
+- api/prisma/seed-media/CREDITS.md
+- api/prisma/seed-media/corrick/logo.svg
+- api/prisma/seed-types.ts
 - api/prisma/seed.ts
-- api/src/health/health.controller.ts
-- api/src/health/health.module.ts
-- api/src/health/health.repository.ts
-- api/src/media/media.repository.ts
-- api/src/media/media.service.spec.ts
-- api/src/media/media.service.ts
-- api/src/media/thumbnail.ts
-- api/src/sites/sites.service.ts
-- api/test/cross-tenant.e2e-spec.ts
-- api/test/tenant-scoping.spec.ts
-- cms-blocks/src/Stats.tsx
-- web/CLAUDE.md
-- web/package.json
-- web/scripts/check-isr-two-hosts.mjs
-- docs/BACKLOG.md, docs/DECISIONS.md, docs/WORKLOG.md, tickets/FND-03.md, tickets/GOV-08b.md, tickets/STATUS.md (docs; skimmed for consistency with the code)
-- .code-reviews/brainx-review.md (previous review file deleted in the staged diff; not reviewed)
+- docs/DECISIONS.md
+- docs/WORKLOG.md
+- tickets/DEP-03.md
+- tickets/STATUS.md
+- api/prisma/seed-media/corrick/*.jpg, api/prisma/seed-media/kestrel/*.jpg (20 binary photos; skipped)

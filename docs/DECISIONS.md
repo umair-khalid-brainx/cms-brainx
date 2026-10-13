@@ -8,6 +8,39 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-068 — 2026-10-13 — Demo content: one seed, in a file per tenant, with real photos and every workflow state (`DEP-03`)
+
+**Where it lives.** `api/prisma/seed-content/corrick.ts` and `kestrel.ts` hold each tenant's content as data;
+`seed-types.ts` its shape; `seed.ts` the machinery (members, library, pages, posts, terms, settings, menus);
+`seed-media/` the files, with `CREDITS.md`. One command, `npm run db:seed`, on any database: repeatable, and a re-run adds
+nothing and overwrites nothing an owner has edited (a page or post is created only when the site has neither its path
+nor its slug, so one an owner moved isn't made twice; menus only into an empty location; settings only where empty).
+To see new demo content on a database seeded before, reset it (`npx prisma migrate reset --force`, then the seed).
+
+**What it shows.** Each requirement area has something to demo: Corrick has 9 pages (one nested, one draft, one in
+review submitted by its contributor), 7 journal posts with featured images, excerpts, authors, categories and tags (one
+scheduled five days ahead by its editor), a 13-file library with alt text, header and footer menus, a logo, SEO and a
+share image on the home page, and two contact forms. Kestrel has 8 pages and 3 posts in the same way. Dates are relative
+to the seed run (posted 3 days ago, scheduled in 5), so the demo always looks current.
+
+**People.** Posts are credited to fictional team members (Maggie Corrick, Sam Doane, Ruth Calder…), created with the
+seed's dev password, never to the real person who owns the dev account.
+
+**Photos.** 20 free-licensed photos (Unsplash and Pexels licences), each approved by the user from a list before any
+download, and checked by eye: of the 25 found, one with a real boat's name and one with an energy company's logo were
+dropped before download, and three more in review (that company's logo on life vests, a brand on buckets, an
+electricity pylon with another country's danger signs). No free photo shows technicians on ropes on a turbine blade, so
+Kestrel's pages show turbines, the crew's gear and the view from the nacelle instead. Photos are reused across pages, as
+a library should be. The two logos are drawn in SVG for this repo.
+
+**Alt text.** Blocks name a picture with empty alt text; the seed fills it from the library entry, so the publish checks
+have nothing to warn about (the editor's picker deliberately leaves it to the page, D-047; the seed writes it out). Search settings go through the app's own `parseSeo`.
+
+**One thing to know.** An image in a block is stored with its full address (what the editor stores), so the seed bakes
+in `API_PUBLIC_URL` as it was when the seed ran. Seed a database with the value the API will be served at.
+
+---
+
 ## D-067 — 2026-10-13 — Second tenant in the seed, a route-by-route cross-tenant suite, the canvas in the site's theme (`GOV-08b`, `FND-03`)
 
 **Kestrel is built in the seed, not by hand.** The plan said to build it by hand first to find bugs; writing it

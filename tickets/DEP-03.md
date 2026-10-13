@@ -7,11 +7,11 @@
 Realistic seed content for both demo tenants.
 ## Definition of Done
 _Confirmed with the user on 2026-10-12 (docs/WEEK5_PLAN.md)._
-- [ ] Corrick and Kestrel (DEC-3: placeholders kept) have convincing pages, posts with categories and tags, real photos with alt text, menus, branding and SEO fields; Corrick shows a page in review and a scheduled post
-- [ ] Photos are free-licensed, each listed with its source and approved by the user before download
-- [ ] Seeding a fresh database gives the same result every time, and re-running it doesn't duplicate anything
-- [ ] The user has judged the copy convincing
-- [ ] All tests pass. Reviewer approved. Verifier passed.
+- [x] Corrick and Kestrel (DEC-3: placeholders kept) have convincing pages, posts with categories and tags, real photos with alt text, menus, branding and SEO fields; Corrick shows a page in review and a scheduled post
+- [x] Photos are free-licensed, each listed with its source and approved by the user before download
+- [x] Seeding a fresh database gives the same result every time, and re-running it doesn't duplicate anything
+- [x] The user has judged the copy convincing (2026-10-13)
+- [x] All tests pass. Reviewer approved. Verifier passed.
 
 ## Technical notes
 Needs a person to judge whether the copy is convincing.

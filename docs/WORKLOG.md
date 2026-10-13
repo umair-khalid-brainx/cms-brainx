@@ -5,6 +5,28 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-13 — Demo content for both tenants (`DEP-03`)
+
+Decision in D-068.
+
+- **Seed** split into `prisma/seed-types.ts`, `prisma/seed-content/{corrick,kestrel}.ts` and the machinery in `seed.ts`:
+  team members, a media library per site, `@media:` references in blocks, nested pages, workflow states (in review,
+  scheduled), SEO and share image, posts with excerpt, featured image, author, categories and tags. 23 photos and two SVG
+  logos under `prisma/seed-media/` with `CREDITS.md` (23 at first, 20 after review).
+- **Corrick:** 9 pages, 7 posts, 13 files, 4 categories, 9 tags, menus, logo. **Kestrel:** 8 pages, 3 posts, 9 files.
+- **Checked:** a fresh database seeded twice gives the same counts; every published page and post is 200 on its host; the
+  draft, the page in review and the scheduled post are 404; screenshots of both sites on the production build.
+- This worktree's `api/.env` now uses port 4051 (`API_PORT`, `API_PUBLIC_URL`): a seed run with 4001 baked addresses into
+  the blocks that nothing here serves.
+
+- **Review and verifier follow-ups:** a re-run no longer duplicates a page an owner moved (skipped by path or slug); three
+  photos with real branding or another country's signage dropped (20 kept); empty alt text filled from the library so the
+  publish checks pass; SEO through `parseSeo`; posts dated at their publish date; Kestrel home SEO; US spelling for
+  Corrick; an owner's moved or deleted parent or menu target is skipped with a warning instead of stopping the seed.
+- The user judged the copy convincing.
+
+---
+
 ## 2026-10-13 — Second tenant, cross-tenant suite, the canvas in each site's theme (`GOV-08b`, `FND-03`, B-16)
 
 Decision in D-067.
