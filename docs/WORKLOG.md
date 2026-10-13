@@ -5,6 +5,26 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-13 — Second tenant, cross-tenant suite, the canvas in each site's theme (`GOV-08b`, `FND-03`, B-16)
+
+Decision in D-067.
+
+- **Kestrel** (seed): logo (SVG drawn for the repo), tagline, footer note, header menu with a Capability dropdown, footer
+  menu in two groups, 8 pages (three under Capability, About with the crew, Contact with a form, a draft). The seed gained
+  nested pages, settings, menus and library files (`prisma/seed-media.ts`); two runs in a row add nothing.
+- **Cross-tenant suite** `api/test/cross-tenant.e2e-spec.ts`: 65 of 70 routes, both directions, the other site snapshotted
+  before and after; a coverage test fails on a route without a row. No leak found. `api` e2e 488 tests.
+- **FND-03** `api/test/tenant-scoping.spec.ts`: no `PrismaService` outside a repository (the health check now has
+  `HealthRepository`), and tenant repositories take `siteId` first (`MediaRepository.create` now does). `api` 790 tests.
+- **B-16**: the site's theme comes with its details; the editor draws the canvas in it. Checked: Kestrel's home opens dark and
+  orange in the editor.
+- **ISR on a production build, two hosts:** refreshing Kestrel's `/about` (directly, and by saving it through the API) left
+  Kestrel's home and two Corrick pages HIT.
+- Found on the way: the Stats block always used four columns (an empty cell under three figures); now by item count.
+  This worktree had no `REVALIDATE_SECRET` in `api/.env` or `web/.env.local`, so on-demand refresh was off; added (dev only).
+
+---
+
 ## 2026-10-13 — Domains screen (`DEP-02`)
 
 Decision in D-066.

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="240" height="48" role="img" aria-label="Kestrel Rigging">
+  <!-- A kestrel hovering over a rope: the bird holds still in the wind, the crew holds still on the line. -->
+  <g fill="#FF6B1A">
+    <path d="M2 17 L19 9 L21 9 L38 17 L31 18.5 L21 14 L19 14 L9 18.5 Z"/>
+    <path d="M17.5 13 H22.5 L21.4 25 H18.6 Z"/>
+    <path d="M18.4 25 H21.6 L23.5 31 H16.5 Z"/>
+  </g>
+  <path d="M20 31 V45" stroke="#E6EAEF" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="20" cy="45" r="2.2" fill="none" stroke="#E6EAEF" stroke-width="1.4"/>
+  <text x="50" y="27" fill="#E6EAEF" font-family="'Archivo Narrow', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="3">KESTREL</text>
+  <text x="51" y="42" fill="#8E9AAA" font-family="'Archivo Narrow', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif" font-size="10" font-weight="600" letter-spacing="4.2">RIGGING</text>
+</svg>

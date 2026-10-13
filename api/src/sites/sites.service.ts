@@ -11,8 +11,11 @@ import { ConfigService } from '@nestjs/config';
 export type SiteSummary = { id: string; name: string; subdomain: string };
 /** A site's custom domain and whether its DNS record is confirmed (DEP-02); both null without one. */
 export type SiteDomain = { customDomain: string | null; domainStatus: 'pending' | 'verified' | null };
-/** What Settings edits: the summary plus tagline, footer note and logo (GOV-04), and the custom domain (DEP-02). */
-export type SiteDetails = SiteSummary & SiteSettings & SiteDomain;
+/**
+ * What Settings edits: the summary plus tagline, footer note and logo (GOV-04), and the custom domain (DEP-02).
+ * `theme` is the site's stored theme, read by the editor so its canvas looks like this site (B-16); not edited here.
+ */
+export type SiteDetails = SiteSummary & SiteSettings & SiteDomain & { theme: unknown };
 
 function domainOf(site: { host: string | null; domainStatus: 'pending' | 'verified' | null }): SiteDomain {
   return { customDomain: site.host, domainStatus: site.host ? site.domainStatus : null };
@@ -37,7 +40,7 @@ export class SitesService {
   async getDetails(siteId: string): Promise<SiteDetails> {
     const site = await this.sites.findById(siteId);
     if (!site) throw new NotFoundException('Site not found');
-    return { id: site.id, name: site.name, subdomain: site.subdomain, ...readSettings(site.settings), ...domainOf(site) };
+    return { id: site.id, name: site.name, subdomain: site.subdomain, ...readSettings(site.settings), ...domainOf(site), theme: site.themeJson };
   }
 
   /**
@@ -107,7 +110,7 @@ export class SitesService {
     };
     const site = await this.sites.updateSettings(siteId, { ...(name !== undefined && { name }), settings });
     await this.revalidation.site(site.subdomain);
-    return { id: site.id, name: site.name, subdomain: site.subdomain, ...settings, ...domainOf(site) };
+    return { id: site.id, name: site.name, subdomain: site.subdomain, ...settings, ...domainOf(site), theme: site.themeJson };
   }
 
   /**

@@ -72,7 +72,7 @@ describe('MediaService', () => {
       findById: vi.fn(async (siteId: string, id: string) => (siteId === SITE && id === RECORD.id ? RECORD : null)),
       updateSize: vi.fn(async () => ({ count: 1 })),
       updateDetails: vi.fn(async () => ({ count: 1 })),
-      create: vi.fn(async (data: Record<string, unknown>) => ({ id: 'new', ...data })),
+      create: vi.fn(async (siteId: string, data: Record<string, unknown>) => ({ id: 'new', siteId, ...data })),
       delete: vi.fn(async () => ({ count: 1 })),
       isSiteLogo: vi.fn(async () => false),
       clearSiteLogo: vi.fn(async () => {}),

@@ -13,6 +13,8 @@ export type SiteDetails = SiteSummary & {
   customDomain: string | null;
   /** Pending until someone confirms its DNS record; null without a domain. */
   domainStatus: 'pending' | 'verified' | null;
+  /** The site's stored theme: the editor draws its canvas in it (B-16). Empty for a site that has none. */
+  theme: unknown;
 };
 
 /** The API's hard limits (api/src/sites/site-settings.ts; the repos can't share code, so keep these in step). */

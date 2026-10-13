@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Config, RichtextField } from '@puckeditor/core';
 import {
   Hero,
@@ -105,27 +106,40 @@ export const richTextOptions: RichtextField['options'] = {
   textAlign: false,
 };
 
-// Corrick Oyster Co.'s real theme — same values as `web/src/fixtures/corrick.ts`.
-// Duplicated, not imported: `admin` cannot import from `web` (CLAUDE.md — no
-// cross-repo imports except the published `cms-blocks` package), and content
-// data isn't part of that package. Once a real content API exists this comes
-// from `site.themeJson` instead of living in either repo's source.
-export const corrickTheme: SiteTheme = {
+// What the canvas shows before the site's own theme has loaded, or for a site with none: a plain, neutral
+// look. The editor passes the site's stored theme to `configFor` (B-16), so each site is edited in its own
+// colours and type, never another tenant's.
+export const fallbackTheme: SiteTheme = {
   typeSet: 'editorial',
   shape: 'soft',
   density: 'comfortable',
-  texture: 'grain',
+  texture: 'none',
   palette: {
-    paper: '#D9E0D8',
-    surface: '#F1F4EF',
-    ink: '#13201C',
-    muted: '#556258',
-    line: '#B6C2B5',
-    brand: '#2E4A3E',
-    onBrand: '#F1F4EF',
-    accent: '#C8863C',
+    paper: '#FFFFFF',
+    surface: '#F6F7F7',
+    ink: '#1D2327',
+    muted: '#646970',
+    line: '#DCDCDE',
+    brand: '#2271B1',
+    onBrand: '#FFFFFF',
+    accent: '#2271B1',
   },
 };
+
+/**
+ * The canvas's outer frame, in a site's theme. `min-h-screen` as in web's SiteChrome: the site's paper fills the
+ * canvas below the last block, instead of admin's own (dark-mode) page background. `configFor` gives it the
+ * site's own theme (B-16); `config` alone uses the neutral fallback.
+ */
+export function themedRoot(theme: SiteTheme) {
+  return function ThemedRoot({ children }: { children?: ReactNode; [prop: string]: unknown }) {
+    return (
+      <SiteThemeRoot theme={theme} className="min-h-screen">
+        {children}
+      </SiteThemeRoot>
+    );
+  };
+}
 
 // Every field carries a human `label` — client staff use this panel directly
 // (D-014), and without one Puck shows the raw prop key (`primaryAction`).
@@ -166,13 +180,7 @@ export const config: Config<EditorComponents> = {
     // so Puck's default "title" box (which saved nowhere) is gone. An entry's own fields
     // are added per type in puck/entryFields.tsx (TYP-02).
     fields: {},
-    // `min-h-screen` as in web's SiteChrome: the site's paper fills the canvas
-    // below the last block, instead of admin's own (dark-mode) page background.
-    render: ({ children }) => (
-      <SiteThemeRoot theme={corrickTheme} className="min-h-screen">
-        {children}
-      </SiteThemeRoot>
-    ),
+    render: themedRoot(fallbackTheme),
   },
   components: {
     Hero: {

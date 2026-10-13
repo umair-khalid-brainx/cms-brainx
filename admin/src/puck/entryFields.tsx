@@ -1,9 +1,10 @@
 import type { Config, Field } from '@puckeditor/core'
+import type { SiteTheme } from 'cms-blocks'
 import { DateField } from '../components/DateField'
 import { MediaField } from '../components/MediaField'
 import { RichTextToolbar } from '../components/RichTextToolbar'
 import type { ContentField } from '../lib/typesApi'
-import { config, type EditorComponents, richTextOptions } from './config'
+import { config, fallbackTheme, themedRoot, type EditorComponents, richTextOptions } from './config'
 
 // An entry's custom fields (TYP-02) go in the editor's side panel, the one Puck
 // shows when no block is selected. One editor for every type: the type only
@@ -46,9 +47,19 @@ function fieldFor(field: ContentField): Field {
   }
 }
 
-/** The editor config for a page (no fields) or for an entry of a type with `fields`. */
-export function configFor(fields: readonly ContentField[]): Config<EditorComponents> {
+/**
+ * The editor config for a page (no fields) or for an entry of a type with `fields`, drawn in the site's own
+ * `theme` (B-16): the canvas must look like the site being edited, not like another tenant.
+ */
+export function configFor(fields: readonly ContentField[], theme: SiteTheme = fallbackTheme): Config<EditorComponents> {
   const rootFields: Record<string, Field> = {}
   for (const field of fields) rootFields[field.key] = fieldFor(field)
-  return { ...config, root: { ...config.root, fields: rootFields } } as Config<EditorComponents>
+  return {
+    ...config,
+    root: {
+      ...config.root,
+      fields: rootFields,
+      render: themedRoot(theme),
+    },
+  } as Config<EditorComponents>
 }

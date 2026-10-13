@@ -8,6 +8,39 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-067 — 2026-10-13 — Second tenant in the seed, a route-by-route cross-tenant suite, the canvas in the site's theme (`GOV-08b`, `FND-03`)
+
+**Kestrel is built in the seed, not by hand.** The plan said to build it by hand first to find bugs; writing it
+straight into `prisma/seed.ts` does the same job and leaves something repeatable for `DEP-03`. The seed learned four
+things for it: nested pages (`nested`, the parent found by path), site settings (tagline, footer note, logo, each only where the site has
+none), menus (only into an empty location) and library files (`prisma/seed-media.ts`: copied into `uploads/` with a
+random name and a thumbnail, like an upload; found again by its library title, so a re-run adds nothing). Kestrel's
+logo is drawn in SVG for this repo, so it raises no licensing question.
+
+**Cross-tenant suite (`test/cross-tenant.e2e-spec.ts`).** Two throwaway sites with one of everything (pages, a child,
+an entry with terms, a file, menus, redirects, a preview link, a revision, a submission, a page in review, a domain);
+each owner calls every authenticated route with the other site's slugs, ids and siteId and gets 403/404 (400 for a body
+id), the response never contains the other site's rows, and a full snapshot of the other site (and a hash of its file)
+is unchanged. Public routes for one host never show the other's data. A coverage test reads the routes from the running
+app and fails when one has no row, so a new route can't skip the suite. 65 of 70 routes; the other 5 hold no tenant data
+(service info, health, login, the two invite-token routes). No leak was found.
+
+**Invariant 1 as a test (`FND-03`, `test/tenant-scoping.spec.ts`).** Nothing outside a `*.repository.ts` imports
+`PrismaService`, and every public method of a tenant repository takes `siteId` first. It found two: the health check
+pinged the database itself (now `HealthRepository`) and `MediaRepository.create` took `siteId` inside its data (now
+first). Both exception lists are empty and the test fails if one goes stale.
+
+**The editor's canvas is drawn in the site's own theme (B-16).** `GET /sites/:siteId` returns the stored theme, the
+editor reads it once (`readSiteTheme` checks it is whole) and passes it to `configFor`; until then, or for a site
+without one, a neutral fallback. Before this every site was edited in Corrick's green.
+
+**ISR with two hosts (invariant 6)**, on a production build: refreshing Kestrel's `/about`, directly and through a real
+save in the API, left Kestrel's home and both Corrick pages cache HITs.
+
+Also found and fixed: the Stats block always laid out four columns, leaving an empty cell under three figures.
+
+---
+
 ## D-066 — 2026-10-13 — Custom domains: stored on `sites.host` as Pending, with the DNS record to add; nothing served (`DEP-02`)
 
 **What it is.** Settings gets a Domains card: the free address first (Active, with Copy), then the custom domain. An

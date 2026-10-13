@@ -5,6 +5,9 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import type { EditorComponents } from '../puck/config';
 import { configFor } from '../puck/entryFields';
 import { listContentTypes, type ContentType } from '../lib/typesApi';
+import { getSiteDetails } from '../lib/siteApi';
+import { readSiteTheme } from '../lib/siteTheme';
+import type { SiteTheme } from 'cms-blocks';
 import PageSettingsPanel from '../components/PageSettingsPanel';
 import HistoryPanel from '../components/HistoryPanel';
 import PublishChecksPanel from '../components/PublishChecksPanel';
@@ -62,7 +65,11 @@ function EditorPage() {
   // The content type, when this is an entry: its fields fill the side panel (TYP-02).
   const [type, setType] = useState<ContentType | null>(null);
   const fieldKeys = useMemo(() => (type?.fields ?? []).map((field) => field.key), [type]);
-  const puckConfig = useMemo(() => configFor(type?.fields ?? []), [type]);
+  // The site's own theme for the canvas (B-16); null until it loads, or when the site has none.
+  const [theme, setTheme] = useState<SiteTheme | null>(null);
+  // The canvas waits for the theme, so it doesn't open in the neutral look and then switch.
+  const [themeSettled, setThemeSettled] = useState(false);
+  const puckConfig = useMemo(() => configFor(type?.fields ?? [], theme ?? undefined), [type, theme]);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [published, setPublished] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -95,6 +102,24 @@ function EditorPage() {
     refocusPublishRef.current = false;
     publishButtonRef.current?.focus();
   }, [publishing]);
+
+  // Once per editor: the theme is the site's, not the page's. A failure leaves the neutral fallback.
+  useEffect(() => {
+    let cancelled = false;
+    // Started inside a promise, so even a synchronous throw (no membership) only means the neutral look.
+    Promise.resolve()
+      .then(getSiteDetails)
+      .then((site) => {
+        if (!cancelled) setTheme(readSiteTheme(site.theme));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setThemeSettled(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (slug && movedToRef.current === slug) {
@@ -150,7 +175,7 @@ function EditorPage() {
   // Before the early returns below would skip it: what this person may do with this page (GOV-07).
   const role = getSession()?.memberships[0]?.role;
   const canWrite = canWriteContent(role);
-  if (load.status === 'loading' || !page) return <div className="editor-loading">Loading…</div>;
+  if (load.status === 'loading' || !page || !themeSettled) return <div className="editor-loading">Loading…</div>;
   if (load.status === 'error') return <div className="editor-loading">Couldn&rsquo;t load this page: {load.message}</div>;
 
   const access = editorAccess(page, {

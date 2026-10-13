@@ -10,7 +10,7 @@ import { UserRepository } from '../users/user.repository.js';
 import type { UpdateMediaDto } from './dto/media.dto.js';
 import { isDocumentType, matchesDocumentSignature } from './file-signature.js';
 import { MediaRepository } from './media.repository.js';
-import { InvalidImageError, makeThumbnail } from './thumbnail.js';
+import { InvalidImageError, makeThumbnail, thumbnailFilenameFor } from './thumbnail.js';
 
 // Whitelist, not a denylist derived from the client-supplied filename — the
 // stored extension always comes from this map, never from the upload's
@@ -59,11 +59,6 @@ export function titleFromUploadName(originalName: string | undefined): string | 
 }
 
 const REVALIDATE_BATCH = 10;
-
-// Sits next to the original in the same site folder: <uuid>.png → <uuid>-thumb.webp.
-function thumbnailFilenameFor(filename: string): string {
-  return `${filename.slice(0, filename.lastIndexOf('.'))}-thumb.webp`;
-}
 
 @Injectable()
 export class MediaService {
@@ -120,8 +115,7 @@ export class MediaService {
       thumbnailUrl = `${publicUrl}/uploads/${siteId}/${thumbnailFilename}`;
     }
 
-    return this.media.create({
-      siteId,
+    return this.media.create(siteId, {
       url,
       thumbnailUrl,
       filename,
