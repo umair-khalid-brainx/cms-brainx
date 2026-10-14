@@ -80,6 +80,7 @@ function App() {
 
         <Route path="editor/:slug" element={<EditorPage />} />
         <Route path="editor/:slug/compare" element={<ComparePage />} />
+        <Route index element={<SiteNavigate to="/dashboard" replace />} />
         <Route path="*" element={<SiteNavigate to="/dashboard" replace />} />
         </Route>
         <Route path="*" element={<IntoPreferredSite keepPath />} />
