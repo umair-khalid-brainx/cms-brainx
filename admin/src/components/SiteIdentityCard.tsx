@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import { API_URL, ApiError } from '../lib/api';
-import { getSession } from '../lib/auth';
 import { canManageSite } from '../lib/roles';
 import {
   FOOTER_NOTE_MAX,
@@ -35,7 +35,7 @@ type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved' } | { kind
  */
 function SiteIdentityCard() {
   const id = useId();
-  const canEdit = canManageSite(getSession()?.memberships[0]?.role);
+  const canEdit = canManageSite(getActiveMembership()?.role);
   const [saved, setSaved] = useState<Draft | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loadError, setLoadError] = useState(false);

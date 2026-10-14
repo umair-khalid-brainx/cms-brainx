@@ -1,3 +1,4 @@
+import { withActive } from '../users/test-support.js';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
@@ -6,7 +7,6 @@ import { join, relative } from 'node:path';
 import sharp from 'sharp';
 import type { ContentRepository } from '../content/content.repository.js';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
-import type { UserRepository } from '../users/user.repository.js';
 import type { MediaRepository } from './media.repository.js';
 import { MediaService, titleFromUploadName } from './media.service.js';
 
@@ -84,7 +84,7 @@ describe('MediaService', () => {
     const config = { get: (key: string) => (key === 'UPLOADS_DIR' ? uploadsDir : undefined) };
 
     service = new MediaService(
-      users as unknown as UserRepository,
+      withActive(users),
       media as unknown as MediaRepository,
       content as unknown as ContentRepository,
       revalidation as unknown as RevalidationService,

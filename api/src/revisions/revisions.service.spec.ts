@@ -1,3 +1,4 @@
+import { withActive } from '../users/test-support.js';
 import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { ContentRepository } from '../content/content.repository.js';
@@ -5,7 +6,6 @@ import type { RevalidationService } from '../revalidation/revalidation.service.j
 import { fakeTermRepository } from '../taxonomy/term-test-kit.js';
 import type { TermRepository } from '../taxonomy/term.repository.js';
 import type { TermLinks } from '../taxonomy/terms.service.js';
-import type { UserRepository } from '../users/user.repository.js';
 import { AUTOSAVE_WINDOW_MS, REVISION_LIMIT } from './revision-rules.js';
 import { fakeRevisionRepository } from './revision-test-kit.js';
 import { RevisionsService } from './revisions.service.js';
@@ -77,7 +77,7 @@ function setup(rows: Row[] = [page()], typeRows: { id: string; siteId: string; p
     content as unknown as ContentRepository,
     termKit.repo as unknown as TermRepository,
     types as unknown as ContentTypeRepository,
-    users as unknown as UserRepository,
+    withActive(users),
     revalidation as unknown as RevalidationService,
   );
   service.now = () => revisionKit.clock.now;

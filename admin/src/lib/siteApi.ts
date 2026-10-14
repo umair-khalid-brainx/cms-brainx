@@ -1,5 +1,7 @@
 import { apiDelete, apiGet, apiSend } from './api';
-import { getSession, refreshSession } from './auth';
+import { getActiveMembership } from './activeSite'
+import type { SiteTheme } from 'cms-blocks';
+import { getSession, refreshSession, type Session } from './auth';
 
 export type SiteSummary = { id: string; name: string; subdomain: string };
 
@@ -24,7 +26,7 @@ export const FOOTER_NOTE_MAX = 400;
 
 function requireMembership() {
   const session = getSession();
-  const membership = session?.memberships[0];
+  const membership = getActiveMembership();
   if (!session || !membership) throw new Error('Not authenticated');
   return { session, membership };
 }
@@ -52,6 +54,15 @@ export async function updateSiteSettings(
 }
 
 /**
+ * Saves the site's look: the whole theme replaces the old one. The API refuses a theme with a wrong field or text
+ * that can't be read, naming each problem (400); only owners and administrators may save it (403).
+ */
+export function updateSiteTheme(theme: SiteTheme): Promise<SiteDetails> {
+  const { session, membership } = requireMembership();
+  return apiSend('PATCH', `/sites/${membership.siteId}/theme`, theme, session.accessToken);
+}
+
+/**
  * Renames the current site's subdomain. The API enforces the rules (format,
  * reserved names, already taken, Owner/Administrator only — D-031); its error
  * message is what the caller shows. On success the stored session is updated
@@ -59,7 +70,7 @@ export async function updateSiteSettings(
  */
 export async function updateSubdomain(subdomain: string): Promise<SiteSummary> {
   const session = getSession();
-  const membership = session?.memberships[0];
+  const membership = getActiveMembership();
   if (!session || !membership) throw new Error('Not authenticated');
 
   const site = await apiSend<SiteSummary>(
@@ -88,4 +99,23 @@ export async function removeCustomDomain(): Promise<SiteDetails> {
   const { session, membership } = requireMembership();
   await apiDelete(`/sites/${membership.siteId}/domain`, session.accessToken);
   return getSiteDetails();
+}
+
+/**
+ * Makes a new, empty site; the caller becomes its owner (MSI-02). Only a person who already owns a site may (403
+ * otherwise), the API names a taken or reserved address (409 / 400). On success the stored memberships are
+ * re-read, so the new site is in the switcher at once.
+ */
+export async function createSite(input: { name: string; subdomain: string }): Promise<SiteSummary> {
+  const session = getSession();
+  if (!session) throw new Error('Not authenticated');
+  const site = await apiSend<SiteSummary>('POST', '/sites', input, session.accessToken);
+  // Known to the session before anything else can fail: the site exists now, and the app refuses a site it doesn't list.
+  refreshSession({ user: session.user, memberships: [...session.memberships, { siteId: site.id, siteName: site.name, siteSubdomain: site.subdomain, role: 'owner' }] });
+  try {
+    refreshSession(await apiGet<Pick<Session, 'user' | 'memberships'>>('/auth/me', session.accessToken));
+  } catch {
+    // The appended entry stands; the next page load re-reads the list.
+  }
+  return site;
 }

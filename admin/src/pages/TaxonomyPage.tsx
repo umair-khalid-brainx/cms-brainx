@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import { ApiError } from '../lib/api';
-import { getSession } from '../lib/auth';
 import { canPublishContent } from '../lib/roles';
 import { TERM_NAME_MAX, entriesLabel, nameProblem, tidyTermName, type Term, type TermKind } from '../lib/terms';
 import { createTerm, deleteTerm, listTerms, renameTerm } from '../lib/termsApi';
@@ -33,7 +33,7 @@ const failure = (caught: unknown, fallback: string) => (caught instanceof ApiErr
  */
 function TaxonomyPage() {
   const id = useId();
-  const mayEdit = canPublishContent(getSession()?.memberships[0]?.role);
+  const mayEdit = canPublishContent(getActiveMembership()?.role);
   const [terms, setTerms] = useState<Term[]>([]);
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
   const [tab, setTab] = useState<TermKind>('category');

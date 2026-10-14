@@ -139,7 +139,7 @@ export class TermsService {
 
   // Same "caller's first membership" convention as the other services.
   private async resolveSite(userId: string): Promise<{ siteId: string; subdomain: string }> {
-    const membership = (await this.users.findByIdWithMemberships(userId))?.memberships[0];
+    const membership = await this.users.findActiveMembership(userId);
     if (!membership) throw new ForbiddenException('No site membership');
     return { siteId: membership.siteId, subdomain: membership.site.subdomain };
   }

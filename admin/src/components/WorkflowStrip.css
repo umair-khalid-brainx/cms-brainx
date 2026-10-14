@@ -3,15 +3,15 @@
    as the status chips on the Pages list. The primary blue stays for actions. */
 
 .wf-strip {
-  --wf-edge: #8c8f94;
-  --wf-bg: #f6f7f7;
-  --wf-text: #1d2327;
+  --wf-edge: var(--ui-input-border);
+  --wf-bg: var(--ui-surface-2);
+  --wf-text: var(--ui-ink);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem 1.25rem;
   padding: 0.6rem 1rem;
-  border-bottom: 1px solid #dcdcde;
+  border-bottom: 1px solid var(--ui-line);
   border-left: 4px solid var(--wf-edge);
   background: var(--wf-bg);
   color: var(--wf-text);
@@ -31,7 +31,7 @@
 }
 
 .wf-strip-note {
-  --wf-edge: #d63638;
+  --wf-edge: var(--ui-danger-bright);
   --wf-bg: #fcf0f1;
 }
 
@@ -69,10 +69,10 @@
 
 .wf-button {
   padding: 0.35rem 0.85rem;
-  border: 1px solid #8c8f94;
+  border: 1px solid var(--ui-input-border);
   border-radius: 4px;
   background: #fff;
-  color: #1d2327;
+  color: var(--ui-ink);
   font: inherit;
   font-weight: 500;
   white-space: nowrap;
@@ -80,18 +80,18 @@
 }
 
 .wf-button:hover:not(:disabled) {
-  border-color: #2271b1;
-  color: #2271b1;
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
 }
 
 .wf-button-primary {
-  border-color: #2271b1;
-  background: #2271b1;
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
   color: #fff;
 }
 
 .wf-button-primary:hover:not(:disabled) {
-  background: #135e96;
+  background: var(--ui-accent-strong);
   color: #fff;
 }
 
@@ -101,7 +101,7 @@
 }
 
 .wf-button:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
@@ -115,10 +115,10 @@
   overflow-y: auto;
   width: min(28rem, calc(100vw - 2rem));
   padding: 0;
-  border: 1px solid #c3c4c7;
+  border: 1px solid var(--ui-line-strong);
   border-radius: 6px;
   background: #fff;
-  color: #1d2327;
+  color: var(--ui-ink);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.3);
   font-size: 0.8125rem;
 }
@@ -150,24 +150,24 @@
   gap: 0.6rem;
   align-items: flex-start;
   padding: 0.6rem 0.75rem;
-  border: 1px solid #dcdcde;
+  border: 1px solid var(--ui-line);
   border-radius: 4px;
   cursor: pointer;
 }
 
 .wf-choice:has(input:checked) {
-  border-color: #2271b1;
-  background: #f0f6fc;
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-wash);
 }
 
 .wf-choice input {
   margin-top: 0.15rem;
-  accent-color: #2271b1;
+  accent-color: var(--ui-accent);
 }
 
 .wf-choice-hint {
   display: block;
-  color: #646970;
+  color: var(--ui-text-2);
 }
 
 .wf-field {
@@ -183,10 +183,10 @@
 .wf-field input,
 .wf-field textarea {
   padding: 0.45rem 0.6rem;
-  border: 1px solid #8c8f94;
+  border: 1px solid var(--ui-input-border);
   border-radius: 4px;
   background: #fff;
-  color: #1d2327;
+  color: var(--ui-ink);
   font: inherit;
 }
 
@@ -197,14 +197,14 @@
 
 .wf-field input:focus,
 .wf-field textarea:focus {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 0;
-  border-color: #2271b1;
+  border-color: var(--ui-accent);
 }
 
 .wf-hint {
   margin: 0;
-  color: #646970;
+  color: var(--ui-text-2);
 }
 
 /* A dialog's intro line, under its heading: room before the first field. */
@@ -218,7 +218,7 @@
 
 .wf-error {
   margin: 0.25rem 0 0;
-  color: #b32d2e;
+  color: var(--ui-danger);
   font-weight: 500;
 }
 
@@ -240,10 +240,10 @@
 
 @media (prefers-color-scheme: dark) {
   .wf-strip {
-    --wf-edge: #646970;
-    --wf-bg: #18191b;
-    --wf-text: #ededed;
-    border-bottom-color: #2c3338;
+    --wf-edge: var(--ui-text-2);
+    --wf-bg: var(--ui-panel-dark);
+    --wf-text: var(--ui-text-dark);
+    border-bottom-color: var(--ui-line-dark);
   }
 
   .wf-strip-review {
@@ -257,52 +257,52 @@
   }
 
   .wf-strip-note {
-    --wf-edge: #f86368;
+    --wf-edge: var(--ui-danger-soft);
     --wf-bg: #2e1214;
   }
 
   .wf-button {
-    background: #1d2327;
-    border-color: #646970;
-    color: #ededed;
+    background: var(--ui-ink);
+    border-color: var(--ui-text-2);
+    color: var(--ui-text-dark);
   }
 
   .wf-button:hover:not(:disabled) {
-    border-color: #6ab6f2;
-    color: #6ab6f2;
+    border-color: var(--ui-accent-soft);
+    color: var(--ui-accent-soft);
   }
 
   .wf-button-primary {
-    background: #2271b1;
-    border-color: #2271b1;
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
     color: #fff;
   }
 
   .wf-dialog {
-    background: #18191b;
-    border-color: #3c434a;
-    color: #ededed;
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
+    color: var(--ui-text-dark);
   }
 
   .wf-choice {
-    border-color: #3c434a;
+    border-color: var(--ui-line-dark-strong);
   }
 
   .wf-choice:has(input:checked) {
-    border-color: #6ab6f2;
+    border-color: var(--ui-accent-soft);
     background: #12304a;
   }
 
   .wf-choice-hint,
   .wf-hint {
-    color: #9ca3af;
+    color: var(--ui-text-3-dark);
   }
 
   .wf-field input,
   .wf-field textarea {
-    background: #101214;
-    border-color: #646970;
-    color: #ededed;
+    background: var(--ui-canvas-dark);
+    border-color: var(--ui-text-2);
+    color: var(--ui-text-dark);
     color-scheme: dark;
   }
 

@@ -1,49 +1,38 @@
 import { useState, type FormEvent } from 'react'
-import { getSession } from '../lib/auth'
+import { getActiveMembership } from '../lib/activeSite'
+import { Link } from 'react-router'
 import { ApiError } from '../lib/api'
-import { canManageSite } from '../lib/roles'
+import { canManageSite, ROLE_LABELS } from '../lib/roles'
 import { updateSubdomain } from '../lib/siteApi'
 import { currentSubdomain, siteAddressParts, siteUrl } from '../data/site'
 import SiteIdentityCard from '../components/SiteIdentityCard'
 import CustomDomainCard from '../components/CustomDomainCard'
+import ThemeCard from '../components/ThemeCard'
 import './SettingsPage.css'
 
-// Site Identity is saved through the API (GOV-04, SiteIdentityCard). Account fields are
-// read-only: they come straight from the real logged-in session.
+// Everything here belongs to the active site (MSI-05). What belongs to the person — name, email, every site they
+// are in — is on the Account page, outside any site.
 
 function SettingsPage() {
-  const session = getSession()
+  const membership = getActiveMembership()
 
   return (
     <>
       <div className="settings-header">
-        <h1 className="settings-title">Settings</h1>
+        <h1 className="settings-title">Site settings</h1>
+        <p className="settings-account-note">
+          {membership?.siteName} · your role here: <span className="settings-role">{membership ? ROLE_LABELS[membership.role] : '—'}</span>
+          {' · '}
+          <Link to="/account">Your account</Link> has your name, email and every site you belong to.
+        </p>
       </div>
 
       <div className="settings-grid">
         <SiteIdentityCard />
 
-        <section className="settings-card">
-          <h2 className="settings-card-title">Your Account</h2>
-          <dl className="settings-account">
-            <div>
-              <dt>Name</dt>
-              <dd>{session?.user.name ?? '—'}</dd>
-            </div>
-            <div>
-              <dt>Email</dt>
-              <dd>{session?.user.email ?? '—'}</dd>
-            </div>
-            <div>
-              <dt>Role</dt>
-              <dd className="settings-role">{session?.memberships[0]?.role ?? '—'}</dd>
-            </div>
-          </dl>
-          <p className="settings-account-note">Editing account details isn't wired up yet.</p>
-        </section>
-
         <SiteAddressCard />
         <CustomDomainCard />
+        <ThemeCard />
       </div>
     </>
   )
@@ -59,8 +48,7 @@ type AddressStatus =
 // through the real API, which also enforces every rule shown here (D-031).
 // The old address stops working the moment this saves — no redirect.
 function SiteAddressCard() {
-  const session = getSession()
-  const canEdit = canManageSite(session?.memberships[0]?.role)
+  const canEdit = canManageSite(getActiveMembership()?.role)
   const [saved, setSaved] = useState(currentSubdomain() ?? '')
   const [draft, setDraft] = useState(saved)
   const [status, setStatus] = useState<AddressStatus>({ kind: 'idle' })

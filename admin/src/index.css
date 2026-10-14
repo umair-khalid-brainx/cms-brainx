@@ -7,7 +7,7 @@
   --muted: #6b7280;
 
   color-scheme: light dark;
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.6;
   color: var(--foreground);
   background-color: var(--background);
@@ -22,6 +22,107 @@
   --font-archivo-narrow: 'Archivo Narrow', ui-sans-serif, system-ui, sans-serif;
   --font-plex-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-plex-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+
+/*
+ * Admin design tokens (ADM-01). Named --ui-* so they never meet the tenant's --site-* variables (invariant 2).
+ * The palette entries are fixed values (teal accent, cool ink greys); each screen's CSS already pairs a light rule
+ * with a dark one, so the tokens name colours rather than switch by scheme. The semantic ones at the bottom switch.
+ */
+:root {
+  --ui-accent: #0f766e;
+  --ui-accent-strong: #115e59;
+  --ui-accent-soft: #5eead4;
+  --ui-accent-tint-text: #99f6e4;
+  --ui-accent-wash: #f0fdfa;
+  --ui-accent-wash-dark: #0f2a28;
+  --ui-ink: #14181f;
+  --ui-text-2: #46505c;
+  --ui-text-3: #5f6b7a;
+  --ui-text-2-dark: #aab3bf;
+  --ui-text-3-dark: #9aa5b3;
+  --ui-text-dark: #e8ecf1;
+  --ui-line: #dfe3e8;
+  --ui-line-soft: #e9edf1;
+  --ui-line-strong: #cdd3db;
+  --ui-input-border: #8b95a3;
+  --ui-surface: #f3f5f7;
+  --ui-surface-2: #f8f9fb;
+  --ui-line-dark: #232a33;
+  --ui-line-dark-strong: #333b47;
+  --ui-field-dark: #12161c;
+  --ui-panel-dark: #161b22;
+  --ui-panel-dark-2: #1b2129;
+  --ui-panel-dark-3: #1a2028;
+  --ui-canvas-dark: #0c0f13;
+  --ui-danger: #b42318;
+  --ui-danger-bright: #d92d20;
+  --ui-danger-soft: #f97066;
+
+  /* Status pairs (background, text): published, in review, scheduled. Switch with the scheme. */
+  --ui-ok-bg: #edfaef;
+  --ui-ok-fg: #00762c;
+  --ui-warn-bg: #fcf3dc;
+  --ui-warn-fg: #7a5300;
+  --ui-sched-bg: #efecfd;
+  --ui-sched-fg: #5333b8;
+  --ui-note-bg: #fcf3dc;
+  --ui-note-fg: #5c3f00;
+
+  --ui-font: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ui-font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --ui-radius-sm: 6px;
+  --ui-radius: 10px;
+  --ui-radius-lg: 14px;
+  --ui-shadow-sm: 0 1px 2px rgb(20 24 31 / 0.06);
+  --ui-shadow-md: 0 8px 24px rgb(20 24 31 / 0.12);
+  --ui-focus: 0 0 0 2px var(--ui-surface-2), 0 0 0 4px var(--ui-accent);
+  --ui-ease: 160ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* Semantic (switch with the scheme) */
+  --ui-bg: var(--ui-surface);
+  --ui-panel: #ffffff;
+  --ui-fg: var(--ui-ink);
+  --ui-border: var(--ui-line);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ui-bg: var(--ui-canvas-dark);
+    --ui-panel: var(--ui-panel-dark);
+    --ui-fg: var(--ui-text-dark);
+    --ui-border: var(--ui-line-dark);
+    --ui-ok-bg: #0a2e14;
+    --ui-ok-fg: #4fd67a;
+    --ui-warn-bg: #33270a;
+    --ui-warn-fg: #f0c33c;
+    --ui-sched-bg: #241a47;
+    --ui-sched-fg: #b8a6ff;
+    --ui-note-bg: #33270a;
+    --ui-note-fg: #f0c33c;
+    --ui-focus: 0 0 0 2px var(--ui-canvas-dark), 0 0 0 4px var(--ui-accent-soft);
+  }
+}
+
+/* One visible keyboard ring for every control; the screens' own :focus-visible rules still win where they exist. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline-color: var(--ui-accent-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,4 +140,36 @@
 body {
   margin: 0;
   min-height: 100vh;
+}
+
+/* ---- tenant textures ---------------------------------------------------- */
+/* The same two textures `web` paints (web/src/app/globals.css), so the Settings theme preview shows them too.
+   Painted between the site's background and its content, never over it. */
+
+.site-texture-grain,
+.site-texture-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+.site-texture-grain::before,
+.site-texture-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.site-texture-grain::before {
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+.site-texture-grid::before {
+  opacity: 0.36;
+  background-image:
+    repeating-linear-gradient(to right, var(--site-line) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(to bottom, var(--site-line) 0 1px, transparent 1px 88px);
 }

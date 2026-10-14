@@ -42,6 +42,8 @@ export type PageSummary = {
   submittedById: string | null;
   submittedAt: string | null;
   reviewedAt: string | null;
+  /** When it was last saved; empty if the API did not say. */
+  updatedAt: string;
   /** An entry's categories and tags, of the kinds its type uses (TAX-01); empty for pages. */
   categories: TermRef[];
   tags: TermRef[];
@@ -63,8 +65,6 @@ export type Page = PageSummary & {
   data: Data<EditorComponents>;
   /** The content type this is an entry of; null for an ordinary page (TYP-01). */
   typeId: string | null;
-  /** When it was last saved, as loaded: a reviewer approves exactly this version (GOV-07). */
-  updatedAt: string;
   /** Who submitted, reviewed and scheduled it, by name, for the editor's banners (GOV-07). */
   submittedBy: Person | null;
   reviewedBy: Person | null;
@@ -196,6 +196,7 @@ function toSummary(record: ContentRecord): PageSummary {
     submittedById: record.submittedById ?? null,
     submittedAt: record.submittedAt ?? null,
     reviewedAt: record.reviewedAt ?? null,
+    updatedAt: record.updatedAt ?? '',
     categories: record.categories ?? [],
     tags: record.tags ?? [],
   };
@@ -238,7 +239,6 @@ function toPage(record: ContentRecord): Page {
     ...toSummary(record),
     data: blocksToPuckData(record.blocks, record.data),
     typeId: record.typeId,
-    updatedAt: record.updatedAt,
     submittedBy: record.submittedBy ?? null,
     reviewedBy: record.reviewedBy ?? null,
     scheduledBy: record.scheduledBy ?? null,

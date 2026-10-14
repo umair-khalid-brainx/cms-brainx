@@ -1,6 +1,6 @@
 .file-tile {
-  --tile-ink: #50575e;
-  --tile-wash: #f0f0f1;
+  --tile-ink: var(--ui-text-2);
+  --tile-wash: var(--ui-surface);
   position: absolute;
   inset: 0;
   display: flex;
@@ -11,18 +11,18 @@
 }
 
 .file-tile--pdf {
-  --tile-ink: #b32d2e;
-  --tile-wash: #fcf0f1;
+  --tile-ink: var(--ui-danger);
+  --tile-wash: var(--ui-danger-wash);
 }
 
 .file-tile--word {
-  --tile-ink: #135e96;
-  --tile-wash: #f0f6fc;
+  --tile-ink: var(--ui-accent-strong);
+  --tile-wash: var(--ui-accent-wash);
 }
 
 .file-tile--excel {
-  --tile-ink: #1a7a3a;
-  --tile-wash: #edf7ef;
+  --tile-ink: var(--ui-success);
+  --tile-wash: var(--ui-success-wash);
 }
 
 .file-tile-page {
@@ -50,7 +50,7 @@
   position: relative;
   inset: auto;
   height: 180px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius);
 }
 
 .file-tile--large .file-tile-page {
@@ -63,26 +63,26 @@
 
 @media (prefers-color-scheme: dark) {
   .file-tile {
-    --tile-ink: #b0b0b0;
-    --tile-wash: #2c3338;
+    --tile-ink: var(--ui-text-2-dark);
+    --tile-wash: var(--ui-line-dark);
   }
 
   .file-tile--pdf {
-    --tile-ink: #f28b82;
-    --tile-wash: #2b1d1e;
+    --tile-ink: var(--ui-danger-soft);
+    --tile-wash: var(--ui-danger-wash-dark);
   }
 
   .file-tile--word {
-    --tile-ink: #72aee6;
-    --tile-wash: #17232e;
+    --tile-ink: var(--ui-accent-soft);
+    --tile-wash: var(--ui-accent-wash-dark);
   }
 
   .file-tile--excel {
-    --tile-ink: #7bd88f;
-    --tile-wash: #172619;
+    --tile-ink: var(--ui-success-bright);
+    --tile-wash: var(--ui-success-wash-dark);
   }
 
   .file-tile-page {
-    fill: #1f2023;
+    fill: var(--ui-panel-dark-3);
   }
 }

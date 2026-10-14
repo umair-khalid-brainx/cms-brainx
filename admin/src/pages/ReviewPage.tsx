@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { getActiveMembership } from '../lib/activeSite'
+import { Link } from '../lib/siteRouter';
 import { listReviewQueue, type ReviewItem } from '../lib/contentApi';
-import { getSession } from '../lib/auth';
 import { canReviewContent } from '../lib/roles';
 import { waitingFor } from '../lib/workflow';
 import './PagesListPage.css';
@@ -15,7 +15,7 @@ type LoadState = { status: 'loading' } | { status: 'error'; message: string } | 
  */
 function ReviewPage() {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
-  const canReview = canReviewContent(getSession()?.memberships[0]?.role);
+  const canReview = canReviewContent(getActiveMembership()?.role);
 
   useEffect(() => {
     if (!canReview) return;

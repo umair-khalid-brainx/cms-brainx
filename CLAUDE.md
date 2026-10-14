@@ -151,6 +151,12 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
 - **Dev servers for a worktree:** run them with `npm --prefix <app> run dev`. `npx --prefix admin vite`
   runs from the repo root and serves a blank page.
 
+- **The site a request acts on is the `X-Site-Id` header** (D-070). Admin sends it on every call; `UserRepository.findActiveMembership`
+  resolves it (no header: the caller's oldest membership; not a member: 403). A new service must call that, never
+  `memberships[0]`. Admin screens live under `/sites/:siteId/...`; write in-site links as `/pages` and import `Link`,
+  `NavLink`, `Navigate` and `useNavigate` from `src/lib/siteRouter`, not `react-router`, or the site is lost from the address.
+- **Only someone who owns a site can create another** (`POST /sites`, D-070); there is no approval flow (B-42).
+
 - **`api` needs `PUBLIC_ROOT_DOMAIN` too** (D-066), the same value as `web`'s. It refuses a custom domain on the
   platform's own root; in production, unset or empty, every custom domain is refused (503) rather than letting a
   tenant claim `api.<root>`. Custom domains are stored as Pending only: nothing serves a site on one yet.

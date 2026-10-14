@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { getActiveMembership } from '../lib/activeSite'
 import { ApiError } from '../lib/api'
-import { getSession, subscribeSession } from '../lib/auth'
+import { subscribeSession } from '../lib/auth'
 import { canManageSite } from '../lib/roles'
 import { getSiteDetails, removeCustomDomain, setCustomDomain, type SiteDetails } from '../lib/siteApi'
 import { dnsRecords, hostOf, isApexDomain } from '../lib/domains'
@@ -15,7 +16,7 @@ type Load = { status: 'loading' } | { status: 'error'; message: string } | { sta
  */
 function CustomDomainCard() {
   const id = useId()
-  const canEdit = canManageSite(getSession()?.memberships[0]?.role)
+  const canEdit = canManageSite(getActiveMembership()?.role)
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)

@@ -17,22 +17,22 @@
   font: inherit;
   font-size: 14px;
   padding: 12px 15px;
-  border: 1px solid #dcdcdc;
-  border-radius: 4px;
-  background: #fff;
-  color: #000;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
+  color: var(--ui-ink);
   box-sizing: border-box;
 }
 
 .image-upload-input:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: -1px;
-  border-color: #2271b1;
+  border-color: var(--ui-accent);
 }
 
 .image-upload-input:disabled {
-  background: #f0f0f1;
-  color: #6b7280;
+  background: var(--ui-surface);
+  color: var(--ui-text-3);
 }
 
 /* Two equal-weight actions — Upload and Browse — on their own row below the
@@ -50,22 +50,22 @@
   font-size: 13px;
   font-weight: 600;
   padding: 0.6rem 0.9rem;
-  border: 1px solid #dcdcdc;
-  border-radius: 4px;
-  background: #f0f0f1;
-  color: #1e1e1e;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .image-upload-button:hover:not(:disabled) {
-  border-color: #2271b1;
-  color: #2271b1;
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
 }
 
 .image-upload-button:disabled {
-  background: #f0f0f1;
-  color: #9ca3af;
+  background: var(--ui-surface);
+  color: var(--ui-text-3-dark);
   cursor: default;
 }
 
@@ -76,5 +76,5 @@
 .image-upload-error {
   margin: 0;
   font-size: 0.75rem;
-  color: #cc1818;
+  color: var(--ui-danger);
 }

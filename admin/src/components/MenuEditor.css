@@ -4,7 +4,7 @@
   max-width: 62ch;
   margin: 0 0 1rem;
   font-size: 0.8125rem;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .menu-sr-only {
@@ -34,9 +34,9 @@
 }
 
 .menu-list--children {
-  margin: 0.5rem 0 0 1.75rem;
+  margin: 0.5rem 0 0 0.75rem;
   padding-left: 1rem;
-  border-left: 2px solid #dcdcde;
+  border-left: 2px solid var(--ui-line);
 }
 
 .menu-row {
@@ -45,9 +45,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.6rem;
-  background: #fff;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius);
 }
 
 .menu-row--dragging {
@@ -56,17 +56,17 @@
 
 /* Where a dragged item will land: a line before or after, or the whole row for "inside". */
 .menu-row--drop-before {
-  box-shadow: 0 -3px 0 0 #2271b1;
+  box-shadow: 0 -3px 0 0 var(--ui-accent);
 }
 
 .menu-row--drop-after {
-  box-shadow: 0 3px 0 0 #2271b1;
+  box-shadow: 0 3px 0 0 var(--ui-accent);
 }
 
 .menu-row--drop-inside {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 1px;
-  background: #f0f6fc;
+  background: var(--ui-accent-wash);
 }
 
 .menu-handle {
@@ -76,16 +76,16 @@
   width: 2rem;
   height: 2.75rem;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   background: none;
-  color: #787c82;
+  color: var(--ui-text-3);
   cursor: grab;
   user-select: none;
 }
 
 .menu-handle:hover {
-  color: #1e1e1e;
-  background: #f0f0f1;
+  color: var(--ui-ink);
+  background: var(--ui-surface);
 }
 
 .menu-handle:active {
@@ -102,26 +102,26 @@
   min-height: 2.25rem;
   padding: 0.3rem 0.5rem;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
-  color: #1e1e1e;
+  color: var(--ui-ink);
   font: inherit;
   font-size: 0.9375rem;
   font-weight: 600;
 }
 
 .menu-label:hover:not(:disabled) {
-  border-color: #c3c4c7;
+  border-color: var(--ui-line-strong);
 }
 
 .menu-label:disabled {
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .menu-meta {
   margin: 0.1rem 0 0 0.5rem;
   font-size: 0.75rem;
-  color: #50575e;
+  color: var(--ui-text-2);
   overflow-wrap: anywhere;
 }
 
@@ -130,15 +130,15 @@
   margin-right: 0.25rem;
   padding: 0 0.4rem;
   border-radius: 999px;
-  background: #f0f0f1;
-  color: #3c434a;
+  background: var(--ui-surface);
+  color: var(--ui-line-dark-strong);
   font-size: 0.6875rem;
   font-weight: 600;
 }
 
 .menu-path {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .menu-badge {
@@ -146,15 +146,15 @@
   margin-left: 0.4rem;
   padding: 0 0.45rem;
   border-radius: 999px;
-  background: #fcf9e8;
-  color: #6b4e00;
+  background: var(--ui-warn-wash);
+  color: var(--ui-warn-ink);
   font-size: 0.6875rem;
   font-weight: 600;
 }
 
 .menu-badge--info {
-  background: #f0f6fc;
-  color: #135e96;
+  background: var(--ui-accent-wash);
+  color: var(--ui-accent-strong);
 }
 
 .menu-tools {
@@ -169,20 +169,20 @@
   width: 2.75rem;
   height: 2.75rem;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   background: none;
-  color: #3c434a;
+  color: var(--ui-line-dark-strong);
   cursor: pointer;
 }
 
 .menu-tool:hover:not(:disabled) {
-  background: #f0f0f1;
-  color: #1e1e1e;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
 }
 
 .menu-tool--danger:hover:not(:disabled) {
-  background: #fcf0f1;
-  color: #b32d2e;
+  background: var(--ui-danger-wash);
+  color: var(--ui-danger);
 }
 
 .menu-tool:disabled {
@@ -196,7 +196,7 @@
 .menu-add-block input:focus-visible,
 .menu-quiet:focus-visible,
 .menu-save:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
@@ -204,15 +204,15 @@
 .menu-count {
   margin: 0.75rem 0 0;
   font-size: 0.8125rem;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .menu-empty {
   padding: 1.5rem;
   text-align: center;
-  background: #fff;
-  border: 1px dashed #949494;
-  border-radius: 4px;
+  background: var(--ui-panel);
+  border: 1px dashed var(--ui-input-border);
+  border-radius: var(--ui-radius-sm);
 }
 
 .menu-add {
@@ -225,9 +225,9 @@
 
 .menu-add-block {
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius);
   font-size: 0.8125rem;
 }
 
@@ -247,16 +247,16 @@
   width: 100%;
   min-height: 2.5rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #8c8f94;
-  border-radius: 4px;
-  background: #fff;
-  color: #1e1e1e;
+  border: 1px solid var(--ui-input-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
+  color: var(--ui-ink);
   font: inherit;
   font-size: 0.875rem;
 }
 
 .menu-add-block input[aria-invalid='true'] {
-  border-color: #b32d2e;
+  border-color: var(--ui-danger);
 }
 
 .menu-pick {
@@ -271,7 +271,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.35rem 0;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--ui-line-soft);
 }
 
 .menu-pick li:first-child {
@@ -287,10 +287,10 @@
   flex: none;
   min-height: 2.25rem;
   padding: 0 0.8rem;
-  border: 1px solid #2271b1;
-  border-radius: 4px;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-sm);
   background: transparent;
-  color: #2271b1;
+  color: var(--ui-accent);
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -298,7 +298,7 @@
 }
 
 .menu-quiet:hover:not(:disabled) {
-  background: #f0f6fc;
+  background: var(--ui-accent-wash);
 }
 
 .menu-quiet:disabled {
@@ -317,15 +317,15 @@
   gap: 0.75rem;
   margin-top: 1.25rem;
   padding-top: 1rem;
-  border-top: 1px solid #dcdcde;
+  border-top: 1px solid var(--ui-line);
 }
 
 .menu-save {
   min-height: 2.5rem;
   padding: 0 1.1rem;
   border: none;
-  border-radius: 4px;
-  background: #2271b1;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-accent);
   color: #fff;
   font: inherit;
   font-size: 0.8125rem;
@@ -334,30 +334,31 @@
 }
 
 .menu-save:hover:not(:disabled) {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .menu-save:disabled {
-  background: #a7aaad;
+  background: var(--ui-accent);
+  opacity: 0.5;
   cursor: default;
 }
 
 .menu-unsaved {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #6b4e00;
+  color: var(--ui-warn-ink);
 }
 
 .menu-saved {
   font-size: 0.8125rem;
-  color: #00762c;
+  color: var(--ui-success);
 }
 
 .menu-error {
   margin: 0.6rem 0 0;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #b32d2e;
+  color: var(--ui-danger);
 }
 
 .menu-error-list {
@@ -401,123 +402,118 @@
   .menu-empty,
   .menu-count,
   .menu-label:disabled {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 
   .menu-list--children {
-    border-left-color: #3c434a;
+    border-left-color: var(--ui-line-dark-strong);
   }
 
   .menu-row,
   .menu-add-block,
   .menu-empty {
-    background: #18191b;
-    border-color: #3c434a;
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .menu-row--drop-before {
-    box-shadow: 0 -3px 0 0 #6ab6f2;
+    box-shadow: 0 -3px 0 0 var(--ui-accent-soft);
   }
 
   .menu-row--drop-after {
-    box-shadow: 0 3px 0 0 #6ab6f2;
+    box-shadow: 0 3px 0 0 var(--ui-accent-soft);
   }
 
   .menu-row--drop-inside {
-    outline-color: #6ab6f2;
-    background: #101b26;
+    outline-color: var(--ui-accent-soft);
+    background: var(--ui-accent-wash-dark);
   }
 
   .menu-handle,
   .menu-tool {
-    color: #c3c4c7;
+    color: var(--ui-line-strong);
   }
 
   .menu-handle:hover,
   .menu-tool:hover:not(:disabled) {
-    background: #2c3338;
-    color: #ededed;
+    background: var(--ui-line-dark);
+    color: var(--ui-text-dark);
   }
 
   .menu-tool--danger:hover:not(:disabled) {
-    background: #3a1d1f;
-    color: #f86368;
+    background: var(--ui-danger-wash-dark);
+    color: var(--ui-danger-soft);
   }
 
   .menu-label {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .menu-label:hover:not(:disabled) {
-    border-color: #646970;
+    border-color: var(--ui-text-2);
   }
 
   .menu-kind {
-    background: #2c3338;
-    color: #d4d4d4;
+    background: var(--ui-line-dark);
+    color: var(--ui-line);
   }
 
   .menu-badge {
-    background: #3a3214;
-    color: #f0c36d;
+    background: var(--ui-warn-wash-dark);
+    color: var(--ui-warn-bright);
   }
 
   .menu-badge--info {
-    background: #1d3a52;
-    color: #9ec2e6;
+    background: var(--ui-accent-wash-dark);
+    color: var(--ui-accent-tint-text);
   }
 
   .menu-add-block input {
-    background: #1d2327;
-    border-color: #646970;
-    color: #ededed;
+    background: var(--ui-ink);
+    border-color: var(--ui-text-2);
+    color: var(--ui-text-dark);
   }
 
   .menu-add-block input[aria-invalid='true'] {
-    border-color: #f86368;
+    border-color: var(--ui-danger-soft);
   }
 
   .menu-pick li {
-    border-top-color: #2c3338;
+    border-top-color: var(--ui-line-dark);
   }
 
   .menu-quiet {
-    color: #72aee6;
-    border-color: #72aee6;
+    color: var(--ui-accent-soft);
+    border-color: var(--ui-accent-soft);
   }
 
   .menu-quiet:hover:not(:disabled) {
-    background: #101b26;
+    background: var(--ui-accent-wash-dark);
   }
 
   .menu-savebar {
-    border-top-color: #3c434a;
+    border-top-color: var(--ui-line-dark-strong);
   }
 
   .menu-save {
-    background: #72aee6;
-    color: #1d2327;
+    background: var(--ui-accent-soft);
+    color: var(--ui-ink);
   }
 
   .menu-save:hover:not(:disabled) {
-    background: #9ec2e6;
-  }
-
-  .menu-save:disabled {
-    background: #3c434a;
-    color: #8c8f94;
+    background: var(--ui-accent-tint-text);
   }
 
   .menu-unsaved {
-    color: #f0c36d;
+    color: var(--ui-warn-bright);
   }
 
   .menu-saved {
-    color: #4fd67a;
+    color: var(--ui-success-bright);
   }
 
   .menu-error {
-    color: #f86368;
+    color: var(--ui-danger-soft);
   }
 
   .menu-label:focus-visible,
@@ -526,6 +522,6 @@
   .menu-add-block input:focus-visible,
   .menu-quiet:focus-visible,
   .menu-save:focus-visible {
-    outline-color: #6ab6f2;
+    outline-color: var(--ui-accent-soft);
   }
 }

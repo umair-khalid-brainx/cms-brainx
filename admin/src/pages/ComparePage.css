@@ -13,13 +13,13 @@
   align-items: center;
   gap: 1rem;
   padding: 0.6rem 1rem;
-  background: #1d2327;
-  color: #f0f0f1;
+  background: var(--ui-ink);
+  color: var(--ui-surface);
   font-size: 0.8125rem;
 }
 
 .compare-back {
-  color: #c3c4c7;
+  color: var(--ui-line-strong);
   font-weight: 500;
   text-decoration: none;
 }
@@ -29,7 +29,7 @@
 }
 
 .compare-back:focus-visible {
-  outline: 2px solid #72aee6;
+  outline: 2px solid var(--ui-accent-soft);
   outline-offset: 2px;
 }
 
@@ -44,7 +44,7 @@
 
 .compare-site {
   margin-left: auto;
-  color: #a7aaad;
+  color: var(--ui-text-2-dark);
   white-space: nowrap;
 }
 

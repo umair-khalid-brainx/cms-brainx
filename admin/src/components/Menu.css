@@ -1,0 +1,169 @@
+/* Menu and the Select popup share this look (ADM-03). */
+
+.ui-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
+  color: var(--ui-fg);
+  cursor: pointer;
+  padding: 0.3rem 0.7rem;
+  transition: background-color var(--ui-ease), border-color var(--ui-ease);
+}
+
+.ui-menu-trigger.is-icon {
+  width: 36px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ui-text-2);
+}
+
+.ui-menu-trigger.is-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ui-menu-trigger:hover:not(:disabled),
+.ui-menu-trigger[aria-expanded='true'] {
+  background: var(--ui-surface);
+  border-color: var(--ui-line-strong);
+}
+
+.ui-menu-trigger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ui-menu {
+  z-index: 60;
+  box-sizing: border-box;
+  min-width: 11rem;
+  overflow-y: auto;
+  padding: 0.3rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-md);
+  font-family: var(--ui-font);
+  animation: ui-menu-in 120ms ease-out;
+}
+
+@keyframes ui-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.ui-menu.is-up {
+  animation-name: ui-menu-in-up;
+}
+
+@keyframes ui-menu-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.ui-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 36px;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0.4rem 0.65rem;
+  border: none;
+  border-radius: var(--ui-radius-sm);
+  background: none;
+  color: var(--ui-fg);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ui-menu-item:hover,
+.ui-menu-item:focus-visible {
+  background: var(--ui-surface);
+  outline: none;
+}
+
+.ui-menu-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
+}
+
+.ui-menu-item.is-danger {
+  color: var(--ui-danger);
+}
+
+.ui-menu-item.is-danger:hover,
+.ui-menu-item.is-danger:focus-visible {
+  background: color-mix(in srgb, var(--ui-danger) 10%, transparent);
+}
+
+.ui-menu-item.is-disabled {
+  color: var(--ui-text-3);
+  cursor: not-allowed;
+}
+
+.ui-menu-item.is-disabled:hover {
+  background: none;
+}
+
+.ui-menu-reason {
+  font-size: 0.75rem;
+  color: var(--ui-text-3);
+}
+
+.ui-menu-separator {
+  height: 1px;
+  margin: 0.3rem -0.3rem;
+  background: var(--ui-line);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ui-menu-trigger.is-icon {
+    color: var(--ui-text-2-dark);
+  }
+
+  .ui-menu-trigger:hover:not(:disabled),
+  .ui-menu-trigger[aria-expanded='true'],
+  .ui-menu-item:hover,
+  .ui-menu-item:focus-visible {
+    background: var(--ui-panel-dark-2);
+    border-color: var(--ui-line-dark-strong);
+  }
+
+  .ui-menu {
+    border-color: var(--ui-line-dark-strong);
+  }
+
+  .ui-menu-separator {
+    background: var(--ui-line-dark-strong);
+  }
+
+  .ui-menu-item.is-danger {
+    color: var(--ui-danger-soft);
+  }
+
+  .ui-menu-item.is-disabled,
+  .ui-menu-reason {
+    color: var(--ui-text-3-dark);
+  }
+
+  .ui-menu-item:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--ui-accent-soft);
+  }
+}

@@ -1,3 +1,4 @@
+import { withActive } from '../users/test-support.js';
 import {
   BadRequestException,
   ConflictException,
@@ -6,7 +7,6 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
-import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
 import type { StarterLayoutRepository } from '../starter-layouts/starter-layout.repository.js';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
@@ -147,21 +147,21 @@ function fakeContent(
   const revisionKit = fakeRevisionRepository();
   const service = new ContentService(
     content as unknown as ContentRepository,
-    users as unknown as UserRepository,
+    withActive(users),
     previewLinks as PreviewLinkRepository,
     revalidation as unknown as RevalidationService,
     types as unknown as ContentTypeRepository,
     layouts as unknown as StarterLayoutRepository,
     redirects as unknown as RedirectsService,
     menus as unknown as MenuRepository,
-    new TermsService(termKit.repo, users as unknown as UserRepository, revalidation as unknown as RevalidationService),
+    new TermsService(termKit.repo, withActive(users), revalidation as unknown as RevalidationService),
     // The real service over an in-memory table: every save below records its revision the way production does.
     new RevisionsService(
       revisionKit.repo,
       content as unknown as ContentRepository,
       termKit.repo as unknown as TermRepository,
       types as unknown as ContentTypeRepository,
-      users as unknown as UserRepository,
+      withActive(users),
       revalidation as unknown as RevalidationService,
     ),
   );

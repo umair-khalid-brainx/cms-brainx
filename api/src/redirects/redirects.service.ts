@@ -116,7 +116,7 @@ export class RedirectsService {
   }
 
   private async resolveMembership(userId: string) {
-    const membership = (await this.users.findByIdWithMemberships(userId))?.memberships[0];
+    const membership = await this.users.findActiveMembership(userId);
     if (!membership) throw new ForbiddenException('No site membership');
     return membership;
   }

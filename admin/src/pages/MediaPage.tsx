@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import {
   deleteMedia,
   formatBadge,
@@ -15,7 +16,6 @@ import {
 } from '../lib/mediaApi';
 import { FileTile } from '../components/FileTile';
 import { MediaDetailsForm } from '../components/MediaDetailsForm';
-import { getSession } from '../lib/auth';
 import { canArchiveContent, canWriteContent } from '../lib/roles';
 import './MediaPage.css';
 
@@ -32,7 +32,7 @@ type UsageState = { status: 'loading' } | { status: 'error' } | { status: 'ready
 function MediaPage() {
   // Affordance only (admin/CLAUDE.md invariant 3): a Viewer browses without Upload, Replace or Delete (GOV-07),
   // and Delete follows the API's content:delete.
-  const role = getSession()?.memberships[0]?.role;
+  const role = getActiveMembership()?.role;
   const canWrite = canWriteContent(role);
   const canDelete = canArchiveContent(role);
   const [items, setItems] = useState<MediaItem[]>([]);

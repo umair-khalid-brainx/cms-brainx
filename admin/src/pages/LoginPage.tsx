@@ -19,7 +19,7 @@ function LoginPage() {
     try {
       const session = await apiPost<Session>('/auth/login', { email: identifier, password })
       setSession(session)
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not reach the server. Try again.')
     } finally {

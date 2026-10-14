@@ -4,3 +4,6 @@
 .vscode/*
 !.vscode/extensions.json
 node_modules/
+
+# The code-review hook rewrites this on every commit; finished reviews are kept in .code-reviews/records/
+.code-reviews/brainx-review.md

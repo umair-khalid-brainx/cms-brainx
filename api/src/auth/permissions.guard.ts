@@ -10,10 +10,9 @@ import type { AuthenticatedRequest } from './jwt-auth.guard.js';
  * PermissionsGuard)) — request.user is already populated.
  *
  * siteId resolution: a route with a `:siteId` param (team/invite routes) uses
- * it directly. A route without one (content routes) falls back to the
- * caller's first site membership — the same simplification
- * ContentService.resolveSiteId already makes; see DECISIONS.md D-020/D-023
- * for why that's accepted for now and where it stops being accepted.
+ * it directly. A route without one (content routes) uses the
+ * site named by the `X-Site-Id` header, else the caller's first membership
+ * (same rule as every service: UserRepository.findActiveMembership, MSI-01).
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -53,7 +52,6 @@ export class PermissionsGuard implements CanActivate {
     const paramSiteId = request.params.siteId;
     if (typeof paramSiteId === 'string') return paramSiteId;
 
-    const user = await this.users.findByIdWithMemberships(request.user.sub);
-    return user?.memberships[0]?.siteId;
+    return (await this.users.findActiveMembership(request.user.sub))?.siteId;
   }
 }

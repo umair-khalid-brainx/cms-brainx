@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { getActiveMembership } from '../lib/activeSite'
+import { Link } from '../lib/siteRouter'
 import { ContentTypeForm } from '../components/ContentTypeForm'
 import { useContentTypes } from '../lib/contentTypesContext'
-import { getSession } from '../lib/auth'
 import { canManageSite } from '../lib/roles'
 import { deleteContentType, type ContentType } from '../lib/typesApi'
 import './PagesListPage.css'
@@ -13,7 +13,7 @@ import './TypesPage.css'
 function TypesPage() {
   const { state, types, refresh } = useContentTypes()
   // Affordance only: the API refuses everyone but owners and administrators.
-  const canManage = canManageSite(getSession()?.memberships[0]?.role)
+  const canManage = canManageSite(getActiveMembership()?.role)
   const [editing, setEditing] = useState<ContentType | 'new' | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link } from '../lib/siteRouter';
 import { formatDateTime, listSubmissions, type SubmissionSummary } from '../lib/submissionsApi';
 import './SubmissionsPage.css';
 

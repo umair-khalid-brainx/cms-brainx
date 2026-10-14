@@ -10,22 +10,22 @@
   margin: 0;
   font-size: 1.375rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .submissions-count,
 .submissions-muted {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .submissions-error {
   font-size: 0.8125rem;
-  color: #c0392b;
+  color: var(--ui-danger);
 }
 
 .submissions-path {
-  color: #6b7280;
+  color: var(--ui-text-3);
   font-family: ui-monospace, monospace;
 }
 
@@ -33,7 +33,7 @@
   display: inline-block;
   margin: 0 0 1rem;
   font-size: 0.8125rem;
-  color: #2271b1;
+  color: var(--ui-accent);
   text-decoration: none;
 }
 
@@ -44,23 +44,23 @@
 .submissions-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
-  border: 1px solid #c3c4c7;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-strong);
   font-size: 0.8125rem;
 }
 
 .submissions-table th {
   text-align: left;
   padding: 0.6rem 1rem;
-  border-bottom: 1px solid #c3c4c7;
+  border-bottom: 1px solid var(--ui-line-strong);
   font-weight: 600;
-  color: #3c434a;
-  background: #f6f7f7;
+  color: var(--ui-line-dark-strong);
+  background: var(--ui-surface-2);
 }
 
 .submissions-table td {
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-line-soft);
   vertical-align: top;
 }
 
@@ -69,30 +69,30 @@
 }
 
 .submissions-row-link {
-  color: #1e1e1e;
+  color: var(--ui-ink);
   font-weight: 600;
   text-decoration: none;
 }
 
 .submissions-row-link:hover {
-  color: #2271b1;
+  color: var(--ui-accent);
   text-decoration: underline;
 }
 
 .submissions-row-preview {
-  color: #3c434a;
+  color: var(--ui-line-dark-strong);
 }
 
 .submission-answers {
   margin: 0;
-  background: #fff;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-sm);
 }
 
 .submission-answer {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-line-soft);
 }
 
 .submission-answer:last-child {
@@ -103,7 +103,7 @@
   margin: 0 0 0.3rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--ui-text-3);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -111,7 +111,7 @@
 .submission-answer dd {
   margin: 0;
   font-size: 0.875rem;
-  color: #1e1e1e;
+  color: var(--ui-ink);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -124,10 +124,10 @@
 }
 
 .submissions-more-button {
-  border: 1px solid #2271b1;
-  border-radius: 4px;
-  background: #fff;
-  color: #2271b1;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
+  color: var(--ui-accent);
   padding: 0.35rem 0.85rem;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -136,7 +136,7 @@
 }
 
 .submissions-more-button:hover {
-  background: #f0f6fc;
+  background: var(--ui-accent-wash);
 }
 
 .submissions-more-button:disabled {
@@ -147,42 +147,42 @@
 @media (prefers-color-scheme: dark) {
   .submissions-more-button {
     background: transparent;
-    border-color: #6ab6f2;
-    color: #6ab6f2;
+    border-color: var(--ui-accent-soft);
+    color: var(--ui-accent-soft);
   }
 
   .submissions-more-button:hover {
-    background: #1a2733;
+    background: var(--ui-accent-wash-dark);
   }
 
   .submissions-title,
   .submissions-row-link,
   .submission-answer dd {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .submissions-table,
   .submission-answers {
-    background: #18191b;
-    border-color: #3c434a;
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .submissions-table th {
-    background: #1a1a1a;
-    color: #b0b0b0;
-    border-bottom-color: #3c434a;
+    background: var(--ui-field-dark);
+    color: var(--ui-text-2-dark);
+    border-bottom-color: var(--ui-line-dark-strong);
   }
 
   .submissions-table td,
   .submission-answer {
-    border-bottom-color: #2c3338;
+    border-bottom-color: var(--ui-line-dark);
   }
 
   .submissions-row-preview {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 
   .submissions-back {
-    color: #6ab6f2;
+    color: var(--ui-accent-soft);
   }
 }

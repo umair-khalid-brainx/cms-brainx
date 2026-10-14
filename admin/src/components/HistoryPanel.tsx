@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link } from '../lib/siteRouter';
 import type { PageStatus } from '../lib/contentApi';
 import {
   authorName,

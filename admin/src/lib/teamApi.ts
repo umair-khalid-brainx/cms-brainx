@@ -1,11 +1,9 @@
 import { apiDelete, apiGetPublic, apiPost, apiSend, apiGet } from './api';
+import { getActiveMembership } from './activeSite'
 import { getSession, type Session } from './auth';
 import type { Role } from './roles';
 
-// Team/invite management always uses the caller's first membership's siteId
-// — same simplification the rest of admin already makes (AdminLayout reads
-// session.memberships[0] too), not a new kind of shortcut. There's no real
-// "active site" concept yet (no site switcher), see DECISIONS.md D-023.
+// Team/invite management acts on the active site (the one in the address, D-070).
 
 export type Member = {
   id: string;
@@ -33,7 +31,7 @@ export type CreatedInvite = Invite & { token: string; acceptUrl: string };
 export type InvitePreview = { email: string; role: Role; siteName: string; existingAccount: boolean };
 
 function requireSiteId(): string {
-  const siteId = getSession()?.memberships[0]?.siteId;
+  const siteId = getActiveMembership()?.siteId;
   if (!siteId) throw new Error('Not authenticated');
   return siteId;
 }

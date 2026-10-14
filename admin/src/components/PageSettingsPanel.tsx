@@ -1,14 +1,27 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import { ApiError } from '../lib/api';
-import { getSession } from '../lib/auth';
 import { FieldValuesError, listArchivedPages, listPages, updatePageSettings, type PageSummary } from '../lib/contentApi';
 import { hasLiveBelow, parentChoices } from '../lib/pageTree';
+import { collapseToOne, toggleSection, type SectionId } from '../lib/settingsSections';
+import Select from './Select';
+import SettingsSection from './SettingsSection';
 import PageSeoSection from './PageSeoSection';
 import PageTermsSection from './PageTermsSection';
 import { canPublishContent } from '../lib/roles';
 import { normaliseSlug, parentPath } from '../lib/slug';
 import { siteUrl } from '../data/site';
 import './PageSettingsPanel.css';
+
+const NARROW = '(max-width: 30rem)';
+
+const STATUS_WORDS: Record<string, string> = {
+  draft: 'Draft',
+  in_review: 'In review',
+  scheduled: 'Scheduled',
+  published: 'Published',
+  archived: 'Archived',
+};
 
 type Props = {
   open: boolean;
@@ -65,6 +78,29 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
     };
   }, [open, isEntry, page.id, treeVersion]);
 
+  // Which groups are open, and which hold an unsaved edit. One group at a time on a phone-width screen.
+  const [openSections, setOpenSections] = useState<SectionId[]>(['general', 'url']);
+  const [single, setSingle] = useState(() => window.matchMedia(NARROW).matches);
+  const [dirty, setDirty] = useState<Record<string, boolean>>({});
+  // Stable setters, one per field, so a field's effect doesn't re-run on every render of the panel.
+  const dirtyFor = useMemo(() => {
+    const make = (key: string) => (value: boolean) => setDirty((current) => (current[key] === value ? current : { ...current, [key]: value }));
+    return { title: make('title'), address: make('address'), parent: make('parent'), seo: make('seo'), terms: make('terms') };
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia(NARROW);
+    const update = () => {
+      setSingle(query.matches);
+      if (query.matches) setOpenSections(collapseToOne);
+    };
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  const toggle = (id: SectionId) => setOpenSections((current) => toggleSection(current, id, single));
+
   const liveBelow = tree !== null && hasLiveBelow(tree, page.id);
 
   useEffect(() => {
@@ -74,6 +110,7 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
       setSession((current) => current + 1);
       setAddressSaved(false);
       setAnnouncement('');
+      setDirty({});
       dialog.showModal();
     }
     if (!open && dialog.open) dialog.close();
@@ -108,17 +145,32 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
         </p>
 
         <div className="page-settings-body">
-          <section className="page-settings-section" aria-labelledby="page-settings-general">
-            <h3 id="page-settings-general">General</h3>
+          <SettingsSection
+            title="General"
+            summary={page.title}
+            open={openSections.includes('general')}
+            onToggle={() => toggle('general')}
+            unsaved={!!dirty.title}
+          >
             {/* Keyed by slug and by open, so each field starts from what's saved. */}
             <TitleField
               key={`title-${session}-${page.slug}`}
               page={page}
+              onDirty={dirtyFor.title}
               onSaved={(saved) => {
                 setAnnouncement('Title saved. The address stays the same.');
                 onSaved(saved);
               }}
             />
+          </SettingsSection>
+
+          <SettingsSection
+            title="URL and hierarchy"
+            summary={page.path}
+            open={openSections.includes('url')}
+            onToggle={() => toggle('url')}
+            unsaved={!!dirty.address || !!dirty.parent}
+          >
             <AddressField
               key={`address-${session}-${page.slug}`}
               page={page}
@@ -126,6 +178,7 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
               flushPending={flushPending}
               justSaved={addressSaved}
               liveBelow={liveBelow}
+              onDirty={dirtyFor.address}
               onSaved={(saved) => {
                 setAddressSaved(true);
                 setTreeVersion((count) => count + 1);
@@ -141,6 +194,7 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
                 loadError={treeError}
                 liveBelow={liveBelow}
                 flushPending={flushPending}
+                onDirty={dirtyFor.parent}
                 onSaved={(saved) => {
                   setTreeVersion((count) => count + 1);
                   setAnnouncement(`Moved. The address is now ${siteUrl(saved.path)}.`);
@@ -148,27 +202,61 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
                 }}
               />
             )}
-          </section>
-
-          {isEntry && (hasCategories || hasTags) ? (
-            <PageTermsSection
-              key={`terms-${session}-${page.slug}`}
-              page={page}
-              hasCategories={hasCategories}
-              hasTags={hasTags}
-              announce={setAnnouncement}
-              onSaved={onSaved}
-            />
-          ) : null}
+          </SettingsSection>
 
           {/* Keyed like the fields above, so it starts from what's saved on every open and after a move. */}
-          <PageSeoSection
-            key={`seo-${session}-${page.slug}`}
-            page={page}
-            siteName={getSession()?.memberships[0]?.siteName ?? ''}
-            announce={setAnnouncement}
-            onSaved={onSaved}
-          />
+          <SettingsSection
+            title="SEO and sharing"
+            open={openSections.includes('seo')}
+            onToggle={() => toggle('seo')}
+            unsaved={!!dirty.seo}
+          >
+            <PageSeoSection
+              key={`seo-${session}-${page.slug}`}
+              page={page}
+              siteName={getActiveMembership()?.siteName ?? ''}
+              announce={setAnnouncement}
+              onDirty={dirtyFor.seo}
+              onSaved={onSaved}
+            />
+          </SettingsSection>
+
+          {isEntry && (hasCategories || hasTags) ? (
+            <SettingsSection
+              title={hasCategories && hasTags ? 'Categories and tags' : hasCategories ? 'Categories' : 'Tags'}
+              open={openSections.includes('terms')}
+              onToggle={() => toggle('terms')}
+              unsaved={!!dirty.terms}
+            >
+              <PageTermsSection
+                key={`terms-${session}-${page.slug}`}
+                page={page}
+                hasCategories={hasCategories}
+                hasTags={hasTags}
+                announce={setAnnouncement}
+                onDirty={dirtyFor.terms}
+                onSaved={onSaved}
+              />
+            </SettingsSection>
+          ) : null}
+
+          <SettingsSection
+            title="Publishing"
+            summary={STATUS_WORDS[page.status] ?? page.status}
+            open={openSections.includes('publishing')}
+            onToggle={() => toggle('publishing')}
+          >
+            <div className="page-settings-field">
+              <span className="page-settings-label">Status</span>
+              <p className="page-settings-status">
+                <span className={`page-settings-status-pill page-settings-status-${page.status}`}>{STATUS_WORDS[page.status] ?? page.status}</span>
+                {page.status === 'scheduled' && page.publishAt ? <span>{`Goes live ${new Date(page.publishAt).toLocaleString()}`}</span> : null}
+              </p>
+              <p className="page-settings-hint">
+                Publish, schedule, send for review and see earlier versions from the bar above the editor.
+              </p>
+            </div>
+          </SettingsSection>
         </div>
       </div>
     </dialog>
@@ -182,12 +270,16 @@ function errorMessage(error: unknown): string {
   return 'Couldn’t save. Check your connection and try again.';
 }
 
-function TitleField({ page, onSaved }: { page: PageSummary; onSaved: (page: PageSummary) => void }) {
+function TitleField({ page, onSaved, onDirty }: { page: PageSummary; onSaved: (page: PageSummary) => void; onDirty: (dirty: boolean) => void }) {
   const id = useId();
   const [title, setTitle] = useState(page.title);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const changed = title.trim() !== page.title && title.trim() !== '';
+  useEffect(() => {
+    onDirty(changed);
+    return () => onDirty(false);
+  }, [changed, onDirty]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -240,6 +332,7 @@ function AddressField({
   flushPending,
   justSaved,
   liveBelow,
+  onDirty,
   onSaved,
 }: {
   page: PageSummary;
@@ -249,6 +342,7 @@ function AddressField({
   justSaved: boolean;
   /** Live pages sit below this one, so moving it changes live addresses too. */
   liveBelow: boolean;
+  onDirty: (dirty: boolean) => void;
   onSaved: (page: PageSummary) => void;
 }) {
   const id = useId();
@@ -263,12 +357,16 @@ function AddressField({
   const live = page.status === 'published';
   // Moving a live page, or one with live pages below it, is a publishing-level change
   // (D-053, D-054); the API enforces it.
-  const mayMove = !(live || liveBelow) || canPublishContent(getSession()?.memberships[0]?.role);
+  const mayMove = !(live || liveBelow) || canPublishContent(getActiveMembership()?.role);
   const origin = siteUrl('/');
   const before = `${parentPath(page.path)}/`;
   const normalised = normaliseSlug(slug);
   const changed = normalised !== '' && normalised !== page.slug;
   const thing = kind.toLowerCase();
+  useEffect(() => {
+    onDirty(editing && changed);
+    return () => onDirty(false);
+  }, [editing, changed, onDirty]);
 
   useEffect(() => {
     if (editing) inputRef.current?.select();
@@ -414,6 +512,7 @@ function ParentField({
   loadError,
   liveBelow,
   flushPending,
+  onDirty,
   onSaved,
 }: {
   page: PageSummary;
@@ -422,10 +521,11 @@ function ParentField({
   loadError: boolean;
   liveBelow: boolean;
   flushPending: () => Promise<void>;
+  onDirty: (dirty: boolean) => void;
   onSaved: (page: PageSummary) => void;
 }) {
   const id = useId();
-  const selectRef = useRef<HTMLSelectElement>(null);
+  const selectRef = useRef<HTMLDivElement>(null);
   const choices = tree ? parentChoices(tree, page.id) : null;
   const [parentId, setParentId] = useState(page.parentId ?? '');
   // Narrows the list by title: with nested pages, the select's own type-to-jump isn't enough.
@@ -435,8 +535,12 @@ function ParentField({
 
   const isHome = page.path === '/';
   const live = page.status === 'published';
-  const mayMove = !(live || liveBelow) || canPublishContent(getSession()?.memberships[0]?.role);
+  const mayMove = !(live || liveBelow) || canPublishContent(getActiveMembership()?.role);
   const changed = parentId !== (page.parentId ?? '');
+  useEffect(() => {
+    onDirty(changed);
+    return () => onDirty(false);
+  }, [changed, onDirty]);
   const chosen = choices?.find((choice) => choice.page.id === parentId)?.page;
   const newPath = `${chosen ? chosen.path : ''}/${page.slug}`;
   const titles = new Map((choices ?? []).map(({ page: candidate }) => [candidate.id, candidate.title]));
@@ -457,7 +561,7 @@ function ParentField({
       await flushPending();
       onSaved(await updatePageSettings(page.slug, { parentId: parentId || null }));
       // The Move button just turned itself off; focus stays on the choice instead of falling to the page.
-      requestAnimationFrame(() => selectRef.current?.focus());
+      requestAnimationFrame(() => selectRef.current?.querySelector('button')?.focus());
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -481,34 +585,36 @@ function ParentField({
         />
       ) : null}
       <div className="page-settings-row">
-        <select
-          ref={selectRef}
-          id={`${id}-parent`}
-          className="page-settings-select"
-          value={parentId}
-          disabled={!choices || !mayMove || saving}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={`${id}-parent-hint${error ? ` ${id}-parent-error` : ''}${changed && live ? ` ${id}-parent-live` : ''}`}
-          onChange={(event) => {
-            setParentId(event.target.value);
-            setError(null);
-          }}
-        >
-          <option value="">None (top level)</option>
-          {/* Title first, so typing a title jumps to it; where it sits comes after. */}
-          {shown.map(({ page: candidate, disabledReason }) => {
-            const notes = [
-              candidate.parentId && titles.has(candidate.parentId) ? `under ${titles.get(candidate.parentId)}` : null,
-              candidate.status === 'archived' ? 'archived' : null,
-              disabledReason,
-            ].filter(Boolean);
-            return (
-              <option key={candidate.id} value={candidate.id} disabled={disabledReason !== null && candidate.id !== page.parentId}>
-                {notes.length ? `${candidate.title} (${notes.join(', ')})` : candidate.title}
-              </option>
-            );
-          })}
-        </select>
+        {/* Title first, so typing a title jumps to it; where it sits comes after. */}
+        <div ref={selectRef} className="page-settings-select-wrap">
+          <Select
+            id={`${id}-parent`}
+            className="page-settings-select"
+            aria-describedby={`${id}-parent-hint${changed && live ? ` ${id}-parent-live` : ''}${error ? ` ${id}-parent-error` : ''}`}
+            aria-invalid={error ? true : undefined}
+            value={parentId}
+            disabled={!choices || !mayMove || saving}
+            onChange={(next) => {
+              setParentId(next);
+              setError(null);
+            }}
+            options={[
+              { value: '', label: 'None (top level)' },
+              ...shown.map(({ page: candidate, disabledReason }) => {
+                const notes = [
+                  candidate.parentId && titles.has(candidate.parentId) ? `under ${titles.get(candidate.parentId)}` : null,
+                  candidate.status === 'archived' ? 'archived' : null,
+                  disabledReason,
+                ].filter(Boolean);
+                return {
+                  value: candidate.id,
+                  label: notes.length ? `${candidate.title} (${notes.join(', ')})` : candidate.title,
+                  disabled: disabledReason !== null && candidate.id !== page.parentId,
+                };
+              }),
+            ]}
+          />
+        </div>
         <button type="submit" className="page-settings-button" disabled={!changed || saving}>
           {saving ? 'Moving…' : 'Move page'}
         </button>

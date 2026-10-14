@@ -197,7 +197,7 @@ export class RevisionsService {
   }
 
   private async pageOf(userId: string, slug: string) {
-    const membership = (await this.users.findByIdWithMemberships(userId))?.memberships[0];
+    const membership = await this.users.findActiveMembership(userId);
     if (!membership) throw new ForbiddenException('No site membership');
     const page = await this.content.findBySlug(membership.siteId, slug);
     if (!page) throw new NotFoundException('Page not found');

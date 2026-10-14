@@ -1,0 +1,12 @@
+.new-site-address {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--ui-text-3);
+}
+
+.new-site-address input {
+  flex: 1;
+  min-width: 0;
+}

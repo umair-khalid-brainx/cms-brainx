@@ -3,63 +3,63 @@
   margin: 0 0 1.25rem;
   max-width: 40rem;
   font-size: 0.8125rem;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .review-empty {
   padding: 1.5rem 1rem;
-  background: #fff;
-  border: 1px dashed #c3c4c7;
-  border-radius: 4px;
+  background: var(--ui-panel);
+  border: 1px dashed var(--ui-line-strong);
+  border-radius: var(--ui-radius-sm);
 }
 
 .review-path {
   display: block;
   margin-top: 0.15rem;
   font-size: 0.75rem;
-  color: #646970;
+  color: var(--ui-text-2);
 }
 
 /* The row's one action: a quiet outlined button, so a long queue doesn't turn into a column of blue blocks. */
 .review-open {
   display: inline-block;
   padding: 0.3rem 0.75rem;
-  border: 1px solid #2271b1;
-  border-radius: 4px;
-  color: #2271b1;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-sm);
+  color: var(--ui-accent);
   font-weight: 500;
   text-decoration: none;
 }
 
 .review-open:hover {
-  background: #2271b1;
+  background: var(--ui-accent);
   color: #fff;
 }
 
 .review-open:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
 @media (prefers-color-scheme: dark) {
   .review-intro,
   .review-path {
-    color: #9ca3af;
+    color: var(--ui-text-3-dark);
   }
 
   .review-empty {
-    background: #18191b;
-    border-color: #3c434a;
-    color: #b0b0b0;
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
+    color: var(--ui-text-2-dark);
   }
 
   .review-open {
-    border-color: #6ab6f2;
-    color: #6ab6f2;
+    border-color: var(--ui-accent-soft);
+    color: var(--ui-accent-soft);
   }
 
   .review-open:hover {
-    background: #6ab6f2;
-    color: #101214;
+    background: var(--ui-accent-soft);
+    color: var(--ui-canvas-dark);
   }
 }

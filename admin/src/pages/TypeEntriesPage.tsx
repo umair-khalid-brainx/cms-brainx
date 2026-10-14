@@ -1,4 +1,5 @@
-import { Link, Navigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
+import { Link, Navigate } from '../lib/siteRouter'
 import { useContentTypes, type ContentTypesState } from '../lib/contentTypesContext'
 import CreatePagePage from './CreatePagePage'
 import PagesListPage from './PagesListPage'

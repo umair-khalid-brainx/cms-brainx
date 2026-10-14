@@ -1,3 +1,4 @@
+import { getActiveSiteId } from './activeSite';
 import { clearSession } from './auth';
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:4001';
@@ -12,6 +13,12 @@ export class ApiError extends Error {
     this.status = status;
     this.body = body;
   }
+}
+
+/** `X-Site-Id` for the site the admin is in (MSI-01): the API acts on it after checking the caller belongs there. */
+function siteHeader(): Record<string, string> {
+  const siteId = getActiveSiteId();
+  return siteId ? { 'X-Site-Id': siteId } : {};
 }
 
 type ErrorBody = { message?: string | string[] };
@@ -40,7 +47,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 
 export async function apiGet<T>(path: string, accessToken: string): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}`, ...siteHeader() },
   });
   handleUnauthorized(response.status);
   return handle<T>(response);
@@ -61,7 +68,7 @@ export async function apiSend<T>(
 ): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}`, ...siteHeader() },
     body: JSON.stringify(body),
   });
   handleUnauthorized(response.status);
@@ -77,7 +84,7 @@ export async function apiUpload<T>(
 ): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     method,
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}`, ...siteHeader() },
     body,
   });
   handleUnauthorized(response.status);
@@ -88,7 +95,7 @@ export async function apiUpload<T>(
 export async function apiDelete(path: string, accessToken: string): Promise<void> {
   const response = await fetch(`${API_URL}${path}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}`, ...siteHeader() },
   });
   handleUnauthorized(response.status);
   await handle<void>(response);

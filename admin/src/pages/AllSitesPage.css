@@ -1,0 +1,155 @@
+.all-sites {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2.5rem 1rem;
+  color: var(--ui-ink);
+}
+
+.all-sites-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.all-sites-header h1 {
+  margin: 0;
+  font-family: var(--ui-font-display);
+  font-size: 1.625rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.all-sites-actions a:not(.all-sites-new, .all-sites-open) {
+  color: var(--ui-accent-strong);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.all-sites-actions a:not(.all-sites-new, .all-sites-open):hover {
+  text-decoration: underline;
+}
+
+.all-sites-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.all-sites-new,
+.all-sites-open {
+  background: var(--ui-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--ui-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.all-sites-new:hover,
+.all-sites-open:hover {
+  background: var(--ui-accent-strong);
+}
+
+.all-sites-logout {
+  background: none;
+  border: none;
+  color: var(--ui-text-3);
+  font: inherit;
+  font-size: 0.875rem;
+  min-height: 36px;
+  padding: 0 0.4rem;
+  cursor: pointer;
+}
+
+.all-sites-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.all-sites-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius);
+  padding: 1rem 1.25rem;
+}
+
+.all-sites-card h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.all-sites-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--ui-text-3);
+}
+
+.all-sites-empty {
+  color: var(--ui-text-3);
+}
+
+@media (prefers-color-scheme: dark) {
+  .all-sites {
+    color: var(--ui-text-dark);
+  }
+  .all-sites-card {
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
+  }
+  .all-sites-actions a:not(.all-sites-new, .all-sites-open) {
+    color: var(--ui-accent-soft);
+  }
+  .all-sites-meta,
+  .all-sites-empty,
+  .all-sites-logout {
+    color: var(--ui-text-3-dark);
+  }
+}
+
+.all-sites-account {
+  display: block;
+  margin-bottom: 2rem;
+}
+
+.all-sites-account dl {
+  margin: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.all-sites-account dt {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui-text-3);
+}
+
+.all-sites-account dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.9375rem;
+}
+
+.all-sites-subtitle {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}

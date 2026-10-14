@@ -1,8 +1,8 @@
+import { withActive } from '../users/test-support.js';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { ContentRepository } from '../content/content.repository.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
-import type { UserRepository } from '../users/user.repository.js';
 import type { MenuRepository } from './menu.repository.js';
 import type { MenuInput } from './menu-tree.js';
 import { MenusService } from './menus.service.js';
@@ -35,7 +35,7 @@ function setup() {
   const service = new MenusService(
     menus as unknown as MenuRepository,
     content as unknown as ContentRepository,
-    users as unknown as UserRepository,
+    withActive(users),
     revalidation as unknown as RevalidationService,
   );
   return { service, menus, content, revalidation, saved };

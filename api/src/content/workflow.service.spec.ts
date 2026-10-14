@@ -1,6 +1,6 @@
+import { withActive } from '../users/test-support.js';
 import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { RevisionsService } from '../revisions/revisions.service.js';
-import type { UserRepository } from '../users/user.repository.js';
 import type { ContentRepository } from './content.repository.js';
 import type { ContentService } from './content.service.js';
 import { WorkflowService } from './workflow.service.js';
@@ -105,7 +105,7 @@ function setup(rows: Row[] = [page()]) {
   const revisions = { record: vi.fn(async () => {}) };
   const service = new WorkflowService(
     content as unknown as ContentRepository,
-    users as unknown as UserRepository,
+    withActive(users),
     pages as unknown as ContentService,
     revisions as unknown as RevisionsService,
   );

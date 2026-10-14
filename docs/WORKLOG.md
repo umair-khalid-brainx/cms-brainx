@@ -5,6 +5,59 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-14 — Admin redesign (`ADM-01`–`ADM-07`)
+
+Decision in D-071. Built with three parallel agents after the shell, nav and dropdowns.
+
+- **Admin:** `--ui-*` tokens and light shell (drawer under 860px); sidebar grouped Content / Site / Admin (`lib/navGroups.ts`);
+  shared `Menu`/`Select` with ARIA keyboard rules (`lib/menuKeys.ts`, `useAnchoredPopup`); redesigned Pages/Posts lists with
+  search, status filter, row menu and `ContentSidePanel`; collapsible page settings sections; every other screen retinted.
+- **Verified:** admin 260 tests, typecheck and build pass; in a browser (scratch DB `cms_adm`, api on 4051, admin on 5174): shell,
+  site menu, lists, side panel, settings panel, 12 screens contrast-checked in dark and at 390px. A review agent's findings
+  (focus on first open, Tab, aria, duplicate hidden by a filter, stale Unsaved marker) were fixed.
+- **Not done:** status-change/duplicate/delete and settings saves not clicked through live; login, media modal and submission
+  detail not opened after restyle; light mode only partly screenshotted; `.ui-*` primitives not yet adopted in markup; no
+  focus trap for the side panel above 720px or the mobile drawer.
+
+---
+
+## 2026-10-14 — One account, several sites (`MSI-01`–`MSI-06`)
+
+Decision in D-070.
+
+- **API:** `X-Site-Id` picks the site (`common/active-site.ts`, `UserRepository.findActiveMembership`); every service and the permission
+  guard use it. `POST /sites` (owners only) makes an empty site with the Oyster theme. "First membership" is now the oldest.
+- **Admin:** screens under `/sites/:siteId/...`, site-aware links (`lib/siteRouter.tsx`), site switcher, New site dialog, All sites
+  page, `/account`; Settings is site-only. Changing site reloads the app.
+- **Verified:** api 813 unit and 511 e2e tests pass (new `test/multi-site.e2e-spec.ts`, cross-tenant table fixed), admin 234 pass,
+  typecheck and lint clean. In headless Chrome: switching, back button, create site (and the taken-address error), deep link and
+  refresh, old URLs, a stranger's site id, editor deep link, Account and Settings. Reviewer and verifier run (general-purpose
+  agents; the kit ones refuse this project).
+- **Not done:** no automated component tests for the switcher, dialog and the two new pages; no site cap; no leaving or deleting a
+  site; account editing (B-42, B-43, B-44). The public site for a brand-new empty site was not checked.
+
+---
+
+## 2026-10-13 — Clients can edit their site's theme (B-40)
+
+Decision in D-069.
+
+- **API:** `PATCH /sites/:siteId/theme` (`site:manage`), `api/src/sites/site-theme.ts` (strict schema, WCAG contrast
+  check), `SitesService.updateTheme`, `SiteRepository.updateTheme`. Whole theme replaced; every problem named;
+  the site's pages are refreshed.
+- **Admin:** Site Theme card on Settings (`ThemeCard`, `ThemePreview`, `lib/themeEdit.ts`): presets, type, corners, spacing,
+  texture, 8 colour fields (picker plus hex), live preview, "Not saved yet" badge, Discard, inline readability warning.
+  Grain and grid textures added to `index.css` so the preview draws them.
+- **Seed audit:** the theme was the only part of the seed a client could not build themselves.
+- **Verified:** api 804 and admin 225 tests pass, both typecheck, lint adds nothing. In a browser, against a scratch
+  database (`cms_theme`; the shared `cms` is behind this branch's migrations): picked Oyster on Kestrel, preview changed,
+  saved, `sites.theme_json` held it; an unreadable pair showed the warning and disabled Save; no horizontal scroll at 390px;
+  dark mode checked.
+- **Not done:** not checked on the public site (no `web` ran for this worktree); no API-level test of the 403 for
+  non-managers beyond the shared guard; no theme history or undo (see B-41).
+
+---
+
 ## 2026-10-13 — Demo content for both tenants (`DEP-03`)
 
 Decision in D-068.

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate } from '../lib/siteRouter'
 import { createPage, listStarterLayouts, type StarterLayout } from '../lib/contentApi'
 import { config } from '../puck/config'
 import { ApiError } from '../lib/api'

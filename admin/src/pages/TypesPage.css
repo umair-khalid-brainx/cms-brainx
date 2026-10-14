@@ -3,7 +3,7 @@
   margin: 0 0 1.25rem;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 /* `pages-add` is styled for a link; this one is a button. */
@@ -14,23 +14,23 @@
 }
 
 .types-add:hover {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .types-add:focus-visible,
 .types-action:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
 .types-badge {
   margin-left: 0.6rem;
   padding: 0.1rem 0.45rem;
-  border: 1px solid #c3c4c7;
+  border: 1px solid var(--ui-line-strong);
   border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 500;
-  color: #50575e;
+  color: var(--ui-text-2);
   white-space: nowrap;
 }
 
@@ -40,7 +40,7 @@
   padding: 0;
   font: inherit;
   font-weight: 500;
-  color: #2271b1;
+  color: var(--ui-accent);
   cursor: pointer;
 }
 
@@ -50,26 +50,26 @@
 
 /* Delete stays visible but plainly off when the type still has entries. */
 .pages-row-delete:disabled {
-  color: #8c8f94;
+  color: var(--ui-input-border);
   cursor: not-allowed;
 }
 
 @media (prefers-color-scheme: dark) {
   .types-intro {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 
   .types-badge {
-    border-color: #50575e;
-    color: #b0b0b0;
+    border-color: var(--ui-text-2);
+    color: var(--ui-text-2-dark);
   }
 
   .types-action,
   .types-add:focus-visible {
-    color: #72aee6;
+    color: var(--ui-accent-soft);
   }
 
   .types-action:focus-visible {
-    outline-color: #72aee6;
+    outline-color: var(--ui-accent-soft);
   }
 }

@@ -24,6 +24,8 @@ type Props = {
   onSaved: (page: PageSummary) => void;
   /** Said to screen readers when a save lands, in the panel's one live region. */
   announce: (message: string) => void;
+  /** Reports whether the section holds an edit that isn't saved yet (the group header's "Unsaved" marker). */
+  onDirty?: (dirty: boolean) => void;
 };
 
 /**
@@ -31,7 +33,7 @@ type Props = {
  * checkboxes from the site's list; tags are typed, with the site's existing tags suggested, and a new name
  * becomes a new tag when saved. One save for the whole section, like Search and sharing.
  */
-function PageTermsSection({ page, hasCategories, hasTags, onSaved, announce }: Props) {
+function PageTermsSection({ page, hasCategories, hasTags, onSaved, announce, onDirty }: Props) {
   const id = useId();
   const [terms, setTerms] = useState<Term[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -59,6 +61,10 @@ function PageTermsSection({ page, hasCategories, hasTags, onSaved, announce }: P
   const changed =
     (hasCategories && !sameIds(categoryIds, saved.categoryIds)) ||
     (hasTags && (!sameTags(tags, saved.tags) || pending.trim() !== ''));
+  useEffect(() => {
+    onDirty?.(changed);
+    return () => onDirty?.(false);
+  }, [changed, onDirty]);
 
   const categories = (terms ?? []).filter((term) => term.kind === 'category');
   const allTagNames = (terms ?? []).filter((term) => term.kind === 'tag').map((term) => term.name);
@@ -118,9 +124,7 @@ function PageTermsSection({ page, hasCategories, hasTags, onSaved, announce }: P
   }
 
   return (
-    <section className="page-settings-section" aria-labelledby={`${id}-heading`}>
-      <h3 id={`${id}-heading`}>{hasCategories && hasTags ? 'Categories and tags' : hasCategories ? 'Categories' : 'Tags'}</h3>
-
+    <div>
       <form onSubmit={submit} noValidate>
         {hasCategories ? (
           <fieldset className="terms-categories">
@@ -194,7 +198,7 @@ function PageTermsSection({ page, hasCategories, hasTags, onSaved, announce }: P
           ) : null}
         </div>
       </form>
-    </section>
+    </div>
   );
 }
 
