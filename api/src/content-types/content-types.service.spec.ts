@@ -1,6 +1,6 @@
+import { withActive } from '../users/test-support.js';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
-import type { UserRepository } from '../users/user.repository.js';
 import type { ContentTypeRepository } from './content-type.repository.js';
 import { ContentTypesService } from './content-types.service.js';
 
@@ -73,7 +73,7 @@ function setup(extra: { entries?: { siteId: string; typeId: string; status: stri
       memberships: [{ siteId: id === 'alice' ? 'site-a' : 'site-b' }],
     })),
   };
-  const service = new ContentTypesService(repo as unknown as ContentTypeRepository, users as unknown as UserRepository);
+  const service = new ContentTypesService(repo as unknown as ContentTypeRepository, withActive(users));
   return { service, repo, types };
 }
 

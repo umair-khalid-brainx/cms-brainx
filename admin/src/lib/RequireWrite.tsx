@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { Navigate } from 'react-router'
-import { getSession } from './auth'
+import { getActiveMembership } from './activeSite'
+import { Navigate } from './siteRouter'
 import { canWriteContent } from './roles'
 
 /**
@@ -8,7 +8,7 @@ import { canWriteContent } from './roles'
  * (GOV-07). Affordance only (admin/CLAUDE.md invariant 3); the API refuses the create anyway.
  */
 function RequireWrite({ children }: { children: ReactNode }) {
-  if (!canWriteContent(getSession()?.memberships[0]?.role)) return <Navigate to="/pages" replace />
+  if (!canWriteContent(getActiveMembership()?.role)) return <Navigate to="/pages" replace />
   return <>{children}</>
 }
 

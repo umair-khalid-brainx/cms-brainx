@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import { Puck, type Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
+import { Link, Navigate, useNavigate } from '../lib/siteRouter';
 import type { EditorComponents } from '../puck/config';
 import { configFor } from '../puck/entryFields';
 import { listContentTypes, type ContentType } from '../lib/typesApi';
@@ -183,7 +185,7 @@ function EditorPage() {
 
   if (load.status === 'notFound') return <Navigate to="/pages" replace />;
   // Before the early returns below would skip it: what this person may do with this page (GOV-07).
-  const role = getSession()?.memberships[0]?.role;
+  const role = getActiveMembership()?.role;
   const canWrite = canWriteContent(role);
   if (load.status === 'loading' || !page || !themeSettled) return <div className="editor-loading">Loading…</div>;
   if (load.status === 'error') return <div className="editor-loading">Couldn&rsquo;t load this page: {load.message}</div>;
@@ -414,7 +416,7 @@ function EditorPage() {
         <span ref={statusRef} tabIndex={-1} className="editor-status" role="status">
           {saveError ?? notice ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
         </span>
-        <span className="editor-site">{getSession()?.memberships[0]?.siteName ?? 'No site'}</span>
+        <span className="editor-site">{getActiveMembership()?.siteName ?? 'No site'}</span>
         {!access.readOnly && (
           <button type="button" className="editor-secondary" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
             {type?.singularName ?? 'Page'} settings

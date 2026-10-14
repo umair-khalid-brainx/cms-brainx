@@ -85,3 +85,12 @@ export function contrastProblems(theme: SiteTheme): string[] {
     ({ message }) => message,
   );
 }
+
+/** What a new site starts with (MSI-02): the "Oyster" preset, which the theme editor offers first. */
+export const DEFAULT_THEME: SiteTheme = {
+  typeSet: 'editorial',
+  shape: 'soft',
+  density: 'comfortable',
+  texture: 'grain',
+  palette: { paper: '#D9E0D8', surface: '#F1F4EF', ink: '#13201C', muted: '#556258', line: '#B6C2B5', brand: '#2E4A3E', onBrand: '#F1F4EF', accent: '#C8863C' },
+};

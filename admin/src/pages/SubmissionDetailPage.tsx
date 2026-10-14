@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
+import { Link } from '../lib/siteRouter';
 import { formatDateTime, getSubmission, type Submission } from '../lib/submissionsApi';
 import './SubmissionsPage.css';
 

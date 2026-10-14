@@ -139,8 +139,7 @@ export class ContentTypesService {
 
   // Same "caller's first membership" convention as ContentService.
   private async resolveSiteId(userId: string): Promise<string> {
-    const user = await this.users.findByIdWithMemberships(userId);
-    const membership = user?.memberships[0];
+    const membership = await this.users.findActiveMembership(userId);
     if (!membership) throw new ForbiddenException('No site membership');
     return membership.siteId;
   }

@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { getActiveMembership } from '../lib/activeSite'
+import { Link } from '../lib/siteRouter'
 import { createPage, listPages, type PageSummary } from '../lib/contentApi'
 import { siteUrl } from '../data/site'
-import { getSession } from '../lib/auth'
 import { canWriteContent } from '../lib/roles'
 import { ApiError } from '../lib/api'
 import './DashboardPage.css'
@@ -19,9 +19,9 @@ const activity = [
 ]
 
 function DashboardPage() {
-  const siteName = getSession()?.memberships[0]?.siteName ?? '—'
+  const siteName = getActiveMembership()?.siteName ?? '—'
   // A Viewer gets no way to create anything (GOV-07); affordance only, the API refuses too.
-  const canWrite = canWriteContent(getSession()?.memberships[0]?.role)
+  const canWrite = canWriteContent(getActiveMembership()?.role)
   const [pages, setPages] = useState<PageSummary[]>([])
   const [loaded, setLoaded] = useState(false)
   const [title, setTitle] = useState('')

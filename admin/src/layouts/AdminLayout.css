@@ -131,6 +131,16 @@
   cursor: pointer;
 }
 
+a.admin-user-menu {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.admin-user-menu:hover {
+  border-color: #2271b1;
+  color: #2271b1;
+}
+
 .admin-site-switcher:hover {
   border-color: #2271b1;
   color: #2271b1;

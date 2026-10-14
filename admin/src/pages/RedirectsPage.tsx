@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import { ApiError } from '../lib/api';
-import { getSession } from '../lib/auth';
 import { createRedirect, deleteRedirect, listRedirects, type Redirect } from '../lib/redirectsApi';
 import { canPublishContent } from '../lib/roles';
 import { siteUrl } from '../data/site';
@@ -16,7 +16,7 @@ type LoadState = { status: 'loading' } | { status: 'error'; message: string } | 
  */
 function RedirectsPage() {
   const id = useId();
-  const mayEdit = canPublishContent(getSession()?.memberships[0]?.role);
+  const mayEdit = canPublishContent(getActiveMembership()?.role);
   const fromRef = useRef<HTMLInputElement>(null);
   const [redirects, setRedirects] = useState<Redirect[]>([]);
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });

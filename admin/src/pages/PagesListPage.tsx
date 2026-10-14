@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { getActiveMembership } from '../lib/activeSite'
+import { Link } from '../lib/siteRouter';
 import PublishChecksPanel from '../components/PublishChecksPanel';
 import Select, { type SelectOption } from '../components/Select';
-import { getSession } from '../lib/auth';
 import {
   deletePage,
   duplicatePage,
@@ -42,7 +42,7 @@ const MENU_STATUSES: PageStatus[] = ['draft', 'published', 'archived'];
 // A page in review or scheduled has no menu: it's locked until that step ends.
 // A live page can be changed only by someone who can publish (GOV-07).
 function statusOptions(current: PageStatus): SelectOption<PageStatus>[] {
-  const role = getSession()?.memberships[0]?.role;
+  const role = getActiveMembership()?.role;
   const canArchive = canArchiveContent(role);
   if (isLocked(current) || !canWriteContent(role)) return [];
   if (current === 'published' && !canPublishContent(role)) return [];
@@ -61,7 +61,7 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
   const prefix = contentType?.prefix;
   const [tab, setTab] = useState<Tab>('active');
   // Affordance only (admin/CLAUDE.md invariant 3): a Viewer sees the list without its actions.
-  const role = getSession()?.memberships[0]?.role;
+  const role = getActiveMembership()?.role;
   const canWrite = canWriteContent(role);
   // "Edit" where this person can change the page, "Open" where the editor will be read-only (GOV-07).
   const canEdit = (status: PageStatus) => canWrite && !isLocked(status) && (status !== 'published' || canPublishContent(role));

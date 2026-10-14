@@ -1,10 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { MediaRepository } from '../media/media.repository.js';
+import { UserRepository } from '../users/user.repository.js';
 import { RevalidationService } from '../revalidation/revalidation.service.js';
 import { SiteRepository } from './site.repository.js';
 import { readSettings, updateSettingsSchema, type SiteSettings } from './site-settings.js';
-import { contrastProblems, themeSchema } from './site-theme.js';
+import { contrastProblems, DEFAULT_THEME, themeSchema } from './site-theme.js';
 import { SubdomainCache } from './subdomain-cache.js';
 import { domainProblem, normaliseDomain } from './custom-domain.js';
 import { ConfigService } from '@nestjs/config';
@@ -30,7 +31,32 @@ export class SitesService {
     private readonly media: MediaRepository,
     private readonly revalidation: RevalidationService,
     private readonly config: ConfigService,
+    private readonly users: UserRepository,
   ) {}
+
+  /**
+   * A new, empty site with the default theme; the caller becomes its owner (MSI-02). Only someone who
+   * already owns a site may do this: roles belong to a site, so "owner of any site" is the check, and a
+   * site's invitees can't spawn sites of their own. The subdomain follows the same rules and the same
+   * uniqueness as renaming one (D-031); the DTO has already checked its format and the reserved names.
+   */
+  async create(userId: string, input: { name: string; subdomain: string }): Promise<SiteSummary & { role: 'owner' }> {
+    const user = await this.users.findByIdWithMemberships(userId);
+    if (!user?.memberships.some((m) => m.role === 'owner')) {
+      throw new ForbiddenException('Only a site owner can create a new site');
+    }
+    if (await this.sites.findBySubdomain(input.subdomain)) throw new ConflictException('That address is already taken');
+    try {
+      const site = await this.sites.createWithOwner({ ...input, themeJson: DEFAULT_THEME }, userId);
+      return { id: site.id, name: site.name, subdomain: site.subdomain, role: 'owner' };
+    } catch (error) {
+      // Two people claiming the same free address at once: the unique index refuses the second.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('That address is already taken');
+      }
+      throw error;
+    }
+  }
 
   async get(siteId: string): Promise<SiteSummary> {
     const site = await this.sites.findById(siteId);

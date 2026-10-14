@@ -42,3 +42,16 @@ describe('drawable', () => {
     expect(drawable(half, oyster).palette.brand).toBe(oyster.palette.brand)
   })
 })
+
+describe('the default theme of a new site (MSI-02)', () => {
+  // api/src/sites/site-theme.ts DEFAULT_THEME is a copy of this preset (the repos share no code); this pins both ends.
+  it('is the first preset, as the API creates it', () => {
+    expect(THEME_PRESETS[0].theme).toEqual({
+      typeSet: 'editorial',
+      shape: 'soft',
+      density: 'comfortable',
+      texture: 'grain',
+      palette: { paper: '#D9E0D8', surface: '#F1F4EF', ink: '#13201C', muted: '#556258', line: '#B6C2B5', brand: '#2E4A3E', onBrand: '#F1F4EF', accent: '#C8863C' },
+    })
+  })
+})

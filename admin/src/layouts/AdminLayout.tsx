@@ -1,9 +1,12 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { Outlet, NavLink, useLocation, useNavigate } from 'react-router'
+import { getActiveMembership } from '../lib/activeSite'
+import { Outlet, useLocation } from 'react-router'
+import { Link, NavLink, useNavigate } from '../lib/siteRouter'
 import { clearSession, getSession, subscribeSession } from '../lib/auth'
 import { useContentTypes } from '../lib/contentTypesContext'
 import { canManageSite, canManageTeam, canReadSubmissions, canReviewContent } from '../lib/roles'
 import { listReviewQueue } from '../lib/contentApi'
+import SiteSwitcher from '../components/SiteSwitcher'
 import './AdminLayout.css'
 
 const navItems = [
@@ -108,7 +111,7 @@ const navItems = [
   },
   {
     to: '/settings',
-    label: 'Settings',
+    label: 'Site settings',
     icon: (
       <svg viewBox="0 0 20 20" fill="currentColor">
         <path d="M8.5 2h3l.5 2.2c.5.17.96.4 1.4.68L15.5 4l2 2.1-1 2c.15.45.15.95 0 1.4l1 2-2 2.1-2.1-.88c-.44.28-.9.5-1.4.68L11.5 16h-3l-.5-2.2a6 6 0 0 1-1.4-.68L4.5 14l-2-2.1 1-2a3.3 3.3 0 0 1 0-1.4l-1-2 2-2.1 2.1.88c.44-.28.9-.5 1.4-.68L8.5 2ZM10 7.3A2.7 2.7 0 1 0 10 12.7 2.7 2.7 0 0 0 10 7.3Z" />
@@ -130,12 +133,12 @@ function AdminLayout() {
   const navigate = useNavigate()
   const session = getSession()
   // Subscribed, so a new site title saved in Settings shows here at once (GOV-04), not after a reload.
-  const siteName = useSyncExternalStore(subscribeSession, () => getSession()?.memberships[0]?.siteName ?? 'No site')
+  const siteName = useSyncExternalStore(subscribeSession, () => getActiveMembership()?.siteName ?? 'No site')
   const userName = session?.user.name ?? 'Unknown user'
   // Affordance only (admin/CLAUDE.md invariant 3) — hiding the nav item for
   // a role that can't manage the team is UX, not the real gate; the API
   // enforces members:manage for real on every team/invite route.
-  const role = session?.memberships[0]?.role
+  const role = getActiveMembership()?.role
   const visibleNavItems = navItems.filter(
     (item) =>
       (!item.requiresTeamManage || canManageTeam(role)) &&
@@ -212,18 +215,13 @@ function AdminLayout() {
 
       <div className="admin-main">
         <header className="admin-topbar">
-          <button type="button" className="admin-site-switcher">
-            {siteName}
-            <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-              <path d="M5.5 7.5 10 12l4.5-4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-            </svg>
-          </button>
+          <SiteSwitcher siteName={siteName} />
 
           <div className="admin-user">
-            <span className="admin-user-menu">
+            <Link to="/account" className="admin-user-menu" title="Your account">
               <span className="admin-user-avatar">{initials(userName)}</span>
               {userName}
-            </span>
+            </Link>
             <button type="button" className="admin-logout" onClick={handleLogout}>
               Log Out
             </button>

@@ -69,3 +69,8 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   contributor: 'Writes drafts and submits them for review',
   viewer: 'Looks around; can’t change anything',
 };
+
+/** Whoever owns at least one site may start another (MSI-02); the API enforces it. */
+export function canCreateSite(memberships: { role: Role }[] | undefined): boolean {
+  return !!memberships?.some((membership) => membership.role === 'owner');
+}

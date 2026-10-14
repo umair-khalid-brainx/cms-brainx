@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import MenuEditor from '../components/MenuEditor';
-import { getSession } from '../lib/auth';
 import { listPages, type PageSummary } from '../lib/contentApi';
 import type { MenuLocation } from '../lib/menusApi';
 import { canManageSite } from '../lib/roles';
@@ -19,7 +19,7 @@ const TABS: { location: MenuLocation; label: string }[] = [
  */
 function MenusPage() {
   const id = useId();
-  const canEdit = canManageSite(getSession()?.memberships[0]?.role);
+  const canEdit = canManageSite(getActiveMembership()?.role);
   const [tab, setTab] = useState<MenuLocation>('header');
   const [pages, setPages] = useState<PageSummary[]>([]);
   const [pagesError, setPagesError] = useState(false);

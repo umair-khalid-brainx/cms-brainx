@@ -232,7 +232,7 @@ export class WorkflowService {
 
   // The caller's first site membership, like every content route (D-023).
   private async membershipOf(userId: string): Promise<Membership> {
-    const membership = (await this.users.findByIdWithMemberships(userId))?.memberships[0];
+    const membership = await this.users.findActiveMembership(userId);
     if (!membership) throw new ForbiddenException('No site membership');
     return membership;
   }

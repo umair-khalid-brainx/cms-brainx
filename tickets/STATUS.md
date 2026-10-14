@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 48, IN-PROGRESS 2, TODO 5 (56 tickets). Updated 2026-10-13. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
+**Totals:** BACKLOG 1, DONE 54, IN-PROGRESS 2, TODO 5 (62 tickets). Updated 2026-10-14. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
 
 ## M1 (week 1)
 
@@ -86,6 +86,17 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | DEP-02 | Domains screen, UI only | DONE | 0 | 2026-10-13 (D-066) |
 | DEP-03 | Realistic seed content for both tenants | DONE | 0 | 2026-10-13 (D-068); copy approved by the user |
 | DEP-04 | Bug fixing and demo rehearsal | TODO | 0 |  |
+
+## Multi-site accounts
+
+| Ticket | Title | Status | Tries | Note |
+|---|---|---|---|---|
+| MSI-01 | API: the active site comes from an X-Site-Id header | DONE | 0 | 2026-10-14 (D-070) |
+| MSI-02 | API: create a site | DONE | 0 | 2026-10-14 (D-070) |
+| MSI-03 | Admin: the site in the URL, and an active site | DONE | 0 | 2026-10-14 (D-070) |
+| MSI-04 | Admin: site switcher, New site and All sites | DONE | 0 | 2026-10-14 (D-070) |
+| MSI-05 | Admin: split Settings into site settings and account | DONE | 0 | 2026-10-14 (D-070) |
+| MSI-06 | Cross-site checks: isolation and docs | DONE | 0 | 2026-10-14 (D-070) |
 
 ## Backlog
 

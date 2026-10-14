@@ -8,6 +8,49 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-070 — 2026-10-14 — One account, several sites: the site is named by `X-Site-Id` and by the admin's address; only an owner can create a site (`MSI-01`–`MSI-06`)
+
+**The gap.** Everything assumed one site per person: the API took the caller's *first* membership as the site for
+every content route (D-020, D-023 said this would stop being acceptable once a switcher existed), and admin read
+`memberships[0]` in about twenty places. An invitee to a second site, or an owner with two businesses, had no way
+to reach it.
+
+**What was built.**
+- **The active site is a request header.** The admin sends `X-Site-Id` on every call. A middleware keeps it for the
+  request in an `AsyncLocalStorage` (`api/src/common/active-site.ts`), and one method, `UserRepository.findActiveMembership`,
+  turns it into the caller's membership. Every service that had its own `memberships[0]` and `PermissionsGuard` now call
+  it. No header: the caller's oldest membership (so existing clients and tests are unchanged). A site the caller isn't
+  in: 403. The role is the one the caller has *in that site*, so an owner of A who is a viewer of B can't write to B.
+  The header only asks; membership is still checked every time (invariant 1 is untouched: services still take `siteId`).
+- **Routes that name a site in the path** (`/sites/:siteId/...`: settings, team, theme) ignore the header and keep
+  their own membership check.
+- **`POST /sites`** makes an empty site with a default theme (the Oyster preset) and makes the caller its only owner, in one
+  write. The address follows the rules for renaming one (D-031). The sign-up rule is below.
+- **Admin:** every in-site screen lives under `/sites/:siteId/...`; the address is the source of truth, `SiteScope` copies
+  it to a module variable the API client reads, and **reloads the app when the site changes**: a request chain still in
+  flight from the old site (the editor's save, check, publish) reads the active site per call, so a client-side switch
+  could send its later calls to the new site, and `home` exists in every site. A reload ends every such chain. Links inside a site are still
+  written `/pages`; `lib/siteRouter.tsx` puts the site in front. Old site-less addresses redirect into the site the
+  person was last in. Top bar: a site switcher (sites with roles, All sites, New site). **Settings** now holds only the
+  site; **Account** (`/account`) holds the person and lists every site and role.
+
+**Who may create a site (decided by the user).** Options were: only owners; owners create and administrators *request*
+with an owner approving; anyone. Chosen: **only someone who already owns a site.** The approval flow was left out because
+roles belong to a site, so "an owner approves" has no obvious owner for a site that doesn't exist yet, and it needs a request
+table and screen. See B-42.
+
+**Options considered for carrying the site.** A path prefix on the API (`/sites/:id/content`: every route and every
+call changes), a request-scoped provider (Nest's REQUEST scope makes every service per-request), or a header read once
+(chosen, smallest change, one place to get wrong).
+
+**Cost accepted.** The active site reaches services through `AsyncLocalStorage`, not a parameter, so it is implicit: work
+a service starts outside a request (the scheduler) has no header and must name its site, which it already does. "The first
+membership" is now the *oldest* one (`ORDER BY created_at`); before it was whatever order Postgres returned. A person
+with no sites lands on All sites and can't create one. There is no way to leave or delete a site, or to edit an account
+(B-43).
+
+---
+
 ## D-069 — 2026-10-13 — A client edits their own theme: presets, then 8 colours and 4 choices, saved whole, refused if unreadable (B-40)
 
 **The gap.** A site's look (`sites.theme_json`) could only be set by the seed or by SQL, so the two demo tenants had

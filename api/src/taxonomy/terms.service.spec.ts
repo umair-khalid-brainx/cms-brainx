@@ -1,6 +1,6 @@
+import { withActive } from '../users/test-support.js';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
-import type { UserRepository } from '../users/user.repository.js';
 import { fakeTermRepository } from './term-test-kit.js';
 import { TermsService } from './terms.service.js';
 
@@ -12,7 +12,7 @@ const users = {
 function setup() {
   const kit = fakeTermRepository();
   const revalidation = { site: vi.fn(async () => {}) };
-  const service = new TermsService(kit.repo, users as unknown as UserRepository, revalidation as unknown as RevalidationService);
+  const service = new TermsService(kit.repo, withActive(users), revalidation as unknown as RevalidationService);
   return { service, revalidation, ...kit };
 }
 

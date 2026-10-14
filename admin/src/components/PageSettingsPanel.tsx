@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { getActiveMembership } from '../lib/activeSite'
 import { ApiError } from '../lib/api';
-import { getSession } from '../lib/auth';
 import { FieldValuesError, listArchivedPages, listPages, updatePageSettings, type PageSummary } from '../lib/contentApi';
 import { hasLiveBelow, parentChoices } from '../lib/pageTree';
 import PageSeoSection from './PageSeoSection';
@@ -165,7 +165,7 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
           <PageSeoSection
             key={`seo-${session}-${page.slug}`}
             page={page}
-            siteName={getSession()?.memberships[0]?.siteName ?? ''}
+            siteName={getActiveMembership()?.siteName ?? ''}
             announce={setAnnouncement}
             onSaved={onSaved}
           />
@@ -263,7 +263,7 @@ function AddressField({
   const live = page.status === 'published';
   // Moving a live page, or one with live pages below it, is a publishing-level change
   // (D-053, D-054); the API enforces it.
-  const mayMove = !(live || liveBelow) || canPublishContent(getSession()?.memberships[0]?.role);
+  const mayMove = !(live || liveBelow) || canPublishContent(getActiveMembership()?.role);
   const origin = siteUrl('/');
   const before = `${parentPath(page.path)}/`;
   const normalised = normaliseSlug(slug);
@@ -435,7 +435,7 @@ function ParentField({
 
   const isHome = page.path === '/';
   const live = page.status === 'published';
-  const mayMove = !(live || liveBelow) || canPublishContent(getSession()?.memberships[0]?.role);
+  const mayMove = !(live || liveBelow) || canPublishContent(getActiveMembership()?.role);
   const changed = parentId !== (page.parentId ?? '');
   const chosen = choices?.find((choice) => choice.page.id === parentId)?.page;
   const newPath = `${chosen ? chosen.path : ''}/${page.slug}`;

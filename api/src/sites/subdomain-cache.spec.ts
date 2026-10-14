@@ -80,7 +80,7 @@ describe('SitesService.updateSubdomain', () => {
   it('stops the old subdomain resolving immediately and the new one starts', async () => {
     const { asRepository } = fakeSites({ corrick: 'site-1' });
     const cache = new SubdomainCache(asRepository);
-    const service = new SitesService(asRepository, cache, {} as MediaRepository, {} as RevalidationService, {} as ConfigService);
+    const service = new SitesService(asRepository, cache, {} as MediaRepository, {} as RevalidationService, {} as ConfigService, {} as never);
 
     expect(await cache.resolve('corrick')).toBe('site-1'); // now cached
     expect(await cache.resolve('corrick-farm')).toBeNull();

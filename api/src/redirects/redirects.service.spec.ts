@@ -1,7 +1,7 @@
+import { withActive } from '../users/test-support.js';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
-import type { UserRepository } from '../users/user.repository.js';
 import type { RedirectEntry, RedirectRepository } from './redirect.repository.js';
 import { RedirectsService } from './redirects.service.js';
 
@@ -46,7 +46,7 @@ function setup(pagePaths: Record<string, string[]> = { 'site-a': ['/live-page'] 
   const service = new RedirectsService(
     repo as unknown as RedirectRepository,
     types as unknown as ContentTypeRepository,
-    users as unknown as UserRepository,
+    withActive(users),
     revalidation as unknown as RevalidationService,
   );
   const rows = (siteId = 'site-a') =>

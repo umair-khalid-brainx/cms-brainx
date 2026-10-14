@@ -5,6 +5,23 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-14 — One account, several sites (`MSI-01`–`MSI-06`)
+
+Decision in D-070.
+
+- **API:** `X-Site-Id` picks the site (`common/active-site.ts`, `UserRepository.findActiveMembership`); every service and the permission
+  guard use it. `POST /sites` (owners only) makes an empty site with the Oyster theme. "First membership" is now the oldest.
+- **Admin:** screens under `/sites/:siteId/...`, site-aware links (`lib/siteRouter.tsx`), site switcher, New site dialog, All sites
+  page, `/account`; Settings is site-only. Changing site reloads the app.
+- **Verified:** api 813 unit and 511 e2e tests pass (new `test/multi-site.e2e-spec.ts`, cross-tenant table fixed), admin 234 pass,
+  typecheck and lint clean. In headless Chrome: switching, back button, create site (and the taken-address error), deep link and
+  refresh, old URLs, a stranger's site id, editor deep link, Account and Settings. Reviewer and verifier run (general-purpose
+  agents; the kit ones refuse this project).
+- **Not done:** no automated component tests for the switcher, dialog and the two new pages; no site cap; no leaving or deleting a
+  site; account editing (B-42, B-43, B-44). The public site for a brand-new empty site was not checked.
+
+---
+
 ## 2026-10-13 — Clients can edit their site's theme (B-40)
 
 Decision in D-069.

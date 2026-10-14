@@ -202,6 +202,7 @@ const ADMIN_ROUTES: Row[] = [
   // Their site, by siteId.
   { route: 'GET /sites/:siteId', path: (c) => `/sites/${c.them.siteId}` },
   { route: 'PATCH /sites/:siteId/settings', path: (c) => `/sites/${c.them.siteId}/settings`, body: () => ({ tagline: 'pwned' }) },
+  { route: 'PATCH /sites/:siteId/theme', path: (c) => `/sites/${c.them.siteId}/theme`, body: () => ({ typeSet: 'technical' }) },
   { route: 'PUT /sites/:siteId/domain', path: (c) => `/sites/${c.them.siteId}/domain`, body: () => ({ domain: `www.pwned${RUN}.com` }) },
   { route: 'DELETE /sites/:siteId/domain', path: (c) => `/sites/${c.them.siteId}/domain` },
   { route: 'PATCH /sites/:siteId/subdomain', path: (c) => `/sites/${c.them.siteId}/subdomain`, body: () => ({ subdomain: `pwned${RUN}` }) },
@@ -279,6 +280,7 @@ const NOT_TENANT_ROUTES: Record<string, string> = {
   'GET /': 'service name and version only',
   'GET /health': 'database ping and uptime only',
   'POST /auth/login': 'takes an email and password, no site; used by this spec to log both owners in',
+  'POST /sites': 'creates a new site for the caller, who becomes its owner; names no existing site (MSI-02, own spec below)',
   'GET /invites/:token': 'keyed on an unguessable invite token, not a site: holding the token is the permission',
   'POST /invites/:token/accept': 'same: the invite token is the capability, and the site comes from the invite row',
 };

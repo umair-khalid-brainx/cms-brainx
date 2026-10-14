@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
+import { getActiveMembership } from '../lib/activeSite'
 import { SiteThemeRoot, type SiteTheme } from 'cms-blocks'
 import { ApiError } from '../lib/api'
-import { getSession } from '../lib/auth'
 import { canManageSite } from '../lib/roles'
 import { getSiteDetails, updateSiteTheme } from '../lib/siteApi'
 import { readSiteTheme } from '../lib/siteTheme'
@@ -40,7 +40,7 @@ const CHOICES: { key: ChoiceKey; legend: string; options: readonly { value: stri
  */
 function ThemeCard() {
   const id = useId()
-  const canEdit = canManageSite(getSession()?.memberships[0]?.role)
+  const canEdit = canManageSite(getActiveMembership()?.role)
   const [siteName, setSiteName] = useState('')
   const [tagline, setTagline] = useState('')
   // `saved` is null for a site with no whole theme yet: the card starts from a preset and Save is open at once.

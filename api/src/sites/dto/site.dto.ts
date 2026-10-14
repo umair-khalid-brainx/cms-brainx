@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SITE_NAME_MAX } from '../site-settings.js';
 
 // Hosts the platform itself answers on (`admin.<root>`, `api.<root>`) plus
 // names a visitor would reasonably expect to belong to the platform rather
@@ -31,6 +32,15 @@ export const subdomainSchema = z
     message: 'Use 3–63 lowercase letters, numbers or hyphens, starting and ending with a letter or number',
   })
   .refine((value) => !RESERVED_SUBDOMAINS.has(value), { message: 'That address is reserved' });
+
+export const createSiteSchema = z
+  .object({
+    name: z.string().trim().min(1, 'The site title can’t be empty.').max(SITE_NAME_MAX, `The site title can be at most ${SITE_NAME_MAX} characters.`),
+    subdomain: subdomainSchema,
+  })
+  .strict();
+
+export type CreateSiteDto = z.infer<typeof createSiteSchema>;
 
 export const updateSubdomainSchema = z.object({ subdomain: subdomainSchema });
 

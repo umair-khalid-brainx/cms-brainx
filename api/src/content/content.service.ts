@@ -497,8 +497,7 @@ export class ContentService {
   }
 
   private async resolveMembership(userId: string) {
-    const user = await this.users.findByIdWithMemberships(userId);
-    const membership = user?.memberships[0];
+    const membership = await this.users.findActiveMembership(userId);
     if (!membership) throw new ForbiddenException('No site membership');
     return membership;
   }

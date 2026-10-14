@@ -1,4 +1,4 @@
-import { getSession } from '../lib/auth';
+import { getActiveMembership } from '../lib/activeSite'
 
 // The subdomain comes from the session (D-030); the title and the rest of the site's identity
 // come from the API (GOV-04, lib/siteApi.ts).
@@ -12,7 +12,7 @@ const [ADDRESS_PREFIX, ADDRESS_SUFFIX] = SITE_URL_TEMPLATE.split('{subdomain}');
 export const siteAddressParts = { prefix: ADDRESS_PREFIX, suffix: ADDRESS_SUFFIX ?? '' };
 
 export function currentSubdomain(): string | undefined {
-  return getSession()?.memberships[0]?.siteSubdomain;
+  return getActiveMembership()?.siteSubdomain;
 }
 
 /** The public URL for a page path on the current site. */

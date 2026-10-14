@@ -11,6 +11,9 @@ Status: **open** / **done** (with date) / **accepted** (deliberately not acting)
 
 | # | Item | Raised | Notes |
 | - | ---- | ------ | ----- |
+| B-42 | **Administrators can't ask for a site; only owners can create one** (D-070). If an agency's staff should start sites for a client, add a request an owner approves: a request table, approve and reject endpoints and a screen. | 2026-10-14 | Decided against for `MSI-02` |
+| B-43 | **No way to leave a site, delete a site, or edit your account** (name, password). `Account` shows them read-only (D-070). | 2026-10-14 | Needs the platform-operator panel decision (D-014) for delete |
+| B-44 | **Small follow-ups from the `MSI` review.** No cap or rate limit on `POST /sites` (an owner can claim any number of addresses); the editor drops up to one autosave delay of typing when you leave it (true before, easier to hit now); accepting an invite picks the newest membership instead of looking the site up by the invite's `siteId`; a missing `X-Site-Id` quietly means "oldest site" rather than an error. | 2026-10-14 | Product decision for the cap |
 | B-02 | **Scope doc §11 says "22-day / 4.5-week commitment"** while every other figure says 25 days / ~5 weeks. Leftover from Revision 1. | 2026-08-31 | Fix in the source `.docx` |
 | B-03 | **Scope doc block count reads as a contradiction** — §5 lists 11 blocks (form included), §6 prices "10 shared block components" plus the form block separately. Numerically consistent, confusing as written. | 2026-08-31 | Reword to "10 blocks + form block" |
 | B-05 | **`api/.agents/` holds 424 KB of Prisma's own agent skill docs**, added by `prisma init`. Keep or delete. | 2026-08-28 | Empty `.claude/` and `.windsurf/` dirs it also created were removed; `prisma generate` recreates them |

@@ -53,7 +53,9 @@ function AcceptInvitePage() {
     try {
       const session = await acceptInvite(token, { name: name.trim() || undefined, password })
       setSession(session)
-      navigate('/dashboard', { replace: true })
+      // The invited site is the newest membership: straight into it, not the site they were last in.
+      const joined = session.memberships.at(-1)
+      navigate(joined ? `/sites/${joined.siteId}/dashboard` : '/', { replace: true })
     } catch (error) {
       setSubmitError(error instanceof ApiError ? error.message : 'Could not reach the server. Try again.')
     } finally {

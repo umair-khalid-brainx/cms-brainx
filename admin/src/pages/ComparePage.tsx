@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { getActiveMembership } from '../lib/activeSite'
+import { useParams, useSearchParams } from 'react-router';
+import { Link, useNavigate } from '../lib/siteRouter';
 import RestoreConfirm from '../components/RestoreConfirm';
 import {
   blockProps,
@@ -12,7 +14,6 @@ import {
   type Snapshot,
   type WordSegment,
 } from '../lib/diffBlocks';
-import { getSession } from '../lib/auth';
 import { canPublishContent } from '../lib/roles';
 import { restoredNotice, revisionOptionLabel, STATUS_LABEL, whenLabel, type RevisionSummary } from '../lib/revisions';
 import { getCurrentPage, getRevision, listRevisions, type CurrentPage, type RevisionDetail } from '../lib/revisionsApi';
@@ -243,7 +244,7 @@ function ComparePage() {
   const [sideAttempt, setSideAttempt] = useState(0);
   const [confirming, setConfirming] = useState<RevisionSummary | null>(null);
   const cache = useRef(new Map<string, RevisionDetail>());
-  const role = getSession()?.memberships[0]?.role;
+  const role = getActiveMembership()?.role;
 
   useEffect(() => {
     let cancelled = false;
@@ -351,7 +352,7 @@ function ComparePage() {
           &larr; Back to the editor
         </Link>
         <span className="compare-heading-top">Compare versions{data ? `: ${data.page.title}` : ''}</span>
-        <span className="compare-site">{getSession()?.memberships[0]?.siteName ?? ''}</span>
+        <span className="compare-site">{getActiveMembership()?.siteName ?? ''}</span>
       </header>
 
       <main className="compare-main">

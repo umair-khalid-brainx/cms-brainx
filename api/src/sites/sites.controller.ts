@@ -1,10 +1,23 @@
-import { Body, Controller, Delete, Get, Param, Patch, Put, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, type AuthenticatedRequest } from '../auth/jwt-auth.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RequirePermission } from '../auth/permission.decorator.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
-import { setDomainSchema, updateSubdomainSchema, type SetDomainDto, type UpdateSubdomainDto } from './dto/site.dto.js';
+import { createSiteSchema, setDomainSchema, updateSubdomainSchema, type CreateSiteDto, type SetDomainDto, type UpdateSubdomainDto } from './dto/site.dto.js';
 import { SitesService } from './sites.service.js';
+
+// Not tied to a site: the caller is making a new one (MSI-02). JwtAuthGuard only; SitesService checks
+// that they own a site, because "owner" is a role on a site, not on the account.
+@Controller('sites')
+@UseGuards(JwtAuthGuard)
+export class CreateSiteController {
+  constructor(private readonly sites: SitesService) {}
+
+  @Post()
+  create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(createSiteSchema)) body: CreateSiteDto) {
+    return this.sites.create(req.user.sub, body);
+  }
+}
 
 // Explicit :siteId, like TeamController — PermissionsGuard checks the
 // caller's membership of *that* site, never trusts a body field (invariant 5).

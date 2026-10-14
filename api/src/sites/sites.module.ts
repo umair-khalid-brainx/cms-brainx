@@ -6,7 +6,7 @@ import { MediaModule } from '../media/media.module.js';
 import { RevalidationModule } from '../revalidation/revalidation.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { SiteRepository } from './site.repository.js';
-import { SitesController } from './sites.controller.js';
+import { CreateSiteController, SitesController } from './sites.controller.js';
 import { SitesService } from './sites.service.js';
 import { SubdomainCache } from './subdomain-cache.js';
 
@@ -19,7 +19,7 @@ import { SubdomainCache } from './subdomain-cache.js';
   // MediaModule: the logo must be in the site's library; RevalidationModule: a settings change refreshes
   // every page of the site (GOV-04).
   imports: [UsersModule, AuthModule, MediaModule, RevalidationModule],
-  controllers: [SitesController],
+  controllers: [SitesController, CreateSiteController],
   providers: [SiteRepository, SubdomainCache, SitesService, JwtAuthGuard, PermissionsGuard],
   exports: [SiteRepository, SubdomainCache],
 })

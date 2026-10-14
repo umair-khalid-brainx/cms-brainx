@@ -36,6 +36,13 @@ export class SiteRepository {
     return this.prisma.site.findMany({ select: { id: true, subdomain: true }, orderBy: { id: 'asc' } });
   }
 
+  /** A new site and its first owner, together or not at all (MSI-02). */
+  createWithOwner(data: { name: string; subdomain: string; themeJson: Prisma.InputJsonValue }, ownerId: string) {
+    return this.prisma.site.create({
+      data: { ...data, memberships: { create: { userId: ownerId, role: 'owner' } } },
+    });
+  }
+
   findByHost(host: string) {
     return this.prisma.site.findUnique({ where: { host } });
   }
