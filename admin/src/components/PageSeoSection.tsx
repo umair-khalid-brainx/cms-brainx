@@ -26,6 +26,8 @@ type Props = {
   onSaved: (page: PageSummary) => void;
   /** Said to screen readers when a save lands, in the panel's one live region. */
   announce: (message: string) => void;
+  /** Reports whether the section holds an edit that isn't saved yet (the group header's "Unsaved" marker). */
+  onDirty?: (dirty: boolean) => void;
 };
 
 /** A library file's address as a browser can load it: the saved short form has no host. */
@@ -37,10 +39,10 @@ const fileSrc = (value: string): string => (value.startsWith('/') ? `${API_URL}$
  * show. Empty fields fall back to the page's own title and text on the public site, so a
  * page works without any of this. One save for the whole section.
  */
-function PageSeoSection({ page, siteName, onSaved, announce }: Props) {
+function PageSeoSection({ page, siteName, onSaved, announce, onDirty }: Props) {
   const id = useId();
   const [seo, setSeo] = useState<Seo>(page.seo);
-  const sectionRef = useRef<HTMLElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const [picking, setPicking] = useState(false);
   // The picture that failed to load, so a deleted file shows a message instead of a broken icon.
   const [brokenImage, setBrokenImage] = useState('');
@@ -48,6 +50,10 @@ function PageSeoSection({ page, siteName, onSaved, announce }: Props) {
   const [problems, setProblems] = useState<string[]>([]);
   const [failed, setFailed] = useState<string | null>(null);
   const changed = !sameSeo(seo, page.seo);
+  useEffect(() => {
+    onDirty?.(changed);
+    return () => onDirty?.(false);
+  }, [changed, onDirty]);
 
   // While the media picker is open, Esc closes it and not the whole panel around it: the key's
   // default is stopped, and so is the dialog's own cancel, which a browser can raise on its own.
@@ -110,8 +116,7 @@ function PageSeoSection({ page, siteName, onSaved, announce }: Props) {
   })();
 
   return (
-    <section ref={sectionRef} className="page-settings-section" aria-labelledby={`${id}-heading`}>
-      <h3 id={`${id}-heading`}>Search and sharing</h3>
+    <div ref={sectionRef}>
       <p className="page-settings-hint seo-intro">
         What search engines and shared links show for this page. Anything left empty uses the page’s own title and text.
       </p>
@@ -278,7 +283,7 @@ function PageSeoSection({ page, siteName, onSaved, announce }: Props) {
           onClose={() => setPicking(false)}
         />
       ) : null}
-    </section>
+    </div>
   );
 }
 

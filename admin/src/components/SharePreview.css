@@ -5,8 +5,8 @@
 /* Secondary to Publish: outlined on the dark top bar. */
 .share-preview-trigger {
   background: transparent;
-  color: #f0f0f1;
-  border: 1px solid #8c8f94;
+  color: var(--ui-surface);
+  border: 1px solid var(--ui-input-border);
   border-radius: 4px;
   padding: 0.35rem 0.8rem;
   font-size: 0.8125rem;
@@ -18,8 +18,8 @@
 
 .share-preview-trigger:hover,
 .share-preview-trigger[aria-expanded='true'] {
-  border-color: #f0f0f1;
-  background: #2c3338;
+  border-color: var(--ui-surface);
+  background: var(--ui-line-dark);
 }
 
 .share-preview-trigger:focus-visible {
@@ -34,8 +34,8 @@
   z-index: 50;
   width: min(24rem, calc(100vw - 2rem));
   background: #fff;
-  color: #1e1e1e;
-  border: 1px solid #c3c4c7;
+  color: var(--ui-ink);
+  border: 1px solid var(--ui-line-strong);
   border-radius: 4px;
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
   padding: 0.9rem 1rem 0.5rem;
@@ -49,17 +49,17 @@
 
 .share-preview-intro {
   margin: 0 0 0.75rem;
-  color: #3c434a;
+  color: var(--ui-line-dark-strong);
 }
 
 .share-preview-muted {
   margin: 0;
-  color: #646970;
+  color: var(--ui-text-2);
 }
 
 .share-preview-error {
   margin: 0;
-  color: #b32d2e;
+  color: var(--ui-danger);
 }
 
 .share-preview-label {
@@ -77,24 +77,24 @@
   flex: 1;
   min-width: 0;
   padding: 0.35rem 0.5rem;
-  border: 1px solid #8c8f94;
+  border: 1px solid var(--ui-input-border);
   border-radius: 4px;
-  background: #f6f7f7;
-  color: #1e1e1e;
+  background: var(--ui-surface-2);
+  color: var(--ui-ink);
   font-family: ui-monospace, monospace;
   font-size: 0.75rem;
 }
 
 .share-preview-url:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 1px;
 }
 
 .share-preview-primary {
   flex: none;
-  background: #2271b1;
+  background: var(--ui-accent);
   color: #fff;
-  border: 1px solid #2271b1;
+  border: 1px solid var(--ui-accent);
   border-radius: 4px;
   padding: 0.35rem 0.8rem;
   font-size: 0.8125rem;
@@ -105,12 +105,12 @@
 }
 
 .share-preview-primary:hover {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .share-preview-primary:disabled {
-  background: #72aee6;
-  border-color: #72aee6;
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent-soft);
   cursor: default;
 }
 
@@ -124,7 +124,7 @@
 .share-preview-footer a {
   display: inline-flex;
   gap: 0.2rem;
-  color: #2271b1;
+  color: var(--ui-accent);
   font-weight: 500;
   text-decoration: none;
 }
@@ -137,7 +137,7 @@
   border: none;
   background: none;
   padding: 0;
-  color: #b32d2e;
+  color: var(--ui-danger);
   font-size: inherit;
   font-family: inherit;
   font-weight: 500;
@@ -149,14 +149,14 @@
 }
 
 .share-preview-revoke:disabled {
-  color: #b0b0b0;
+  color: var(--ui-text-2-dark);
   cursor: default;
 }
 
 .share-preview-primary:focus-visible,
 .share-preview-revoke:focus-visible,
 .share-preview-footer a:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
@@ -169,35 +169,35 @@
 }
 
 .share-preview-announce-failed {
-  color: #b32d2e;
+  color: var(--ui-danger);
 }
 
 @media (prefers-color-scheme: dark) {
   .share-preview-panel {
-    background: #18191b;
-    color: #ededed;
-    border-color: #3c434a;
+    background: var(--ui-panel-dark);
+    color: var(--ui-text-dark);
+    border-color: var(--ui-line-dark-strong);
     box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
   }
 
   .share-preview-intro,
   .share-preview-muted {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 
   .share-preview-error,
   .share-preview-revoke {
-    color: #f86368;
+    color: var(--ui-danger-soft);
   }
 
   .share-preview-url {
     background: #101112;
-    color: #ededed;
-    border-color: #50575e;
+    color: var(--ui-text-dark);
+    border-color: var(--ui-text-2);
   }
 
   .share-preview-footer a {
-    color: #6ab6f2;
+    color: var(--ui-accent-soft);
   }
 
   .share-preview-announce {
@@ -205,7 +205,7 @@
   }
 
   .share-preview-announce-failed {
-    color: #f86368;
+    color: var(--ui-danger-soft);
   }
 }
 

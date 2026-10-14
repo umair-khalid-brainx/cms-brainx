@@ -1,143 +1,95 @@
 ---
-diff_hash: 9dc46b7f30387e2500d3e632ed2cfc8a281b9e0fbaef2137277148481dacb7db
-reviewed_at: 2026-10-14T14:13:28Z
+diff_hash: 99a3b1aa8f0a3333f9879c6f40e06902bcdf36791977a0b8ad1e999258178b61
+reviewed_at: 2026-10-14T15:16:18Z
 ---
 
 ## Summary
 
-MSI-01 to MSI-06 / D-070: one account, several sites. One git repository holding separate projects, reviewed with
-NestJS criteria for `api/` and React criteria for `admin/` (no root `package.json`, so detection is per folder). Scope:
-all changes (everything staged, `git add -A`).
+A fresh review. The `brainx-review.md` that was already here was the review of 36761cc, which has since been finalized
+into the ledger and `records/`, so it does not describe this diff. React criteria (`admin/` only; no `api`, `web` or
+`cms-blocks` change, so there is no cross-repo contract to check). Scope: all changes (everything staged, `git add -A`).
 
-- **api:** `activeSiteMiddleware` (AsyncLocalStorage) holds the `X-Site-Id` header for each request.
-  `UserRepository.findActiveMembership` resolves it: no header means the oldest membership, and a site the caller is
-  not a member of is a 403. `PermissionsGuard` and every service's membership lookup now go through it, and
-  `findByIdWithMemberships` orders by `createdAt`. `POST /sites` (`CreateSiteController`, JWT only) lets someone who owns
-  a site create another: strict Zod DTO, a uniqueness pre-check plus P2002 mapped to 409, and a nested create of the
-  site and its owner membership with `DEFAULT_THEME`. Specs use a `withActive` shim; new unit specs and
-  `test/multi-site.e2e-spec.ts`.
-- **admin:** routes moved under `/sites/:siteId` (`SiteScope` sets the active site and reloads the app when it changes),
-  `siteRouter` wrappers prefix in-site links, `api.ts` sends `X-Site-Id`, and every `memberships[0]` became
-  `getActiveMembership()`. Adds the site switcher, New site dialog, All sites page and Account page. Settings now
-  holds only site settings.
-- **docs/tickets:** D-070, B-42 to B-44, a worklog entry, MSI tickets and CLAUDE.md gotchas.
+ADM-01 to ADM-07 / D-071, the admin redesign:
 
-Cross-repo contract check: admin sends `X-Site-Id` on every authenticated call (GET, send, upload, delete). The API's
-default CORS reflects requested headers, so the custom header passes preflight. `createSite` posts exactly
-`{ name, subdomain }`, which the API's strict schema accepts, then re-reads `/auth/me`, whose memberships are now in
-the same oldest-first order the API's "first membership" fallback uses. These match.
+- **Shell and nav:** `--ui-*` tokens in `index.css`, light sidebar grouped Content / Site / Admin (`lib/navGroups.ts`),
+  drawer under 860px. The nav's role rules match the old `requires*` flags one for one.
+- **Dropdowns:** a shared `Menu` (menu button) and a rewritten `Select` (listbox), both portalled and placed by
+  `useAnchoredPopup`; keyboard rules are pure functions in `lib/menuKeys.ts`. `Select` portals into an enclosing
+  `<dialog>` so it isn't drawn under the modal's top layer. The site switcher is now built on `Menu`; its `/sites/...`
+  links are left alone by `scoped()`.
+- **Pages/Posts list:** client-side search and status filter (`lib/listFilter.ts`), a row actions `Menu`, and a
+  read-only `ContentSidePanel` driven by `?view=<slug>`. `PageSummary` gains `updatedAt` (the list endpoint already
+  returns full rows, so the field is there).
+- **Page settings:** collapsible `SettingsSection` groups with an "Unsaved" marker fed by each field's `onDirty`; the
+  parent picker moved from a native `<select>` to `Select`.
+- **Everything else:** CSS retinted to the new tokens, with paired dark-mode rules. Docs: D-071, worklog, ADM tickets,
+  STATUS totals (54+7=61 DONE, 62+7=69 tickets: correct).
 
-Security: the header is only a request. Every lookup re-checks membership, `:siteId` routes still use the param, and
-the e2e suite covers a forged header, a non-site id, role-per-site and cross-site reads. No authz defect found.
+Checked and fine: Escape handling between popups, the side panel and the settings `<dialog>` (the popup's capture
+listener stops propagation and prevents default, and the panel checks `defaultPrevented`); outside-press and Tab
+closing; stale placement on reopen (re-measured in a layout effect before paint); hooks before the early return in
+`ParentField`; `SiteSwitcher` links; no `dangerouslySetInnerHTML`; external links carry `rel="noreferrer"`.
 
-Verified for this review: `api` typecheck clean, 813/813 unit tests pass; `multi-site` + `cross-tenant` e2e 502/502
-pass. A throwaway e2e probe confirmed that a multipart `POST /media` with `X-Site-Id` lands in the named site, so the
-AsyncLocalStorage context survives multer. `admin` typecheck clean, 234/234 tests pass. A throwaway happy-dom probe
-reproduced the redirect loop below.
+Verified for this review: `admin` typecheck clean, `oxlint` 0 errors (4 warnings, none new in kind), 260/260 tests pass.
+
+Not a finding, but noted: `ui.css` (252 lines of `.ui-*` primitives) is loaded globally and not yet used by any
+markup. D-071 records that as an accepted cost.
 
 ## Findings
 
 ### Critical (0)
 
-### High (1)
-- **admin/src/App.tsx:82** — The in-site catch-all `<Route path="*" element={<Navigate to="dashboard" replace />} />` resolves `dashboard` relative to the full splat URL (React Router 8 resolves the last match by `match.pathname`, not `pathnameBase`). So any unknown path inside a site redirects forever: `/sites/x/foo` → `/sites/x/foo/dashboard` → `/sites/x/foo/dashboard/dashboard` → … *(correctness)*
-  - status: open
-  - dev_reasoning: N/A
-  - ai_reasoning: Reproduced with a MemoryRouter probe using the same route shape: the location grew by `/dashboard` on every render until the guard stopped it. This happens for a mistyped URL, for `/sites/<id>/editor` with no slug, for `/sites/<id>/content` with no prefix, and for any unknown old-style path such as `/foo`, because `IntoPreferredSite keepPath` sends that to `/sites/<id>/foo`. Only the bare `/sites/<id>` works, because its splat is empty. The tab hangs in a replace-navigation loop. Fix: use an absolute target. One way is `siteRouter`'s `Navigate` with `to="/dashboard"`, which `scoped` prefixes because `SiteScope` has already set the active site. Another is to build `/sites/${siteId}/dashboard` from `useParams`. A route test for an unknown in-site path would keep it fixed.
+### High (0)
 
 ### Medium (0)
 
-### Low (2)
-- **admin/src/lib/siteApi.ts:113** — `createSite` creates the site and then re-reads `/auth/me` in the same `try`. If the second call fails, the dialog says the create failed, but the site exists and the stored session doesn't list it. Retrying gives "That address is already taken", and `SiteScope` refuses the new site's id until the next login. *(correctness)*
+### Low (4)
+- **admin/src/components/PageSettingsPanel.tsx:593** — Moving the parent picker to `Select` dropped the live-page warning from its `aria-describedby`. The old native `<select>` appended `${id}-parent-live` when `changed && live`; the new one doesn't, so a screen reader user choosing a new parent for a live page no longer hears that old addresses will redirect. *(accessibility regression)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: This is rare because it needs a network or API failure between two calls, but the result misleads. Two ways to fix it: navigate to the new site even when the refresh fails and refresh again later, or append the returned site to the session's memberships before the refresh so the switcher and `SiteScope` know about it either way.
-- **api/src/sites/site-theme.ts:90** — `DEFAULT_THEME` is a hand copy of admin's Oyster preset (`admin/src/lib/themeEdit.ts:52`). If either side changes, new sites start on a theme the editor no longer offers as "the first preset". The spec only pins `brand`. *(maintainability)*
+  - ai_reasoning: The warning paragraph still renders with `id={`${id}-parent-live`}` (line 632), but nothing points at it now. Fix: add `${changed && live ? ` ${id}-parent-live` : ''}` back to the `aria-describedby` string passed to `Select`. Also, the filter input's `aria-controls={`${id}-parent`}` now points at the Select's trigger button rather than at a list, which is harmless but no longer accurate.
+- **admin/src/pages/PagesListPage.tsx:194** — Opening the side panel pushes a history entry (`?view=<slug>`), but closing it *replaces* that entry with the bare list. History ends up as `[/pages, /pages]`, so after opening and closing a panel the browser's Back button seems to do nothing the first time. *(correctness / UX)*
   - status: open
   - dev_reasoning: N/A
-  - ai_reasoning: The two projects can't import each other (D-012). If a single source isn't wanted, either put the preset palettes in the shared `cms-blocks` package, which both already depend on, or have admin's test assert that its first preset deep-equals a copy of the API's default. That way a change on one side fails a test instead of drifting silently.
+  - ai_reasoning: `openDetails` calls `setSearchParams(...)` (push) and `closeDetails` calls it with `{ replace: true }`. Either open with `replace` too, so the panel never adds history, or close by going back one step when the panel was opened from inside the app. Opening with `replace` is the simpler option and still keeps the shareable `?view=` address.
+- **admin/src/components/ContentSidePanel.tsx:80** — Below 720px the panel is a full-screen sheet that traps Tab, but it keeps `aria-modal="false"`. Screen readers can still browse the list behind it with their virtual cursor, which the visual design hides. *(accessibility)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: On narrow screens it behaves as a modal, so it should be announced as one. Set `aria-modal` from the same `matchMedia('(max-width: 720px)')` check the Tab trap already uses, or mark the list `inert` while the sheet is open. The worklog already lists the missing trap above 720px as not done; this is the narrow-screen case, where the trap exists but the semantics don't match it.
+- **admin/src/pages/PagesListPage.css:178** — The status pill colours (published, scheduled, in review) are raw hex in both the light and dark rules. The note colour in `ContentSidePanel.css:150` repeats the scheduled palette as hex. D-071 says colours were remapped to the `--ui-*` palette, but these new rules weren't. *(maintainability)*
+  - status: open
+  - dev_reasoning: N/A
+  - ai_reasoning: This doesn't affect behaviour, and invariant 2's hex ban covers blocks, not admin. But the same status colours now appear as literals in at least `PagesListPage.css`, `ContentSidePanel.css` and `WorkflowStrip.css`, so a palette change has to be made in several places. Add `--ui-status-*` tokens (light and dark) next to the others in `index.css` and use them in these rules.
 
 ## Reviewed files
-- CLAUDE.md
-- admin/src/App.tsx
-- admin/src/components/CustomDomainCard.tsx
-- admin/src/components/HistoryPanel.tsx
-- admin/src/components/NewSiteDialog.css (skimmed)
-- admin/src/components/NewSiteDialog.tsx
+- admin/src/components/ContentSidePanel.tsx
+- admin/src/components/ContentSidePanel.css
+- admin/src/components/Menu.tsx
+- admin/src/components/Menu.css (skimmed)
+- admin/src/components/PageSeoSection.tsx
 - admin/src/components/PageSettingsPanel.tsx
-- admin/src/components/SiteIdentityCard.tsx
-- admin/src/components/SiteSwitcher.css (skimmed)
+- admin/src/components/PageSettingsPanel.css (skimmed)
+- admin/src/components/PageTermsSection.tsx
+- admin/src/components/Select.tsx
+- admin/src/components/Select.css (skimmed)
+- admin/src/components/SettingsSection.tsx
+- admin/src/components/SettingsSection.css (skimmed)
 - admin/src/components/SiteSwitcher.tsx
-- admin/src/components/ThemeCard.tsx
-- admin/src/data/site.ts
-- admin/src/layouts/AdminLayout.css
+- admin/src/components/SiteSwitcher.css (deleted; checked nothing still imports it)
+- admin/src/index.css
+- admin/src/ui.css (skimmed)
 - admin/src/layouts/AdminLayout.tsx
-- admin/src/lib/RequireWrite.tsx
-- admin/src/lib/SiteScope.tsx
-- admin/src/lib/activeSite.test.ts
-- admin/src/lib/activeSite.ts
-- admin/src/lib/api.ts
-- admin/src/lib/roles.ts
-- admin/src/lib/siteApi.ts
-- admin/src/lib/sitePath.test.ts
-- admin/src/lib/sitePath.ts
-- admin/src/lib/siteRouter.tsx
-- admin/src/lib/teamApi.ts
-- admin/src/pages/AcceptInvitePage.tsx
-- admin/src/pages/AccountPage.tsx
-- admin/src/pages/AllSitesPage.css (skimmed)
-- admin/src/pages/AllSitesPage.tsx
-- admin/src/pages/ComparePage.tsx
-- admin/src/pages/CreatePagePage.tsx
-- admin/src/pages/DashboardPage.tsx
-- admin/src/pages/EditorPage.tsx
-- admin/src/pages/LoginPage.tsx
-- admin/src/pages/MediaPage.tsx
-- admin/src/pages/MenusPage.tsx
+- admin/src/layouts/AdminLayout.css (skimmed: drawer hidden state)
+- admin/src/lib/contentApi.ts
+- admin/src/lib/listFilter.ts, listFilter.test.ts
+- admin/src/lib/menuKeys.ts, menuKeys.test.ts
+- admin/src/lib/navGroups.ts, navGroups.test.ts
+- admin/src/lib/seoSummary.ts, seoSummary.test.ts
+- admin/src/lib/settingsSections.ts, settingsSections.test.ts
+- admin/src/lib/useAnchoredPopup.ts
+- admin/src/main.tsx
 - admin/src/pages/PagesListPage.tsx
-- admin/src/pages/RedirectsPage.tsx
-- admin/src/pages/ReviewPage.tsx
-- admin/src/pages/SettingsPage.tsx
-- admin/src/pages/SubmissionDetailPage.tsx
-- admin/src/pages/SubmissionsPage.tsx
-- admin/src/pages/TaxonomyPage.tsx
-- admin/src/pages/TypeEntriesPage.tsx
-- admin/src/pages/TypesPage.tsx
-- api/src/app.module.ts
-- api/src/auth/permissions.guard.ts
-- api/src/common/active-site.ts
-- api/src/content-types/content-types.service.spec.ts
-- api/src/content-types/content-types.service.ts
-- api/src/content/content.service.spec.ts
-- api/src/content/content.service.ts
-- api/src/content/workflow.service.spec.ts
-- api/src/content/workflow.service.ts
-- api/src/media/media.service.spec.ts
-- api/src/media/media.service.ts
-- api/src/menus/menus.service.spec.ts
-- api/src/menus/menus.service.ts
-- api/src/redirects/redirects.service.spec.ts
-- api/src/redirects/redirects.service.ts
-- api/src/revisions/revisions.service.spec.ts
-- api/src/revisions/revisions.service.ts
-- api/src/sites/dto/site.dto.ts
-- api/src/sites/site-theme.ts
-- api/src/sites/site.repository.ts
-- api/src/sites/sites.controller.ts
-- api/src/sites/sites.module.ts
-- api/src/sites/sites.service.spec.ts
-- api/src/sites/sites.service.ts
-- api/src/sites/subdomain-cache.spec.ts
-- api/src/submissions/submissions.service.ts
-- api/src/taxonomy/terms.service.spec.ts
-- api/src/taxonomy/terms.service.ts
-- api/src/users/active-membership.spec.ts
-- api/src/users/test-support.ts
-- api/src/users/user.repository.ts
-- api/test/cross-tenant.e2e-spec.ts
-- api/test/multi-site.e2e-spec.ts
-- docs/BACKLOG.md
-- docs/DECISIONS.md (skimmed)
-- docs/WORKLOG.md
-- tickets/MSI-01.md … MSI-06.md (skimmed)
-- tickets/STATUS.md
+- admin/src/pages/PagesListPage.css (skimmed: colours, dark mode)
+- Restyle-only CSS, skimmed for colours, dark-mode pairing and global selectors: ContentTypeForm, FileTile, HistoryPanel, ImageUploadField, MediaDetailsForm, MediaLibraryModal, MenuEditor, NewSiteDialog, PublishChecksPanel, RichTextToolbar, SharePreview, ThemeCard, WorkflowStrip, AllSitesPage, ComparePage, CreatePagePage, DashboardPage, EditorPage, MediaPage, MenusPage, RedirectsPage, ReviewPage, SettingsPage, SubmissionsPage, TaxonomyPage, TeamPage, TypesPage, auth
+- docs/DECISIONS.md, docs/WORKLOG.md, tickets/STATUS.md
+- tickets/ADM-01.md … ADM-07.md (skimmed)

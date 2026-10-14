@@ -2,8 +2,8 @@
    OS dark-mode preference (see ImageUploadField.css), so there is no dark
    variant here on purpose. Colours match Puck's own controls. */
 .rt-toolbar-wrap {
-  border-bottom: 1px solid #dcdcdc;
-  background: #f6f7f7;
+  border-bottom: 1px solid var(--ui-line);
+  background: var(--ui-surface-2);
 }
 
 .rt-toolbar {
@@ -23,10 +23,10 @@
   font-size: 13px;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid #dcdcdc;
+  border: 1px solid var(--ui-line);
   border-radius: 4px;
   background: #fff;
-  color: #1e1e1e;
+  color: var(--ui-ink);
   cursor: pointer;
 }
 
@@ -38,7 +38,7 @@
   width: 1px;
   height: 18px;
   margin: 0 4px;
-  background: #dcdcdc;
+  background: var(--ui-line);
 }
 
 .rt-button {
@@ -50,7 +50,7 @@
   border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
-  color: #1e1e1e;
+  color: var(--ui-ink);
   cursor: pointer;
   transition: background-color 150ms ease, color 150ms ease;
 }
@@ -62,8 +62,8 @@
 /* Pressed is shown by colour and a border, not colour alone. */
 .rt-button[aria-pressed='true'] {
   background: #e5f0f8;
-  border-color: #2271b1;
-  color: #135e96;
+  border-color: var(--ui-accent);
+  color: var(--ui-accent-strong);
 }
 
 .rt-button:disabled,
@@ -77,13 +77,13 @@
 .rt-link-input:focus-visible,
 .rt-link-apply:focus-visible,
 .rt-link-remove:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 1px;
 }
 
 .rt-link {
   padding: 6px 8px 8px;
-  border-top: 1px solid #dcdcdc;
+  border-top: 1px solid var(--ui-line);
 }
 
 .rt-link-label {
@@ -91,7 +91,7 @@
   margin-bottom: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .rt-link-row {
@@ -106,14 +106,14 @@
   font-size: 13px;
   height: 32px;
   padding: 0 10px;
-  border: 1px solid #dcdcdc;
+  border: 1px solid var(--ui-line);
   border-radius: 4px;
   background: #fff;
   color: #000;
 }
 
 .rt-link-input[aria-invalid='true'] {
-  border-color: #b32d2e;
+  border-color: var(--ui-danger);
 }
 
 .rt-link-apply,
@@ -128,22 +128,22 @@
 }
 
 .rt-link-apply {
-  border: 1px solid #2271b1;
-  background: #2271b1;
+  border: 1px solid var(--ui-accent);
+  background: var(--ui-accent);
   color: #fff;
 }
 
 .rt-link-remove {
-  border: 1px solid #dcdcdc;
-  background: #f0f0f1;
-  color: #1e1e1e;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
 }
 
 .rt-link-error {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.4;
-  color: #b32d2e;
+  color: var(--ui-danger);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -203,7 +203,7 @@
   right: 0;
   z-index: 10;
   width: 280px;
-  border: 1px solid #dcdcdc;
+  border: 1px solid var(--ui-line);
   border-radius: 6px;
   background: #fff;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);

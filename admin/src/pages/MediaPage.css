@@ -9,21 +9,21 @@
   margin: 0;
   font-size: 1.375rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .media-count {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .media-upload-button {
   margin-left: auto;
   align-self: center;
-  background: #2271b1;
+  background: var(--ui-accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   padding: 0.4rem 0.85rem;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -32,11 +32,12 @@
 }
 
 .media-upload-button:hover:not(:disabled) {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .media-upload-button:disabled {
-  background: #949494;
+  background: var(--ui-accent);
+  opacity: 0.5;
   cursor: default;
 }
 
@@ -47,12 +48,12 @@
 .media-loading,
 .media-empty {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .media-error {
   font-size: 0.8125rem;
-  color: #c0392b;
+  color: var(--ui-danger);
 }
 
 .media-grid {
@@ -66,9 +67,9 @@
   flex-direction: column;
   gap: 0.15rem;
   padding: 0 0 0.6rem;
-  border: 1px solid #c3c4c7;
+  border: 1px solid var(--ui-line-strong);
   border-radius: 6px;
-  background: #fff;
+  background: var(--ui-panel);
   cursor: pointer;
   overflow: hidden;
   text-align: left;
@@ -76,11 +77,11 @@
 }
 
 .media-card:hover {
-  border-color: #2271b1;
+  border-color: var(--ui-accent);
 }
 
 .media-card:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
@@ -93,8 +94,8 @@
   aspect-ratio: 1 / 1;
   margin-bottom: 0.45rem;
   overflow: hidden;
-  background: repeating-conic-gradient(#f0f0f1 0 25%, #fff 0 50%) 0 0 / 14px 14px;
-  border-bottom: 1px solid #e2e4e7;
+  background: repeating-conic-gradient(var(--ui-surface) 0 25%, #fff 0 50%) 0 0 / 14px 14px;
+  border-bottom: 1px solid var(--ui-line);
 }
 
 /* Absolutely placed so a large original (pre-thumbnail uploads) can't stretch
@@ -162,12 +163,12 @@
 
 .media-card-name {
   font-size: 0.75rem;
-  color: #3c434a;
+  color: var(--ui-line-dark-strong);
 }
 
 .media-card-size {
   font-size: 0.6875rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .media-detail-backdrop {
@@ -187,7 +188,7 @@
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
-  background: #fff;
+  background: var(--ui-panel);
   border-radius: 8px;
   padding: 1.5rem;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
@@ -201,24 +202,24 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 4px;
-  background: #f0f0f1;
-  color: #3c434a;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  color: var(--ui-line-dark-strong);
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .media-detail-close:hover {
-  background: #e0e0e0;
+  background: var(--ui-line-strong);
 }
 
 .media-detail-preview {
   width: 100%;
   max-height: 260px;
   object-fit: contain;
-  background: #f0f0f1;
-  border-radius: 4px;
+  background: var(--ui-surface);
+  border-radius: var(--ui-radius-sm);
 }
 
 .media-detail-meta {
@@ -230,13 +231,13 @@
 }
 
 .media-detail-meta dt {
-  color: #6b7280;
+  color: var(--ui-text-3);
   font-weight: 500;
 }
 
 .media-detail-meta dd {
   margin: 0;
-  color: #1e1e1e;
+  color: var(--ui-ink);
   overflow-wrap: anywhere;
 }
 
@@ -252,10 +253,10 @@
   font: inherit;
   font-size: 0.75rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #dcdcdc;
-  border-radius: 4px;
-  background: #f6f7f7;
-  color: #50575e;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-2);
+  color: var(--ui-text-2);
 }
 
 .media-detail-copy {
@@ -263,16 +264,16 @@
   font: inherit;
   font-size: 0.75rem;
   padding: 0.4rem 0.7rem;
-  border: 1px solid #dcdcdc;
-  border-radius: 4px;
-  background: #f0f0f1;
-  color: #1e1e1e;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
   cursor: pointer;
 }
 
 .media-detail-copy:hover {
-  border-color: #2271b1;
-  color: #2271b1;
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
 }
 
 .media-detail-actions {
@@ -286,20 +287,20 @@
   font: inherit;
   font-size: 0.8125rem;
   padding: 0.4rem 0.8rem;
-  border: 1px solid #2271b1;
-  border-radius: 4px;
-  background: #fff;
-  color: #2271b1;
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
+  color: var(--ui-accent);
   cursor: pointer;
 }
 
 .media-detail-replace:hover:not(:disabled) {
-  background: #f0f6fc;
+  background: var(--ui-accent-wash);
 }
 
 .media-detail-replace:disabled {
-  border-color: #dcdcdc;
-  color: #b0b0b0;
+  border-color: var(--ui-line);
+  color: var(--ui-text-2-dark);
   cursor: default;
 }
 
@@ -309,14 +310,14 @@
 }
 
 .media-detail-usage-status {
-  color: #757575;
+  color: var(--ui-text-3);
 }
 
 .media-detail-delete {
   border: none;
   background: none;
   padding: 0;
-  color: #b32d2e;
+  color: var(--ui-danger);
   font-weight: 500;
   font-size: 0.8125rem;
   font-family: inherit;
@@ -328,88 +329,88 @@
 }
 
 .media-detail-delete:disabled {
-  color: #b0b0b0;
+  color: var(--ui-text-2-dark);
   cursor: default;
 }
 
 @media (prefers-color-scheme: dark) {
   .media-title {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .media-card {
-    background: #18191b;
-    border-color: #3c434a;
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .media-card-name {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 
   .media-card-size {
-    color: #8c8f94;
+    color: var(--ui-input-border);
   }
 
   .media-thumb-frame {
-    background: repeating-conic-gradient(#232323 0 25%, #2c2d30 0 50%) 0 0 / 14px 14px;
-    border-bottom-color: #3c434a;
+    background: repeating-conic-gradient(var(--ui-panel-dark-2) 0 25%, var(--ui-line-dark-strong) 0 50%) 0 0 / 14px 14px;
+    border-bottom-color: var(--ui-line-dark-strong);
   }
 
   .media-card:focus-visible {
-    outline-color: #72aee6;
+    outline-color: var(--ui-accent-soft);
   }
 
   .media-detail {
-    background: #1f2023;
+    background: var(--ui-panel-dark-3);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   }
 
   .media-detail-close {
-    background: #2c3338;
-    color: #ededed;
+    background: var(--ui-line-dark);
+    color: var(--ui-text-dark);
   }
 
   .media-detail-close:hover {
-    background: #3c434a;
+    background: var(--ui-line-dark-strong);
   }
 
   .media-detail-preview {
-    background: #101113;
+    background: var(--ui-field-dark);
   }
 
   .media-detail-meta dd {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .media-detail-url {
-    background: #1a1a1a;
-    border-color: #444;
-    color: #ededed;
+    background: var(--ui-field-dark);
+    border-color: var(--ui-line-dark-strong);
+    color: var(--ui-text-dark);
   }
 
   .media-detail-copy {
-    background: #232323;
-    border-color: #444;
-    color: #ededed;
+    background: var(--ui-panel-dark-2);
+    border-color: var(--ui-line-dark-strong);
+    color: var(--ui-text-dark);
   }
 
   .media-detail-copy:hover {
-    border-color: #72aee6;
-    color: #72aee6;
+    border-color: var(--ui-accent-soft);
+    color: var(--ui-accent-soft);
   }
 
   .media-detail-replace {
-    background: #232323;
-    border-color: #72aee6;
-    color: #72aee6;
+    background: var(--ui-panel-dark-2);
+    border-color: var(--ui-accent-soft);
+    color: var(--ui-accent-soft);
   }
 
   .media-detail-replace:hover:not(:disabled) {
-    background: #1d2733;
+    background: var(--ui-accent-wash-dark);
   }
 
   .media-detail-usage-status {
-    color: #a0a0a0;
+    color: var(--ui-text-3-dark);
   }
 }
 
@@ -419,30 +420,30 @@
   display: inline-block;
   margin-top: 0.6rem;
   font-size: 0.8125rem;
-  color: #2271b1;
+  color: var(--ui-accent);
   text-underline-offset: 2px;
 }
 
 .media-detail-open:hover {
-  color: #135e96;
+  color: var(--ui-accent-strong);
 }
 
 .media-detail-open:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
 @media (prefers-color-scheme: dark) {
   .media-detail-open {
-    color: #72aee6;
+    color: var(--ui-accent-soft);
   }
 
   .media-detail-open:hover {
-    color: #9cc9f0;
+    color: var(--ui-accent-tint-text);
   }
 
   .media-detail-open:focus-visible {
-    outline-color: #72aee6;
+    outline-color: var(--ui-accent-soft);
   }
 }

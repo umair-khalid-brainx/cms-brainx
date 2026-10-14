@@ -8,6 +8,19 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-071 — 2026-10-14 — Admin redesign: `--ui-*` tokens, light sidebar in three groups, one Menu and Select (`ADM-01`–`ADM-07`)
+
+**Decision:** the admin gets its own token set (`--ui-*`, never `--site-*`): cool-grey surfaces, ink text, one teal accent,
+IBM Plex Sans with Fraunces for page titles, dark mode by paired `prefers-color-scheme` rules. The sidebar is light and
+grouped Content / Site / Admin. `Menu` (actions) and `Select` (choice) are the only dropdowns; both open in a portal, so a
+table cannot clip them. Pages and Posts lists search and filter in the browser and open a read-only side panel (`?view=<slug>`).
+
+**Why:** the admin looked like WordPress; clients' own staff use it. Chosen with the user: calm light look, Content/Site/Admin groups.
+
+**Cost accepted:** the old hex colours were remapped mechanically to named palette variables rather than rewritten per screen;
+the `.ui-*` primitives exist (`ui.css`) but screens still use their own classes. No DOM test library, so dropdown keyboard rules
+are tested as pure functions (`lib/menuKeys.ts`). The side panel has no Preview (the list has no preview token).
+
 ## D-070 — 2026-10-14 — One account, several sites: the site is named by `X-Site-Id` and by the admin's address; only an owner can create a site (`MSI-01`–`MSI-06`)
 
 **The gap.** Everything assumed one site per person: the API took the caller's *first* membership as the site for

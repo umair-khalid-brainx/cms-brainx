@@ -9,14 +9,14 @@
   align-items: center;
   gap: 1rem;
   padding: 0.6rem 1rem;
-  background: #1d2327;
-  color: #f0f0f1;
+  background: var(--ui-ink);
+  color: var(--ui-surface);
   flex-shrink: 0;
   font-size: 0.8125rem;
 }
 
 .editor-back {
-  color: #c3c4c7;
+  color: var(--ui-line-strong);
   text-decoration: none;
   font-weight: 500;
 }
@@ -32,19 +32,19 @@
 
 .editor-status {
   font-size: 0.75rem;
-  color: #8c8f94;
+  color: var(--ui-input-border);
 }
 
 .editor-site {
   margin-left: auto;
-  color: #a7aaad;
+  color: var(--ui-text-2-dark);
 }
 
 /* Secondary to Publish, like Share preview: outlined on the dark top bar. */
 .editor-secondary {
   background: transparent;
-  color: #f0f0f1;
-  border: 1px solid #8c8f94;
+  color: var(--ui-surface);
+  border: 1px solid var(--ui-input-border);
   border-radius: 4px;
   padding: 0.35rem 0.8rem;
   font-size: 0.8125rem;
@@ -55,8 +55,8 @@
 }
 
 .editor-secondary:hover {
-  border-color: #f0f0f1;
-  background: #2c3338;
+  border-color: var(--ui-surface);
+  background: var(--ui-line-dark);
 }
 
 .editor-secondary:focus-visible {
@@ -65,7 +65,7 @@
 }
 
 .editor-publish {
-  background: #2271b1;
+  background: var(--ui-accent);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -76,11 +76,11 @@
 }
 
 .editor-publish:hover {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .editor-publish:disabled {
-  background: #72aee6;
+  background: var(--ui-accent-soft);
   cursor: default;
 }
 
@@ -96,14 +96,14 @@
   max-height: 40vh;
   overflow-y: auto;
   padding: 0.75rem 1rem;
-  background: #f0f0f1;
-  border-bottom: 1px solid #c3c4c7;
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-line-strong);
 }
 
 @media (prefers-color-scheme: dark) {
   .editor-checks {
     background: #101112;
-    border-bottom-color: #3c434a;
+    border-bottom-color: var(--ui-line-dark-strong);
   }
 }
 
@@ -112,7 +112,7 @@
   align-items: center;
   justify-content: center;
   height: 100vh;
-  color: #646970;
+  color: var(--ui-text-2);
   font-size: 0.875rem;
 }
 
@@ -154,6 +154,45 @@
   }
 
   .editor-status {
+    margin-left: auto;
+  }
+}
+
+/* Phones: the bar wraps into rows instead of pushing Publish off the screen. The title and status take a row of
+   their own; the buttons follow, each tall enough to hit with a thumb. */
+@media (max-width: 40rem) {
+  .editor-topbar {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.6rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .editor-title {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .editor-back {
+    order: 0;
+    margin-right: auto;
+  }
+
+  .editor-status {
+    order: 0;
+    margin-left: 0;
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .editor-secondary,
+  .editor-publish,
+  .editor-topbar .share-preview-trigger {
+    order: 2;
+    min-height: 2.5rem;
+  }
+
+  .editor-publish {
     margin-left: auto;
   }
 }

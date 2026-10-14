@@ -3,7 +3,7 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .new-site-address input {

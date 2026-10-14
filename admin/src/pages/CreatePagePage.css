@@ -6,12 +6,12 @@
   margin: 0;
   font-size: 1.375rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .create-page-card {
   background: #fff;
-  border: 1px solid #c3c4c7;
+  border: 1px solid var(--ui-line-strong);
   border-radius: 4px;
   padding: 1.25rem;
   max-width: 760px;
@@ -26,14 +26,14 @@
 .create-page-form label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .create-page-form input {
   font: inherit;
   font-size: 0.9375rem;
   padding: 0.55rem 0.7rem;
-  border: 1px solid #949494;
+  border: 1px solid var(--ui-input-border);
   border-radius: 4px;
   background: #fff;
   width: 100%;
@@ -41,15 +41,15 @@
 }
 
 .create-page-form input:focus {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: -1px;
-  border-color: #2271b1;
+  border-color: var(--ui-accent);
 }
 
 .create-page-error {
   margin: 0.5rem 0 0;
   font-size: 0.8125rem;
-  color: #c0392b;
+  color: var(--ui-danger);
 }
 
 .create-page-actions {
@@ -60,7 +60,7 @@
 }
 
 .create-page-submit {
-  background: #2271b1;
+  background: var(--ui-accent);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -71,17 +71,17 @@
 }
 
 .create-page-submit:hover {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .create-page-submit:disabled {
-  background: #a7aaad;
+  background: var(--ui-text-2-dark);
   cursor: default;
 }
 
 .create-page-cancel {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
   text-decoration: none;
 }
 
@@ -102,7 +102,7 @@
   margin-bottom: 0.5rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .layout-picker-grid {
@@ -117,24 +117,24 @@
   flex-direction: column;
   gap: 0.3rem;
   padding: 0.8rem 0.9rem;
-  border: 1px solid #c3c4c7;
+  border: 1px solid var(--ui-line-strong);
   border-radius: 6px;
   background: #fff;
   cursor: pointer;
 }
 
 .layout-option:hover {
-  border-color: #2271b1;
+  border-color: var(--ui-accent);
 }
 
 .layout-option.is-selected {
-  border-color: #2271b1;
-  box-shadow: 0 0 0 1px #2271b1;
-  background: #f0f6fc;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 1px var(--ui-accent);
+  background: var(--ui-accent-wash);
 }
 
 .layout-option:has(.layout-option-input:focus-visible) {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
@@ -155,25 +155,25 @@
   gap: 0.5rem;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .layout-option-check {
   flex-shrink: 0;
-  color: #2271b1;
+  color: var(--ui-accent);
 }
 
 .layout-option-description {
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .layout-option-includes {
   margin-top: 0.15rem;
   font-size: 0.75rem;
   line-height: 1.4;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .layout-picker:disabled .layout-option {
@@ -183,58 +183,58 @@
 
 @media (prefers-color-scheme: dark) {
   .create-page-title {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .create-page-card {
-    background: #18191b;
-    border-color: #3c434a;
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .create-page-form label {
-    color: #d4d4d4;
+    color: var(--ui-line);
   }
 
   .create-page-form input {
-    background: #1a1a1a;
-    border-color: #444;
-    color: #ededed;
+    background: var(--ui-field-dark);
+    border-color: var(--ui-line-dark-strong);
+    color: var(--ui-text-dark);
   }
 
   .create-page-cancel {
-    color: #9ca3af;
+    color: var(--ui-text-3-dark);
   }
 
   .layout-picker legend,
   .layout-option-name {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .layout-option {
-    background: #1a1a1a;
-    border-color: #444;
+    background: var(--ui-field-dark);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .layout-option:hover {
-    border-color: #72aee6;
+    border-color: var(--ui-accent-soft);
   }
 
   .layout-option.is-selected {
-    border-color: #72aee6;
-    box-shadow: 0 0 0 1px #72aee6;
+    border-color: var(--ui-accent-soft);
+    box-shadow: 0 0 0 1px var(--ui-accent-soft);
     background: #17232e;
   }
 
   .layout-option:has(.layout-option-input:focus-visible) {
-    outline-color: #72aee6;
+    outline-color: var(--ui-accent-soft);
   }
 
   .layout-option-check {
-    color: #72aee6;
+    color: var(--ui-accent-soft);
   }
 
   .layout-option-description,
   .layout-option-includes {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 }

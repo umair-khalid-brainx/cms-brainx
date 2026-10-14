@@ -1,0 +1,90 @@
+/* One collapsible group of the Page settings panel (ADM-07). */
+.settings-section + .settings-section {
+  border-top: 1px solid var(--ps-border);
+}
+
+.settings-section-heading {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.settings-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.5rem 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-section-toggle:hover .settings-section-title {
+  color: var(--ps-accent);
+}
+
+.settings-section-chevron {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--ps-muted);
+  transition: transform var(--ui-ease);
+}
+
+.settings-section[data-open='true'] .settings-section-chevron {
+  transform: rotate(90deg);
+}
+
+.settings-section-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-section-summary {
+  overflow: hidden;
+  color: var(--ps-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The unsaved marker: a dot plus the word, so it never relies on colour alone. */
+.settings-section-unsaved {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+  color: var(--ps-warning-text, var(--ps-muted));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.settings-section-unsaved::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ps-warning-edge);
+}
+
+.settings-section-body {
+  padding: 0.25rem 0 1.5rem 1.7rem;
+}
+
+.settings-section-body[hidden] {
+  display: none;
+}
+
+@media (max-width: 30rem) {
+  .settings-section-body {
+    padding-left: 0;
+  }
+}

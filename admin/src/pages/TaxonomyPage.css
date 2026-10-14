@@ -6,7 +6,7 @@
 .taxonomy-empty {
   max-width: 60ch;
   font-size: 0.8125rem;
-  color: #50575e;
+  color: var(--ui-text-2);
 }
 
 .taxonomy-intro {
@@ -31,7 +31,7 @@
 .taxonomy-tabs {
   display: flex;
   gap: 0.25rem;
-  border-bottom: 1px solid #c3c4c7;
+  border-bottom: 1px solid var(--ui-line-strong);
   margin: 0 0 1.25rem;
 }
 
@@ -43,19 +43,19 @@
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #50575e;
+  color: var(--ui-text-2);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 
 .taxonomy-tab:hover {
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .taxonomy-tab--active {
-  color: #2271b1;
-  border-bottom-color: #2271b1;
+  color: var(--ui-accent);
+  border-bottom-color: var(--ui-accent);
 }
 
 .taxonomy-tab-count {
@@ -68,7 +68,7 @@
 .taxonomy-link:focus-visible,
 .taxonomy-form input:focus-visible,
 .taxonomy-rename input:focus-visible {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 
@@ -86,7 +86,7 @@
   display: block;
   margin-bottom: 0.3rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .taxonomy-form-row {
@@ -100,24 +100,24 @@
   min-width: 0;
   min-height: 2.5rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid #8c8f94;
-  border-radius: 4px;
-  background: #fff;
-  color: #1e1e1e;
+  border: 1px solid var(--ui-input-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
+  color: var(--ui-ink);
   font: inherit;
   font-size: 0.875rem;
 }
 
 .taxonomy-form input[aria-invalid='true'] {
-  border-color: #b32d2e;
+  border-color: var(--ui-danger);
 }
 
 .taxonomy-add {
   min-height: 2.5rem;
   padding: 0 0.9rem;
   border: none;
-  border-radius: 4px;
-  background: #2271b1;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-accent);
   color: #fff;
   font: inherit;
   font-weight: 500;
@@ -126,17 +126,18 @@
 }
 
 .taxonomy-add:hover:not(:disabled) {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .taxonomy-add:disabled {
-  background: #72aee6;
+  background: var(--ui-accent);
+  opacity: 0.5;
   cursor: default;
 }
 
 .taxonomy-error {
   margin: 0.4rem 0 0;
-  color: #b32d2e;
+  color: var(--ui-danger);
   font-size: 0.8125rem;
   font-weight: 500;
 }
@@ -154,7 +155,7 @@
 }
 
 .taxonomy-count {
-  color: #50575e;
+  color: var(--ui-text-2);
   white-space: nowrap;
 }
 
@@ -180,9 +181,9 @@
   min-height: 2rem;
   padding: 0 0.6rem;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   background: none;
-  color: #2271b1;
+  color: var(--ui-accent);
   font: inherit;
   cursor: pointer;
 }
@@ -197,7 +198,7 @@
 }
 
 .taxonomy-delete {
-  color: #b32d2e;
+  color: var(--ui-danger);
 }
 
 /* Tablet and narrower: the slug is secondary, and the rename row needs the room. */
@@ -212,24 +213,24 @@
   .taxonomy-hint,
   .taxonomy-empty,
   .taxonomy-count {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 
   .taxonomy-tabs {
-    border-bottom-color: #3c434a;
+    border-bottom-color: var(--ui-line-dark-strong);
   }
 
   .taxonomy-tab {
-    color: #b0b0b0;
+    color: var(--ui-text-2-dark);
   }
 
   .taxonomy-tab:hover {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .taxonomy-tab--active {
-    color: #6ab6f2;
-    border-bottom-color: #6ab6f2;
+    color: var(--ui-accent-soft);
+    border-bottom-color: var(--ui-accent-soft);
   }
 
   .taxonomy-tab:focus-visible,
@@ -237,30 +238,30 @@
   .taxonomy-link:focus-visible,
   .taxonomy-form input:focus-visible,
   .taxonomy-rename input:focus-visible {
-    outline-color: #6ab6f2;
+    outline-color: var(--ui-accent-soft);
   }
 
   .taxonomy-form label {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .taxonomy-form input,
   .taxonomy-rename input {
-    background: #1d2327;
-    border-color: #646970;
-    color: #ededed;
+    background: var(--ui-ink);
+    border-color: var(--ui-text-2);
+    color: var(--ui-text-dark);
   }
 
   .taxonomy-form input[aria-invalid='true'] {
-    border-color: #f86368;
+    border-color: var(--ui-danger-soft);
   }
 
   .taxonomy-link {
-    color: #6ab6f2;
+    color: var(--ui-accent-soft);
   }
 
   .taxonomy-delete,
   .taxonomy-error {
-    color: #f86368;
+    color: var(--ui-danger-soft);
   }
 }

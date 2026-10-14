@@ -5,6 +5,22 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-14 — Admin redesign (`ADM-01`–`ADM-07`)
+
+Decision in D-071. Built with three parallel agents after the shell, nav and dropdowns.
+
+- **Admin:** `--ui-*` tokens and light shell (drawer under 860px); sidebar grouped Content / Site / Admin (`lib/navGroups.ts`);
+  shared `Menu`/`Select` with ARIA keyboard rules (`lib/menuKeys.ts`, `useAnchoredPopup`); redesigned Pages/Posts lists with
+  search, status filter, row menu and `ContentSidePanel`; collapsible page settings sections; every other screen retinted.
+- **Verified:** admin 260 tests, typecheck and build pass; in a browser (scratch DB `cms_adm`, api on 4051, admin on 5174): shell,
+  site menu, lists, side panel, settings panel, 12 screens contrast-checked in dark and at 390px. A review agent's findings
+  (focus on first open, Tab, aria, duplicate hidden by a filter, stale Unsaved marker) were fixed.
+- **Not done:** status-change/duplicate/delete and settings saves not clicked through live; login, media modal and submission
+  detail not opened after restyle; light mode only partly screenshotted; `.ui-*` primitives not yet adopted in markup; no
+  focus trap for the side panel above 720px or the mobile drawer.
+
+---
+
 ## 2026-10-14 — One account, several sites (`MSI-01`–`MSI-06`)
 
 Decision in D-070.

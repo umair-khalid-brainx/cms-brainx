@@ -1,22 +1,22 @@
-/* The editor's History panel (GOV-01). Same sheet and palette as Page settings (#2271b1, light and dark). */
+/* The editor's History panel (GOV-01). Same sheet and palette as Page settings (var(--ui-accent), light and dark). */
 
 .history,
 .compare {
   --hp-bg: #fff;
-  --hp-text: #1e1e1e;
-  --hp-muted: #50575e;
-  --hp-border: #dcdcde;
-  --hp-soft: #f6f7f7;
-  --hp-accent: #2271b1;
-  --hp-accent-hover: #135e96;
+  --hp-text: var(--ui-ink);
+  --hp-muted: var(--ui-text-2);
+  --hp-border: var(--ui-line);
+  --hp-soft: var(--ui-surface-2);
+  --hp-accent: var(--ui-accent);
+  --hp-accent-hover: var(--ui-accent-strong);
   --hp-accent-text: #fff;
   --hp-warning-bg: #fcf9e8;
   --hp-warning-edge: #dba617;
-  --hp-error: #b32d2e;
+  --hp-error: var(--ui-danger);
   --hp-live-bg: #edfaef;
   --hp-live-text: #0a4b1c;
-  --hp-draft-bg: #f0f0f1;
-  --hp-draft-text: #3c434a;
+  --hp-draft-bg: var(--ui-surface);
+  --hp-draft-text: var(--ui-line-dark-strong);
   --hp-add-bg: #e6f4ea;
   --hp-add-text: #0a4b1c;
   --hp-del-bg: #fbe9e9;
@@ -47,19 +47,19 @@
   .history,
   .compare {
     --hp-bg: #22272b;
-    --hp-text: #f0f0f1;
-    --hp-muted: #a7aaad;
-    --hp-border: #3c434a;
-    --hp-soft: #1d2327;
-    --hp-accent: #72aee6;
-    --hp-accent-hover: #9ec2e6;
-    --hp-accent-text: #1d2327;
+    --hp-text: var(--ui-surface);
+    --hp-muted: var(--ui-text-2-dark);
+    --hp-border: var(--ui-line-dark-strong);
+    --hp-soft: var(--ui-ink);
+    --hp-accent: var(--ui-accent-soft);
+    --hp-accent-hover: var(--ui-accent-tint-text);
+    --hp-accent-text: var(--ui-ink);
     --hp-warning-bg: #3a3214;
-    --hp-error: #f86368;
+    --hp-error: var(--ui-danger-soft);
     --hp-live-bg: #14301c;
     --hp-live-text: #8fdca2;
-    --hp-draft-bg: #2c3338;
-    --hp-draft-text: #c3c4c7;
+    --hp-draft-bg: var(--ui-line-dark);
+    --hp-draft-text: var(--ui-line-strong);
     --hp-add-bg: #14301c;
     --hp-add-text: #8fdca2;
     --hp-del-bg: #3d1a1c;

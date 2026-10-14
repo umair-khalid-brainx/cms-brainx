@@ -5,7 +5,7 @@ depends on tickets above it, except where a ticket was built early (its row says
 Status values: TODO, IN-PROGRESS, DONE, BLOCKED, plus BACKLOG (not scheduled; `/build` skips it).
 Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 
-**Totals:** BACKLOG 1, DONE 54, IN-PROGRESS 2, TODO 5 (62 tickets). Updated 2026-10-14. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
+**Totals:** BACKLOG 1, DONE 61, IN-PROGRESS 2, TODO 5 (69 tickets). Updated 2026-10-14. Week 4 order and choices: `docs/WEEK4_PLAN.md`.
 
 ## M1 (week 1)
 
@@ -97,6 +97,18 @@ Estimates, weeks and gates stay in `docs/EXECUTION_PLAN.md`.
 | MSI-04 | Admin: site switcher, New site and All sites | DONE | 0 | 2026-10-14 (D-070) |
 | MSI-05 | Admin: split Settings into site settings and account | DONE | 0 | 2026-10-14 (D-070) |
 | MSI-06 | Cross-site checks: isolation and docs | DONE | 0 | 2026-10-14 (D-070) |
+
+## Admin redesign
+
+| Ticket | Title | Status | Tries | Note |
+|---|---|---|---|---|
+| ADM-01 | Admin design tokens and shell | DONE | 0 | 2026-10-14 (D-071) |
+| ADM-02 | Admin sidebar: regroup the menu | DONE | 0 | 2026-10-14 (D-071) |
+| ADM-03 | Admin: one accessible dropdown and row-actions menu | DONE | 0 | 2026-10-14 (D-071) |
+| ADM-04 | Admin: Pages and Posts listings, redesigned | DONE | 0 | 2026-10-14 (D-071) |
+| ADM-05 | Admin: read-only side view of a page or post | DONE | 0 | 2026-10-14 (D-071) |
+| ADM-06 | Admin: restyle every other screen | DONE | 0 | 2026-10-14 (D-071) |
+| ADM-07 | Admin: page settings panel, redesigned | DONE | 0 | 2026-10-14 (D-071) |
 
 ## Backlog
 

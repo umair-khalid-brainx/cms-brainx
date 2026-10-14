@@ -6,23 +6,23 @@
   margin: 0;
   font-size: 1.375rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .team-loading {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .team-error {
   font-size: 0.8125rem;
-  color: #c0392b;
+  color: var(--ui-danger);
   margin: 0 0 0.75rem;
 }
 
 .team-empty {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .team-grid {
@@ -46,19 +46,19 @@
 }
 
 .team-card {
-  background: #fff;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius);
   padding: 0 1.25rem 1.25rem;
 }
 
 .team-card-title {
   margin: 0 -1.25rem 1rem;
   padding: 0.7rem 1.25rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-line-soft);
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .team-table {
@@ -70,14 +70,14 @@
 .team-table th {
   text-align: left;
   padding: 0.5rem 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-line-soft);
   font-weight: 600;
-  color: #3c434a;
+  color: var(--ui-line-dark-strong);
 }
 
 .team-table td {
   padding: 0.6rem 0;
-  border-bottom: 1px solid #f0f0f1;
+  border-bottom: 1px solid var(--ui-surface);
   vertical-align: middle;
 }
 
@@ -87,11 +87,11 @@
 
 .team-member-name {
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
 }
 
 .team-member-email {
-  color: #6b7280;
+  color: var(--ui-text-3);
   font-size: 0.75rem;
 }
 
@@ -104,12 +104,12 @@
 .team-role-fixed {
   display: inline-block;
   width: 160px;
-  color: #6b7280;
+  color: var(--ui-text-3);
   font-size: 0.875rem;
 }
 
 .team-invite-expires {
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
 .team-row-actions {
@@ -120,8 +120,8 @@
 .team-row-remove {
   border: none;
   background: none;
-  padding: 0;
-  color: #b32d2e;
+  padding: 0.5rem 0.25rem;
+  color: var(--ui-danger);
   font-weight: 500;
   font-size: inherit;
   font-family: inherit;
@@ -133,7 +133,7 @@
 }
 
 .team-row-remove:disabled {
-  color: #b0b0b0;
+  color: var(--ui-text-2-dark);
   cursor: default;
   text-decoration: none;
 }
@@ -147,7 +147,7 @@
 .team-invite-form label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #1e1e1e;
+  color: var(--ui-ink);
   margin-top: 0.85rem;
 }
 
@@ -158,33 +158,33 @@
 .team-role-hint {
   margin: 0.15rem 0 0;
   font-size: 0.75rem;
-  color: #646970;
+  color: var(--ui-text-2);
 }
 
 .team-invite-form input {
   font: inherit;
   font-size: 0.875rem;
   padding: 0.5rem 0.65rem;
-  border: 1px solid #949494;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid var(--ui-input-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
   width: 100%;
   box-sizing: border-box;
 }
 
 .team-invite-form input:focus {
-  outline: 2px solid #2271b1;
+  outline: 2px solid var(--ui-accent);
   outline-offset: -1px;
-  border-color: #2271b1;
+  border-color: var(--ui-accent);
 }
 
 .team-invite-submit {
   align-self: flex-start;
   margin-top: 1.5rem;
-  background: #2271b1;
+  background: var(--ui-accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   padding: 0.5rem 1rem;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -192,20 +192,21 @@
 }
 
 .team-invite-submit:hover {
-  background: #135e96;
+  background: var(--ui-accent-strong);
 }
 
 .team-invite-submit:disabled {
-  background: #a7aaad;
+  background: var(--ui-accent);
+  opacity: 0.5;
   cursor: default;
 }
 
 .team-invite-created {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--ui-line-soft);
   font-size: 0.8125rem;
-  color: #3c434a;
+  color: var(--ui-line-dark-strong);
 }
 
 .team-invite-link-row {
@@ -220,90 +221,90 @@
   font-size: 0.75rem;
   font-family: ui-monospace, monospace;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #949494;
-  border-radius: 4px;
-  background: #f6f7f7;
-  color: #3c434a;
+  border: 1px solid var(--ui-input-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-2);
+  color: var(--ui-line-dark-strong);
   box-sizing: border-box;
 }
 
 .team-invite-copy {
   flex-shrink: 0;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
   padding: 0.4rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #2271b1;
+  color: var(--ui-accent);
   cursor: pointer;
 }
 
 .team-invite-copy:hover {
-  border-color: #2271b1;
-  background: #f0f6fb;
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-wash);
 }
 
 @media (prefers-color-scheme: dark) {
   .team-role-hint {
-    color: #9ca3af;
+    color: var(--ui-text-3-dark);
   }
 
   .team-title {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .team-card {
-    background: #18191b;
-    border-color: #3c434a;
+    background: var(--ui-panel-dark);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .team-card-title {
-    color: #ededed;
-    border-bottom-color: #2c3338;
+    color: var(--ui-text-dark);
+    border-bottom-color: var(--ui-line-dark);
   }
 
   .team-table th {
-    color: #b0b0b0;
-    border-bottom-color: #3c434a;
+    color: var(--ui-text-2-dark);
+    border-bottom-color: var(--ui-line-dark-strong);
   }
 
   .team-table td {
-    border-bottom-color: #2c3338;
+    border-bottom-color: var(--ui-line-dark);
   }
 
   .team-member-name {
-    color: #ededed;
+    color: var(--ui-text-dark);
   }
 
   .team-invite-form input {
-    background: #1a1a1a;
-    border-color: #444;
-    color: #ededed;
+    background: var(--ui-field-dark);
+    border-color: var(--ui-line-dark-strong);
+    color: var(--ui-text-dark);
   }
 
   .team-invite-form label {
-    color: #d4d4d4;
+    color: var(--ui-line);
   }
 
   .team-invite-created {
-    border-top-color: #2c3338;
-    color: #d4d4d4;
+    border-top-color: var(--ui-line-dark);
+    color: var(--ui-line);
   }
 
   .team-invite-link {
-    background: #1a1a1a;
-    border-color: #444;
-    color: #d4d4d4;
+    background: var(--ui-field-dark);
+    border-color: var(--ui-line-dark-strong);
+    color: var(--ui-line);
   }
 
   .team-invite-copy {
-    color: #72aee6;
-    border-color: #3c434a;
+    color: var(--ui-accent-soft);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .team-invite-copy:hover {
-    border-color: #72aee6;
-    background: #101b26;
+    border-color: var(--ui-accent-soft);
+    background: var(--ui-accent-wash-dark);
   }
 }

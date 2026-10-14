@@ -8,32 +8,36 @@
   justify-content: space-between;
   gap: 0.5rem;
   width: 100%;
+  min-height: 36px;
   font: inherit;
-  font-size: 0.8125rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #949494;
-  border-radius: 4px;
-  background: #fff;
-  color: #1e1e1e;
+  font-size: 0.875rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--ui-input-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-panel);
+  color: var(--ui-fg);
   cursor: pointer;
   box-sizing: border-box;
   text-align: left;
+  transition: border-color var(--ui-ease), box-shadow var(--ui-ease);
 }
 
 .select-trigger:hover {
-  border-color: #2271b1;
+  border-color: var(--ui-accent);
 }
 
+.select-trigger[aria-expanded='true'],
 .select-trigger:focus-visible {
-  outline: 2px solid #2271b1;
-  outline-offset: -1px;
-  border-color: #2271b1;
+  outline: none;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 25%, transparent);
 }
 
 .select-trigger:disabled {
-  background: #f0f0f1;
-  color: #6b7280;
+  background: var(--ui-surface);
+  color: var(--ui-text-3);
   cursor: default;
+  border-color: var(--ui-line);
 }
 
 .select-value {
@@ -46,85 +50,114 @@
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: #6b7280;
+  color: var(--ui-text-3);
 }
 
+/* The list lives in <body> (see useAnchoredPopup); it is positioned with inline styles. */
 .select-popup {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 0.3rem);
-  left: 0;
-  right: 0;
+  z-index: 60;
+  box-sizing: border-box;
   margin: 0;
   padding: 0.3rem;
   list-style: none;
-  background: #fff;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-height: 220px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-md);
   overflow-y: auto;
+  font-family: var(--ui-font);
 }
 
 .select-option {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   width: 100%;
+  min-height: 34px;
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   text-align: left;
-  padding: 0.4rem 0.55rem;
+  padding: 0.35rem 0.6rem;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--ui-radius-sm);
   background: none;
-  color: #1e1e1e;
+  color: var(--ui-fg);
   cursor: pointer;
 }
 
-.select-option:hover {
-  background: #f0f6fb;
+.select-option:hover,
+.select-option:focus-visible {
+  background: var(--ui-surface);
+  outline: none;
+}
+
+.select-option:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
+}
+
+.select-option.is-disabled {
+  color: var(--ui-text-3);
+  cursor: default;
 }
 
 .select-option.is-selected {
-  background: #2271b1;
-  color: #fff;
+  background: var(--ui-accent-wash);
+  color: var(--ui-accent-strong);
+  font-weight: 600;
+}
+
+.select-check {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 @media (prefers-color-scheme: dark) {
   .select-trigger {
-    background: #1a1a1a;
-    border-color: #444;
-    color: #ededed;
+    background: var(--ui-field-dark);
+    border-color: var(--ui-line-dark-strong);
   }
 
   .select-trigger:hover {
-    border-color: #72aee6;
+    border-color: var(--ui-accent-soft);
+  }
+
+  .select-trigger[aria-expanded='true'],
+  .select-trigger:focus-visible {
+    border-color: var(--ui-accent-soft);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent-soft) 25%, transparent);
   }
 
   .select-trigger:disabled {
-    background: #232323;
-    color: #9ca3af;
+    background: var(--ui-panel-dark-2);
+    color: var(--ui-text-3-dark);
+    border-color: var(--ui-line-dark);
   }
 
   .select-arrow {
-    color: #9ca3af;
+    color: var(--ui-text-3-dark);
   }
 
   .select-popup {
-    background: #1f2023;
-    border-color: #3c434a;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border-color: var(--ui-line-dark-strong);
   }
 
-  .select-option {
-    color: #ededed;
+  .select-option:hover,
+  .select-option:focus-visible {
+    background: var(--ui-panel-dark-2);
   }
 
-  .select-option:hover {
-    background: #101b26;
+  .select-option:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--ui-accent-soft);
+  }
+
+  .select-option.is-disabled {
+    color: var(--ui-text-3-dark);
   }
 
   .select-option.is-selected {
-    background: #2271b1;
-    color: #fff;
+    background: var(--ui-accent-wash-dark);
+    color: var(--ui-accent-soft);
   }
 }
