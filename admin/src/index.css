@@ -6,7 +6,7 @@
   --foreground: #171717;
   --muted: #6b7280;
 
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.6;
   color: var(--foreground);
@@ -36,13 +36,11 @@
   --ui-accent-soft: #5eead4;
   --ui-accent-tint-text: #99f6e4;
   --ui-accent-wash: #f0fdfa;
-  --ui-accent-wash-dark: #0f2a28;
   --ui-ink: #14181f;
   --ui-text-2: #46505c;
   --ui-text-3: #5f6b7a;
   --ui-text-2-dark: #aab3bf;
   --ui-text-3-dark: #9aa5b3;
-  --ui-text-dark: #e8ecf1;
   --ui-line: #dfe3e8;
   --ui-line-soft: #e9edf1;
   --ui-line-strong: #cdd3db;
@@ -51,11 +49,6 @@
   --ui-surface-2: #f8f9fb;
   --ui-line-dark: #232a33;
   --ui-line-dark-strong: #333b47;
-  --ui-field-dark: #12161c;
-  --ui-panel-dark: #161b22;
-  --ui-panel-dark-2: #1b2129;
-  --ui-panel-dark-3: #1a2028;
-  --ui-canvas-dark: #0c0f13;
   --ui-danger: #b42318;
   --ui-danger-bright: #d92d20;
   --ui-danger-soft: #f97066;
@@ -87,34 +80,10 @@
   --ui-border: var(--ui-line);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ui-bg: var(--ui-canvas-dark);
-    --ui-panel: var(--ui-panel-dark);
-    --ui-fg: var(--ui-text-dark);
-    --ui-border: var(--ui-line-dark);
-    --ui-ok-bg: #0a2e14;
-    --ui-ok-fg: #4fd67a;
-    --ui-warn-bg: #33270a;
-    --ui-warn-fg: #f0c33c;
-    --ui-sched-bg: #241a47;
-    --ui-sched-fg: #b8a6ff;
-    --ui-note-bg: #33270a;
-    --ui-note-fg: #f0c33c;
-    --ui-focus: 0 0 0 2px var(--ui-canvas-dark), 0 0 0 4px var(--ui-accent-soft);
-  }
-}
-
 /* One visible keyboard ring for every control; the screens' own :focus-visible rules still win where they exist. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-    outline-color: var(--ui-accent-soft);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -122,14 +91,6 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --muted: #9ca3af;
   }
 }
 

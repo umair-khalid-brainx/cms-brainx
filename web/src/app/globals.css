@@ -14,16 +14,6 @@
   --shell-line: #d9dad6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --shell-bg: #0c0d0e;
-    --shell-panel: #15171a;
-    --shell-ink: #ecedee;
-    --shell-muted: #8f959c;
-    --shell-line: #262a2e;
-  }
-}
-
 body {
   background-color: var(--shell-bg);
   color: var(--shell-ink);

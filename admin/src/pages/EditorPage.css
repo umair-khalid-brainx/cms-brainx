@@ -6,14 +6,8 @@
 }
 
 /* The bar uses the admin shell's own panel tokens, so the editor reads as part of the same product
-   (and follows light/dark with the rest of the admin). Left: where you are. Right: what you can do. */
+   (the admin is light-only, D-073). Left: where you are. Right: what you can do. */
 .editor-topbar {
-  /* Mode-aware text and hover colours: the light set by default, the dark set under the OS dark scheme. */
-  --tb-muted: var(--ui-text-3);
-  --tb-muted-2: var(--ui-text-2);
-  --tb-hover: var(--ui-surface);
-  --tb-line: var(--ui-input-border);
-  --tb-danger: var(--ui-danger);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -26,16 +20,6 @@
   font-size: 0.8125rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .editor-topbar {
-    --tb-muted: var(--ui-text-3-dark);
-    --tb-muted-2: var(--ui-text-2-dark);
-    --tb-hover: var(--ui-panel-dark-2);
-    --tb-line: var(--ui-line-dark-strong);
-    --tb-danger: var(--ui-danger-soft);
-  }
-}
-
 .editor-back {
   display: inline-flex;
   align-items: center;
@@ -43,7 +27,7 @@
   padding: 0.35rem 0.6rem 0.35rem 0.5rem;
   margin-left: -0.25rem;
   border-radius: var(--ui-radius-sm);
-  color: var(--tb-muted);
+  color: var(--ui-text-3);
   text-decoration: none;
   font-weight: 500;
   transition: color var(--ui-ease), background-color var(--ui-ease);
@@ -51,7 +35,7 @@
 
 .editor-back:hover {
   color: var(--ui-fg);
-  background: var(--tb-hover);
+  background: var(--ui-surface);
 }
 
 .editor-back:focus-visible,
@@ -75,7 +59,7 @@
 
 .editor-mode {
   font-size: 0.6875rem;
-  color: var(--tb-muted);
+  color: var(--ui-text-3);
 }
 
 .editor-title {
@@ -94,7 +78,7 @@
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   font-size: 0.75rem;
-  color: var(--tb-muted-2);
+  color: var(--ui-text-2);
 }
 
 /* Empty: no chip, but the live region stays in the page so screen readers announce what lands in it. */
@@ -104,19 +88,19 @@
 }
 
 .editor-status[data-state='error'] {
-  background: color-mix(in srgb, var(--tb-danger) 14%, transparent);
-  color: var(--tb-danger);
+  background: color-mix(in srgb, var(--ui-danger) 14%, transparent);
+  color: var(--ui-danger);
 }
 
 .editor-status-dot {
   width: 0.4375rem;
   height: 0.4375rem;
   border-radius: 50%;
-  background: var(--ui-accent-soft);
+  background: var(--ui-accent);
 }
 
 .editor-status[data-state='error'] .editor-status-dot {
-  background: var(--tb-danger);
+  background: var(--ui-danger);
 }
 
 .editor-site {
@@ -124,7 +108,7 @@
   padding: 0.25rem 0.65rem;
   border: 1px solid var(--ui-border);
   border-radius: 999px;
-  color: var(--tb-muted-2);
+  color: var(--ui-text-2);
   font-size: 0.75rem;
 }
 
@@ -133,7 +117,7 @@
 .editor-topbar .share-preview-trigger {
   background: transparent;
   color: var(--ui-fg);
-  border: 1px solid var(--tb-line);
+  border: 1px solid var(--ui-input-border);
   border-radius: var(--ui-radius-sm);
   padding: 0.4rem 0.8rem;
   font-size: 0.8125rem;
@@ -146,8 +130,8 @@
 .editor-secondary:hover,
 .editor-topbar .share-preview-trigger:hover,
 .editor-topbar .share-preview-trigger[aria-expanded='true'] {
-  border-color: var(--tb-muted);
-  background: var(--tb-hover);
+  border-color: var(--ui-text-3);
+  background: var(--ui-surface);
 }
 
 .editor-secondary:disabled {
@@ -189,13 +173,6 @@
   border-bottom: 1px solid var(--ui-line-strong);
 }
 
-@media (prefers-color-scheme: dark) {
-  .editor-checks {
-    background: #101112;
-    border-bottom-color: var(--ui-line-dark-strong);
-  }
-}
-
 .editor-loading {
   display: flex;
   align-items: center;
@@ -220,43 +197,14 @@
 /* Puck is themed by overriding its semantic tokens (surface, text, border, interactive), never by chasing
    its hashed class names. Puck resolves those once at :root, so the palette beneath them can't be remapped
    from here; they must be set directly. Its azure (selection, focus ring, active tab) becomes the admin's
-   teal. The canvas is an iframe, so none of this reaches the site being edited. Light mode keeps Puck's own
-   neutrals and only swaps the accent. */
+   teal; Puck's own neutrals already suit the light admin. The canvas is an iframe, so none of this reaches the
+   site being edited. */
 .editor-puck {
   --puck-font-family: var(--ui-font);
   --puck-color-interactive: var(--ui-accent);
   --puck-color-interactive-hover: var(--ui-accent-strong);
   --puck-color-interactive-active: var(--ui-accent-strong);
   --puck-color-focus-ring: var(--ui-accent);
-}
-
-@media (prefers-color-scheme: dark) {
-  .editor-puck {
-    --puck-color-surface: var(--ui-panel);
-    --puck-color-surface-subtle: var(--ui-bg);
-    --puck-color-surface-muted: var(--ui-panel-dark-2);
-    --puck-color-surface-inverse: var(--ui-text-dark);
-    --puck-color-text: var(--ui-text-dark);
-    --puck-color-text-secondary: var(--ui-text-2-dark);
-    --puck-color-text-muted: var(--ui-text-3-dark);
-    --puck-color-text-subtle: var(--ui-text-3);
-    --puck-color-text-inverse: var(--ui-panel);
-    --puck-color-text-disabled: var(--ui-text-3);
-    --puck-color-border: var(--ui-line-dark);
-    --puck-color-border-muted: var(--ui-line-dark);
-    --puck-color-border-hover: var(--ui-line-dark-strong);
-    --puck-color-border-inverse: var(--ui-line-dark-strong);
-    --puck-color-bg-disabled: var(--ui-line-dark-strong);
-    --puck-color-interactive: var(--ui-accent-soft);
-    --puck-color-interactive-hover: var(--ui-accent-tint-text);
-    --puck-color-interactive-soft: var(--ui-accent-wash-dark);
-    --puck-color-interactive-soft-hover: var(--ui-accent-wash-dark);
-    --puck-color-interactive-subtle: var(--ui-accent-wash-dark);
-    --puck-color-interactive-neutral-hover: var(--ui-panel-dark-2);
-    --puck-color-focus-ring: var(--ui-accent-soft);
-    --puck-color-selection-border: var(--ui-accent-soft);
-    --puck-color-selection-bg: color-mix(in srgb, var(--ui-accent-soft) 18%, transparent);
-  }
 }
 
 /* The block picker: three tiles to a row, icon over name, grouped under Puck's collapsible category headings.

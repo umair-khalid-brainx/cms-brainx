@@ -172,43 +172,6 @@
   color: var(--ui-danger);
 }
 
-@media (prefers-color-scheme: dark) {
-  .share-preview-panel {
-    background: var(--ui-panel-dark);
-    color: var(--ui-text-dark);
-    border-color: var(--ui-line-dark-strong);
-    box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
-  }
-
-  .share-preview-intro,
-  .share-preview-muted {
-    color: var(--ui-text-2-dark);
-  }
-
-  .share-preview-error,
-  .share-preview-revoke {
-    color: var(--ui-danger-soft);
-  }
-
-  .share-preview-url {
-    background: #101112;
-    color: var(--ui-text-dark);
-    border-color: var(--ui-text-2);
-  }
-
-  .share-preview-footer a {
-    color: var(--ui-accent-soft);
-  }
-
-  .share-preview-announce {
-    color: #4fd67a;
-  }
-
-  .share-preview-announce-failed {
-    color: var(--ui-danger-soft);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .share-preview-trigger,
   .share-preview-primary {

@@ -54,22 +54,3 @@
   cursor: not-allowed;
 }
 
-@media (prefers-color-scheme: dark) {
-  .types-intro {
-    color: var(--ui-text-2-dark);
-  }
-
-  .types-badge {
-    border-color: var(--ui-text-2);
-    color: var(--ui-text-2-dark);
-  }
-
-  .types-action,
-  .types-add:focus-visible {
-    color: var(--ui-accent-soft);
-  }
-
-  .types-action:focus-visible {
-    outline-color: var(--ui-accent-soft);
-  }
-}

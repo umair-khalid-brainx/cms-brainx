@@ -232,83 +232,6 @@
   color: var(--ui-text-3);
 }
 
-@media (prefers-color-scheme: dark) {
-  .settings-title {
-    color: var(--ui-text-dark);
-  }
-
-  .settings-card {
-    background: var(--ui-panel-dark);
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .settings-card-title {
-    color: var(--ui-text-dark);
-    border-bottom-color: var(--ui-line-dark);
-  }
-
-  .settings-form label {
-    color: var(--ui-line);
-  }
-
-  .settings-form input,
-  .settings-form textarea {
-    background: var(--ui-field-dark);
-    border-color: var(--ui-line-dark-strong);
-    color: var(--ui-text-dark);
-  }
-
-  .settings-form input:disabled,
-  .settings-form textarea:disabled {
-    background: var(--ui-panel-dark-2);
-    color: var(--ui-text-3-dark);
-  }
-
-  .settings-address-row {
-    background: var(--ui-field-dark);
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .settings-address-affix {
-    background: var(--ui-panel-dark-2);
-    color: var(--ui-text-3-dark);
-  }
-
-  .settings-help {
-    color: var(--ui-text-3-dark);
-  }
-
-  .settings-error-note {
-    color: var(--ui-danger-soft);
-  }
-
-  .settings-url-visit {
-    color: var(--ui-accent-soft);
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .settings-url-visit:hover {
-    border-color: var(--ui-accent-soft);
-    background: var(--ui-accent-wash-dark);
-  }
-
-  .settings-saved-note {
-    color: var(--ui-success-bright);
-  }
-
-  .settings-account dt {
-    color: var(--ui-text-3-dark);
-  }
-
-  .settings-account dd {
-    color: var(--ui-text-dark);
-  }
-
-  .settings-account-note {
-    color: var(--ui-text-3-dark);
-  }
-}
-
 /* The logo field of Site Identity (GOV-04): a preview, then Choose / Remove. */
 .settings-label {
   margin-top: 0.85rem;
@@ -385,30 +308,8 @@
   padding-left: 1.1rem;
 }
 
-/* After the base rules above, so these win: the same cascade order as the rest of the file's dark rules. */
-@media (prefers-color-scheme: dark) {
-  .settings-label {
-    color: var(--ui-line);
-  }
 
-  .settings-logo-preview {
-    background: var(--ui-field-dark);
-    border-color: var(--ui-text-2);
-  }
 
-  .settings-logo-empty {
-    color: var(--ui-text-3-dark);
-  }
-
-  .settings-secondary {
-    color: var(--ui-accent-soft);
-    border-color: var(--ui-accent-soft);
-  }
-
-  .settings-secondary:hover:not(:disabled) {
-    background: var(--ui-accent-wash-dark);
-  }
-}
 
 /* Custom domain (DEP-02): the domain and its status on one line, then the DNS record as a small table. Amber
    Pending and green confirmed, the same hues as the Pages list's chips. */
@@ -564,48 +465,3 @@
   background: var(--ui-danger-wash);
 }
 
-@media (prefers-color-scheme: dark) {
-  .domain-name,
-  .domain-records-title,
-  .domain-heading {
-    color: var(--ui-text-dark);
-  }
-
-  .domain-copy-note {
-    color: var(--ui-success-bright);
-  }
-
-  .domain-badge-pending {
-    background: var(--ui-warn-wash-dark);
-    color: var(--ui-warn-bright);
-  }
-
-  .domain-badge-verified {
-    background: var(--ui-success-wash-dark);
-    color: var(--ui-success-bright);
-  }
-
-  .domain-record,
-  .domain-record > div + div {
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .domain-record dt {
-    color: var(--ui-text-2-dark);
-  }
-
-  .domain-copy {
-    background: var(--ui-ink);
-    border-color: var(--ui-text-2);
-    color: var(--ui-accent-soft);
-  }
-
-  .domain-remove {
-    border-color: var(--ui-danger-soft);
-    color: var(--ui-danger-soft);
-  }
-
-  .domain-remove:hover:not(:disabled) {
-    background: var(--ui-danger-wash-dark);
-  }
-}

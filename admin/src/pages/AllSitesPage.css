@@ -107,24 +107,6 @@
   color: var(--ui-text-3);
 }
 
-@media (prefers-color-scheme: dark) {
-  .all-sites {
-    color: var(--ui-text-dark);
-  }
-  .all-sites-card {
-    background: var(--ui-panel-dark);
-    border-color: var(--ui-line-dark-strong);
-  }
-  .all-sites-actions a:not(.all-sites-new, .all-sites-open) {
-    color: var(--ui-accent-soft);
-  }
-  .all-sites-meta,
-  .all-sites-empty,
-  .all-sites-logout {
-    color: var(--ui-text-3-dark);
-  }
-}
-
 .all-sites-account {
   display: block;
   margin-bottom: 2rem;

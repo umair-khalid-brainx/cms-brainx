@@ -36,24 +36,6 @@
   line-height: 1.5;
 }
 
-@media (prefers-color-scheme: dark) {
-  .page-settings {
-    --ps-bg: #22272b;
-    --ps-text: var(--ui-surface);
-    --ps-muted: var(--ui-text-2-dark);
-    --ps-border: var(--ui-line-dark-strong);
-    --ps-field: var(--ui-ink);
-    --ps-field-border: var(--ui-text-2);
-    --ps-accent: var(--ui-accent-soft);
-    --ps-accent-hover: var(--ui-accent-tint-text);
-    --ps-accent-text: var(--ui-ink);
-    --ps-address-bg: var(--ui-ink);
-    --ps-warning-bg: #3a3214;
-    --ps-warning-edge: #dba617;
-    --ps-error: var(--ui-danger-soft);
-  }
-}
-
 .page-settings::backdrop {
   background: rgb(0 0 0 / 0.35);
 }

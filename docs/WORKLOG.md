@@ -5,15 +5,21 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-15 — Light theme sitewide
+
+Decision in D-073. Removed all `prefers-color-scheme: dark` blocks from admin and web CSS (34 files), `color-scheme: light`, deleted unused dark tokens. Typecheck clean; admin login checked under an emulated dark OS (stays light); screens behind login and `web` not viewed.
+
+---
+
 ## 2026-10-15 — Editor chrome and post view restyled
 
 `EditorPage.tsx/.css`: top bar uses the admin's panel tokens (breadcrumb back link, serif title with an Editing/Viewing
-line, saved/error status chip with a dot, quiet secondary buttons, one filled Publish). Puck is themed by overriding its
+line, saved/error status chip with a dot, quiet secondary buttons, one filled Publish); light only, per D-073. Puck is themed by overriding its
 *semantic* tokens on `.editor-puck` (its palette tokens are resolved once at `:root`, so remapping `--puck-color-grey-*`
-does nothing); dark mode follows the OS like the rest of the admin. `ImageUploadField.css` now uses Puck's tokens, so
+does nothing); `ImageUploadField.css` now uses Puck's tokens, so
 the post's Featured image/date fields no longer show light-only buttons. `configFor` takes a label: the empty-selection
-panel says "Post", not "Page". Checked in a browser on a page and a post (dark); typecheck, lint and 260 tests pass.
-Not checked: light mode, phone width.
+panel says "Post", not "Page". Checked in a browser on a page and a post before the light-theme merge; after it the dark rules were removed and the
+light result is NOT seen in a browser (API was down). Typecheck and 260 tests pass. Not checked: phone width.
 
 ## 2026-10-15 — Grouped block picker with icons
 
