@@ -100,13 +100,6 @@
   border-bottom: 1px solid var(--ui-line-strong);
 }
 
-@media (prefers-color-scheme: dark) {
-  .editor-checks {
-    background: #101112;
-    border-bottom-color: var(--ui-line-dark-strong);
-  }
-}
-
 .editor-loading {
   display: flex;
   align-items: center;

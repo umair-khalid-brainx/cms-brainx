@@ -133,37 +133,3 @@
   background: var(--ui-line);
 }
 
-@media (prefers-color-scheme: dark) {
-  .ui-menu-trigger.is-icon {
-    color: var(--ui-text-2-dark);
-  }
-
-  .ui-menu-trigger:hover:not(:disabled),
-  .ui-menu-trigger[aria-expanded='true'],
-  .ui-menu-item:hover,
-  .ui-menu-item:focus-visible {
-    background: var(--ui-panel-dark-2);
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .ui-menu {
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .ui-menu-separator {
-    background: var(--ui-line-dark-strong);
-  }
-
-  .ui-menu-item.is-danger {
-    color: var(--ui-danger-soft);
-  }
-
-  .ui-menu-item.is-disabled,
-  .ui-menu-reason {
-    color: var(--ui-text-3-dark);
-  }
-
-  .ui-menu-item:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--ui-accent-soft);
-  }
-}

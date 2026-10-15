@@ -41,25 +41,3 @@
   outline-offset: 2px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .review-intro,
-  .review-path {
-    color: var(--ui-text-3-dark);
-  }
-
-  .review-empty {
-    background: var(--ui-panel-dark);
-    border-color: var(--ui-line-dark-strong);
-    color: var(--ui-text-2-dark);
-  }
-
-  .review-open {
-    border-color: var(--ui-accent-soft);
-    color: var(--ui-accent-soft);
-  }
-
-  .review-open:hover {
-    background: var(--ui-accent-soft);
-    color: var(--ui-canvas-dark);
-  }
-}
