@@ -1,4 +1,4 @@
-/* The editor's History panel (GOV-01). Same sheet and palette as Page settings (var(--ui-accent), light and dark). */
+/* The editor's History panel (GOV-01). Same sheet and palette as Page settings (var(--ui-accent)). */
 
 .history,
 .compare {
@@ -41,32 +41,6 @@
   box-shadow: -8px 0 24px rgb(0 0 0 / 0.16);
   font-size: 0.875rem;
   line-height: 1.5;
-}
-
-@media (prefers-color-scheme: dark) {
-  .history,
-  .compare {
-    --hp-bg: #22272b;
-    --hp-text: var(--ui-surface);
-    --hp-muted: var(--ui-text-2-dark);
-    --hp-border: var(--ui-line-dark-strong);
-    --hp-soft: var(--ui-ink);
-    --hp-accent: var(--ui-accent-soft);
-    --hp-accent-hover: var(--ui-accent-tint-text);
-    --hp-accent-text: var(--ui-ink);
-    --hp-warning-bg: #3a3214;
-    --hp-error: var(--ui-danger-soft);
-    --hp-live-bg: #14301c;
-    --hp-live-text: #8fdca2;
-    --hp-draft-bg: var(--ui-line-dark);
-    --hp-draft-text: var(--ui-line-strong);
-    --hp-add-bg: #14301c;
-    --hp-add-text: #8fdca2;
-    --hp-del-bg: #3d1a1c;
-    --hp-del-text: #f4a3a5;
-    --hp-change-bg: #3a3214;
-    --hp-change-edge: #dba617;
-  }
 }
 
 .history::backdrop,

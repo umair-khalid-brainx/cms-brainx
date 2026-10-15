@@ -122,39 +122,6 @@
   line-height: 1.4;
 }
 
-@media (prefers-color-scheme: dark) {
-  .media-library-modal {
-    background: var(--ui-panel-dark-3);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  }
-
-  .media-library-title {
-    color: var(--ui-text-dark);
-  }
-
-  .media-library-close {
-    background: var(--ui-line-dark);
-    color: var(--ui-text-dark);
-  }
-
-  .media-library-close:hover {
-    background: var(--ui-line-dark-strong);
-  }
-
-  .media-library-card {
-    background: var(--ui-panel-dark);
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .media-library-thumb {
-    background: repeating-conic-gradient(var(--ui-panel-dark-2) 0 25%, var(--ui-line-dark-strong) 0 50%) 0 0 / 12px 12px;
-  }
-
-  .media-library-card:focus-visible {
-    outline-color: var(--ui-accent-soft);
-  }
-}
-
 /* A document has no picture: its file tile fills the same square a thumbnail would. */
 .media-library-doc {
   position: relative;

@@ -5,6 +5,12 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-15 — Light theme sitewide
+
+Decision in D-073. Removed all `prefers-color-scheme: dark` blocks from admin and web CSS (34 files), `color-scheme: light`, deleted unused dark tokens. Typecheck clean; admin login checked under an emulated dark OS (stays light); screens behind login and `web` not viewed.
+
+---
+
 ## 2026-10-15 — List titles open the editor again
 
 Decision in D-072. `PagesListPage.tsx`: title is a `Link` to `/editor/<slug>` (archived rows keep the button that opens

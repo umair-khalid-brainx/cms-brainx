@@ -56,29 +56,3 @@
   outline-offset: -2px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .menus-title {
-    color: var(--ui-text-dark);
-  }
-
-  .menus-tabs {
-    border-bottom-color: var(--ui-line-dark-strong);
-  }
-
-  .menus-tab {
-    color: var(--ui-text-2-dark);
-  }
-
-  .menus-tab:hover {
-    color: var(--ui-text-dark);
-  }
-
-  .menus-tab--active {
-    color: var(--ui-accent-soft);
-    border-bottom-color: var(--ui-accent-soft);
-  }
-
-  .menus-tab:focus-visible {
-    outline-color: var(--ui-accent-soft);
-  }
-}

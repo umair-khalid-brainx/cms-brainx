@@ -333,87 +333,6 @@
   cursor: default;
 }
 
-@media (prefers-color-scheme: dark) {
-  .media-title {
-    color: var(--ui-text-dark);
-  }
-
-  .media-card {
-    background: var(--ui-panel-dark);
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .media-card-name {
-    color: var(--ui-text-2-dark);
-  }
-
-  .media-card-size {
-    color: var(--ui-input-border);
-  }
-
-  .media-thumb-frame {
-    background: repeating-conic-gradient(var(--ui-panel-dark-2) 0 25%, var(--ui-line-dark-strong) 0 50%) 0 0 / 14px 14px;
-    border-bottom-color: var(--ui-line-dark-strong);
-  }
-
-  .media-card:focus-visible {
-    outline-color: var(--ui-accent-soft);
-  }
-
-  .media-detail {
-    background: var(--ui-panel-dark-3);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  }
-
-  .media-detail-close {
-    background: var(--ui-line-dark);
-    color: var(--ui-text-dark);
-  }
-
-  .media-detail-close:hover {
-    background: var(--ui-line-dark-strong);
-  }
-
-  .media-detail-preview {
-    background: var(--ui-field-dark);
-  }
-
-  .media-detail-meta dd {
-    color: var(--ui-text-dark);
-  }
-
-  .media-detail-url {
-    background: var(--ui-field-dark);
-    border-color: var(--ui-line-dark-strong);
-    color: var(--ui-text-dark);
-  }
-
-  .media-detail-copy {
-    background: var(--ui-panel-dark-2);
-    border-color: var(--ui-line-dark-strong);
-    color: var(--ui-text-dark);
-  }
-
-  .media-detail-copy:hover {
-    border-color: var(--ui-accent-soft);
-    color: var(--ui-accent-soft);
-  }
-
-  .media-detail-replace {
-    background: var(--ui-panel-dark-2);
-    border-color: var(--ui-accent-soft);
-    color: var(--ui-accent-soft);
-  }
-
-  .media-detail-replace:hover:not(:disabled) {
-    background: var(--ui-accent-wash-dark);
-  }
-
-  .media-detail-usage-status {
-    color: var(--ui-text-3-dark);
-  }
-}
-
 /* "Open file" under a document's tile: the one thing you do with a file you
    can't see a picture of. */
 .media-detail-open {
@@ -434,16 +353,3 @@
   border-radius: 2px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .media-detail-open {
-    color: var(--ui-accent-soft);
-  }
-
-  .media-detail-open:hover {
-    color: var(--ui-accent-tint-text);
-  }
-
-  .media-detail-open:focus-visible {
-    outline-color: var(--ui-accent-soft);
-  }
-}
