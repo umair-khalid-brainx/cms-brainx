@@ -5,6 +5,25 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-15 — Editor chrome and post view restyled
+
+`EditorPage.tsx/.css`: top bar uses the admin's panel tokens (breadcrumb back link, serif title with an Editing/Viewing
+line, saved/error status chip with a dot, quiet secondary buttons, one filled Publish). Puck is themed by overriding its
+*semantic* tokens on `.editor-puck` (its palette tokens are resolved once at `:root`, so remapping `--puck-color-grey-*`
+does nothing); dark mode follows the OS like the rest of the admin. `ImageUploadField.css` now uses Puck's tokens, so
+the post's Featured image/date fields no longer show light-only buttons. `configFor` takes a label: the empty-selection
+panel says "Post", not "Page". Checked in a browser on a page and a post (dark); typecheck, lint and 260 tests pass.
+Not checked: light mode, phone width.
+
+## 2026-10-15 — Grouped block picker with icons
+
+`puck/config.tsx` gains `categories` (Text, Layout, Media, Social proof, Calls to action; every block in exactly one).
+`components/BlockDrawerItem.tsx` (new) draws each block as an icon tile (inline SVG, label from the config) via Puck's
+`drawerItem` override; the 3-column grid is in `EditorPage.css`. Inline canvas editing was already on for every top-level
+text prop; text inside lists and button labels stay in the right panel (Puck's limit; custom inline editing would touch
+`cms-blocks` and the JSON contract, not done). Seen in a browser; drag-to-insert from a tile not tried (needs trusted
+mouse input, see CLAUDE.md). Typecheck and tests pass.
+
 ## 2026-10-15 — List titles open the editor again
 
 Decision in D-072. `PagesListPage.tsx`: title is a `Link` to `/editor/<slug>` (archived rows keep the button that opens
