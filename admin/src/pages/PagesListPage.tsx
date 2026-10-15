@@ -192,10 +192,10 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
   const closeDetails = useCallback(
     (slug: string) => {
       setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete('view'); return next; }, { replace: true });
-      // Focus goes back to the row's title once the panel has gone.
+      // Focus goes back to what opened the panel: the title on archived rows, the row menu otherwise.
       requestAnimationFrame(() => {
-        const trigger = Array.from(tableRef.current?.querySelectorAll<HTMLElement>('[data-row-trigger]') ?? []).find((el) => el.dataset.rowTrigger === slug);
-        trigger?.focus();
+        const row = Array.from(tableRef.current?.querySelectorAll<HTMLElement>('tr[data-row-slug]') ?? []).find((el) => el.dataset.rowSlug === slug);
+        row?.querySelector<HTMLElement>('[data-row-trigger], .ui-menu-trigger')?.focus();
       });
     },
     [setSearchParams],
@@ -400,20 +400,27 @@ function PagesListPage({ contentType }: { contentType?: ContentType } = {}) {
                 return (
                   <tr
                     key={page.slug}
+                    data-row-slug={page.slug}
                     className={`${justCopied?.slug === page.slug ? 'pages-row-new' : ''} ${viewSlug === page.slug ? 'pl-row-open' : ''}`}
                     aria-busy={busy || undefined}
                   >
                     <td className="pl-cell-title" style={depth > 1 ? { paddingLeft: `${1 + (depth - 1) * 1.25}rem` } : undefined}>
                       {depth > 1 && <span className="pl-indent" aria-hidden="true" />}
-                      <button
-                        type="button"
-                        className="pages-row-title pl-title-btn"
-                        data-row-trigger={page.slug}
-                        aria-haspopup="dialog"
-                        onClick={() => openDetails(page)}
-                      >
-                        {page.title}
-                      </button>
+                      {page.status === 'archived' ? (
+                        <button
+                          type="button"
+                          className="pages-row-title pl-title-btn"
+                          data-row-trigger={page.slug}
+                          aria-haspopup="dialog"
+                          onClick={() => openDetails(page)}
+                        >
+                          {page.title}
+                        </button>
+                      ) : (
+                        <Link to={`/editor/${page.slug}`} className="pages-row-title pl-title-btn">
+                          {page.title}
+                        </Link>
+                      )}
                       <span className="pages-row-path pl-path">{page.path}</span>
                       {terms.length > 0 && (
                         <ul className="pl-terms" aria-label="Categories and tags">

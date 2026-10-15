@@ -5,6 +5,14 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-15 — List titles open the editor again
+
+Decision in D-072. `PagesListPage.tsx`: title is a `Link` to `/editor/<slug>` (archived rows keep the button that opens
+the side panel); "Details" in the row menu opens the panel and focus returns to the row menu on close. Typecheck clean;
+not run in a browser.
+
+---
+
 ## 2026-10-14 — Admin redesign (`ADM-01`–`ADM-07`)
 
 Decision in D-071. Built with three parallel agents after the shell, nav and dropdowns.
