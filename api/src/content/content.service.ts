@@ -25,6 +25,8 @@ import { checkPublishable } from './publish-checks.js';
 import { sanitizeBlocks } from './sanitize.js';
 import { ADMIN_ROUTE_WORDS, normaliseSlug, slugProblem } from './slug.js';
 import { parseSeo, readSeo } from './seo.js';
+import { ChromeRepository } from '../chrome/chrome.repository.js';
+import { DEFAULT_CHOICE, HIDDEN_CHOICE, readChoice } from '../chrome/chrome-rules.js';
 import { depthUnder, MAX_DEPTH, planMove, type PathMove, type TreePage } from './page-tree.js';
 import { RESERVED_PREFIXES } from '../content-types/prefix.js';
 import { TermsService, type CheckedAssignment } from '../taxonomy/terms.service.js';
@@ -46,6 +48,7 @@ export class ContentService {
     private readonly menus: MenuRepository,
     private readonly terms: TermsService,
     private readonly revisions: RevisionsService,
+    private readonly chromes: ChromeRepository,
   ) {}
 
   /** Pages, or with `typePrefix` the entries of that content type (TYP-01). */
@@ -199,6 +202,10 @@ export class ContentService {
       seo = parsed.seo;
     }
 
+    // Which header and footer the page shows: a saved one must be this site's, of the right kind.
+    let chrome: Prisma.InputJsonValue | undefined;
+    if (dto.chrome !== undefined) chrome = await this.checkedChrome(membership.siteId, existing.chrome, dto.chrome);
+
     // Categories and tags (TAX-01): checked against the entry's type before anything is written, and
     // written in the same transaction as the entry.
     let checkedLinks: CheckedAssignment | null = null;
@@ -256,13 +263,14 @@ export class ContentService {
     }
 
     // The slug the client sent is never written as-is: only the normalised one, with its path.
-    const { slug: _requestedSlug, parentId: _requestedParent, categoryIds: _categoryIds, tags: _tags, ...changes } = dto;
+    const { slug: _requestedSlug, parentId: _requestedParent, categoryIds: _categoryIds, tags: _tags, chrome: _requestedChrome, ...changes } = dto;
     const write = {
       ...changes,
       ...(move && { slug: move.slug, parentId: move.parentId }),
       blocks: blocks as Prisma.InputJsonValue | undefined,
       data: data as Prisma.InputJsonValue | undefined,
       seo,
+      chrome,
       // Set the first time it goes live and kept after (TYP-03).
       ...(dto.status === 'published' && !existing.publishedAt && { publishedAt: new Date() }),
       ...(entering && { archivedAt: new Date() }),
@@ -310,6 +318,8 @@ export class ContentService {
     }
 
     await this.refreshPublic({ id: membership.siteId, subdomain: membership.site.subdomain }, existing, updated?.status, moves, checkedLinks !== null);
+    // The header and footer come from site data every page's cached copy reads, so the site is refreshed, not just this page.
+    if (chrome !== undefined && (existing.status === 'published' || updated?.status === 'published')) await this.revalidation.site(membership.site.subdomain);
     // Old addresses that were ever public now redirect to the new ones; new ones lose any redirect (GOV-05).
     await this.afterWrite('move', () =>
       this.redirects.pagesMoved(
@@ -322,6 +332,21 @@ export class ContentService {
     // A move also says which addresses changed, old → new, for the editor.
     const result = updated ? await this.withTerms(updated) : updated;
     return move ? { ...result, moved: moves.map((m) => ({ from: m.oldPath, to: m.newPath })) } : result;
+  }
+
+  /** A page's header and footer choice, merged over what it had; every saved one it names must be this site's, of that kind. */
+  private async checkedChrome(siteId: string, stored: unknown, given: { header?: string; footer?: string }): Promise<Prisma.InputJsonValue> {
+    const merged = { ...readChoice(stored), ...Object.fromEntries(Object.entries(given).filter(([, value]) => value !== undefined)) } as Record<'header' | 'footer', string>;
+    const named = (['header', 'footer'] as const).filter((part) => given[part] !== undefined && ![DEFAULT_CHOICE, HIDDEN_CHOICE].includes(merged[part]));
+    if (named.length > 0) {
+      const presets = await this.chromes.list(siteId);
+      for (const part of named) {
+        if (!presets.some((preset) => preset.id === merged[part] && preset.location === part)) {
+          throw new BadRequestException(`That saved ${part} doesn’t exist on this site. Choose another.`);
+        }
+      }
+    }
+    return merged;
   }
 
   /**
@@ -407,6 +432,7 @@ export class ContentService {
       // The copy keeps the search settings but not the canonical address: two pages naming the
       // same canonical would tell search engines they are one (SEO-01).
       seo: { ...readSeo(source.seo), canonicalUrl: '' },
+      chrome: source.chrome as Prisma.InputJsonValue,
       // A write like any other, so rows saved before sanitising existed are cleaned here too.
       blocks: (Array.isArray(source.blocks)
         ? sanitizeBlocks(source.blocks as Parameters<typeof sanitizeBlocks>[0])
@@ -461,7 +487,7 @@ export class ContentService {
     // A menu item for this page, and everything under it, would go with it (GOV-03): take the page out of the menu first.
     const menus = await this.menus.locationsUsing(siteId, existing.id);
     if (menus.length > 0) {
-      throw new ConflictException(`This page is in the ${menus.join(' and ')} menu. Remove it from the menu first, then delete it.`);
+      throw new ConflictException(`This page is in a ${menus.join(' or ')} menu (the site's own or a saved one). Remove it from the menu first, then delete it.`);
     }
     try {
       await this.content.delete(siteId, slug);

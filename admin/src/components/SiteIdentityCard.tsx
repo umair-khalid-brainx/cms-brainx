@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { getActiveMembership } from '../lib/activeSite'
 import { API_URL, ApiError } from '../lib/api';
+import { BOTTOM_TEXT_MAX } from '../lib/chromeApi';
 import { canManageSite } from '../lib/roles';
 import {
   FOOTER_NOTE_MAX,
@@ -12,16 +13,17 @@ import {
 } from '../lib/siteApi';
 import MediaLibraryModal from './MediaLibraryModal';
 
-type Draft = Pick<SiteDetails, 'name' | 'tagline' | 'footerNote' | 'logo'>;
+type Draft = Pick<SiteDetails, 'name' | 'tagline' | 'footerNote' | 'footerBottom' | 'logo'>;
 
 const toDraft = (site: SiteDetails): Draft => ({
   name: site.name,
   tagline: site.tagline,
   footerNote: site.footerNote,
+  footerBottom: site.footerBottom,
   logo: site.logo,
 });
 const same = (a: Draft, b: Draft) =>
-  a.name === b.name && a.tagline === b.tagline && a.footerNote === b.footerNote && a.logo === b.logo;
+  a.name === b.name && a.tagline === b.tagline && a.footerNote === b.footerNote && a.footerBottom === b.footerBottom && a.logo === b.logo;
 
 /** A library file's address as a browser can load it: the saved short form has no host. */
 const fileSrc = (value: string): string => (value.startsWith('/') ? `${API_URL}${value}` : value);
@@ -146,6 +148,20 @@ function SiteIdentityCard() {
         />
         <p id={`${id}-note-help`} className="settings-help">
           A line or two at the bottom of every page, under the name.
+        </p>
+
+        <label htmlFor={`${id}-bottom`}>Footer bottom line</label>
+        <input
+          id={`${id}-bottom`}
+          value={draft.footerBottom}
+          maxLength={BOTTOM_TEXT_MAX}
+          disabled={!canEdit || busy}
+          autoComplete="off"
+          aria-describedby={`${id}-bottom-help`}
+          onChange={(event) => set('footerBottom', event.target.value)}
+        />
+        <p id={`${id}-bottom-help`} className="settings-help">
+          The small line under the footer’s rule, such as a copyright. {'{year}'} becomes the current year. Left empty, it reads “© year, your site title”.
         </p>
 
         <span className="settings-label" id={`${id}-logo-label`}>

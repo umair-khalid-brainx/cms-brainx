@@ -56,3 +56,40 @@
   outline-offset: -2px;
 }
 
+/* Which header or footer a tab edits: the site's own, or a saved one (and making or deleting one). */
+.menus-set {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.5rem;
+}
+
+.menus-set-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ui-text-2);
+}
+
+.menus-set-hint {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--ui-text-2);
+}
+
+.menus-new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.75rem;
+}
+
+.menus-new input {
+  min-width: 14rem;
+}
+
+.chrome-text {
+  max-width: 36rem;
+  margin: 0 0 1.5rem;
+}

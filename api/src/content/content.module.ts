@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RevalidationModule } from '../revalidation/revalidation.module.js';
 import { UsersModule } from '../users/users.module.js';
+import { ChromeRepository } from '../chrome/chrome.repository.js';
 import { ContentController } from './content.controller.js';
 import { ContentRepository } from './content.repository.js';
 import { ContentService } from './content.service.js';
@@ -41,6 +42,7 @@ import { WorkflowService } from './workflow.service.js';
     RedirectRepository,
     RedirectsService,
     MenuRepository,
+    ChromeRepository,
     MenusService,
     TermRepository,
     TermsService,
@@ -52,6 +54,6 @@ import { WorkflowService } from './workflow.service.js';
     PermissionsGuard,
   ],
   // For PublicModule's live-page, preview, redirect, menu and term reads; WorkflowService for the scheduler (GOV-07).
-  exports: [WorkflowService, ContentRepository, ContentTypeRepository, PreviewLinkRepository, RedirectRepository, MenuRepository, TermRepository],
+  exports: [WorkflowService, ContentRepository, ContentTypeRepository, PreviewLinkRepository, RedirectRepository, MenuRepository, ChromeRepository, TermRepository],
 })
 export class ContentModule {}

@@ -1,5 +1,5 @@
 /** The page settings panel's collapsible groups (ADM-07), in the order they appear. */
-export const SECTION_IDS = ['general', 'url', 'seo', 'terms', 'publishing'] as const
+export const SECTION_IDS = ['general', 'url', 'seo', 'chrome', 'terms', 'publishing'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
 
 /**

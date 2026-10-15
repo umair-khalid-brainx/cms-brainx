@@ -30,6 +30,12 @@ export class PublicController {
     return this.publicSite.getMenus(subdomain);
   }
 
+  // The header and footer a page shows: the site's own, a saved one, or none (hidden).
+  @Get('chrome')
+  getChrome(@Param('subdomain') subdomain: string, @Query('path') path?: string) {
+    return this.publicSite.getChrome(subdomain, path);
+  }
+
   // The addresses for this site's sitemap.xml (SEO-02).
   @Get('sitemap')
   getSitemap(@Param('subdomain') subdomain: string) {

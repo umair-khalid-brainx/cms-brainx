@@ -133,6 +133,7 @@ export class SitesService {
     const settings: SiteSettings = {
       tagline: changes.tagline ?? current.tagline,
       footerNote: changes.footerNote ?? current.footerNote,
+      footerBottom: changes.footerBottom ?? current.footerBottom,
       logo: changes.logo ?? current.logo,
     };
     const site = await this.sites.updateSettings(siteId, { ...(name !== undefined && { name }), settings });

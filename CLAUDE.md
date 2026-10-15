@@ -173,6 +173,13 @@ Production: one EC2 box behind nginx. `*.<domain>` → web, `admin.<domain>` →
   address of every picture and file on an entry page and in a listing from it, and falls back to
   `http://localhost:4001`; unset, every entry image points at localhost. (`DEP-01b`'s checklist.)
 
+- **Header and footer are parallel-route slots, not drawn in the layout** (D-074). `web/src/app/sites/[subdomain]/@header` and
+  `@footer` get the page's address and ask `/public/sites/:sub/chrome?path=`; the layout only draws the frame. A new public route
+  needs nothing, but a new slot-level `generateStaticParams`/`revalidate` must match the page's. After changing routes under
+  `sites/[subdomain]`, run `npx next typegen` in `web`.
+- **A page's header/footer choice is a string in `Content.chrome`**, not a foreign key: `default`, `hidden` or a `ChromePreset` id.
+  An unknown id means the site's own (D-074). Menu items with `presetId` belong to a saved header/footer; `presetId` null is the site's.
+
 ## Docs index
 
 | File | Read it when |

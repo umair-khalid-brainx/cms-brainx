@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { BlockRenderer, EntryHeader, RelatedEntries } from 'cms-blocks';
-import { getMenus, getPreview, getSite } from '@/lib/publicApi';
+import { getPreview, getSite } from '@/lib/publicApi';
 import { SiteChrome } from '@/site/SiteChrome';
-import { settingsFromSite } from '@/site/types';
 
 // Rendered per request, never cached (CNT-09): a revoked link must 404 at
 // once and an editor's latest save must show on reload. Reached only via
@@ -27,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<'/preview/[subdomai
  */
 export default async function PreviewPage({ params }: PageProps<'/preview/[subdomain]/[token]'>) {
   const { subdomain, token } = await params;
-  const [site, page, menus] = await Promise.all([getSite(subdomain), getPreview(subdomain, token), getMenus(subdomain).catch(() => null)]);
+  const [site, page] = await Promise.all([getSite(subdomain), getPreview(subdomain, token)]);
   if (!site || !page) notFound();
 
   const banner = (
@@ -47,7 +46,7 @@ export default async function PreviewPage({ params }: PageProps<'/preview/[subdo
   );
 
   return (
-    <SiteChrome settings={settingsFromSite(site, menus)} banner={banner}>
+    <SiteChrome name={site.name} theme={site.theme} chrome={page.chrome} banner={banner}>
       {page.entry ? <EntryHeader title={page.title} entry={page.entry} /> : null}
       <BlockRenderer blocks={page.blocks} />
       {page.entry ? <RelatedEntries entries={page.entry.related} /> : null}

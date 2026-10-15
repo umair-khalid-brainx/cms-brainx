@@ -1,22 +1,60 @@
 import type { ReactNode } from 'react';
-import { SiteThemeRoot } from 'cms-blocks';
+import { SiteThemeRoot, type SiteTheme } from 'cms-blocks';
+import type { PublicChrome } from '@/lib/publicApi';
 import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
-import type { SiteSettings } from './types';
 
 /**
- * A tenant site's frame: theme scope, header and footer from site settings,
- * and whatever the route renders in between — a page's blocks, or the site's
- * own "page not found" message. Nothing here reads a global colour.
- * `banner` sits above the header, inside the theme scope (the preview strip, CNT-09).
+ * A tenant site's frame: theme scope, a header and footer, and whatever the route renders in between
+ * — a page's blocks, or the site's own "page not found" message. Nothing here reads a global colour.
+ * `header` and `footer` are nodes so a layout can fill them from parallel routes (each page may pick its
+ * own, or hide them); `banner` sits above the header, inside the theme scope (the preview strip, CNT-09).
  */
-export function SiteChrome({ settings, banner, children }: { settings: SiteSettings; banner?: ReactNode; children: ReactNode }) {
+export function SiteFrame({
+  theme,
+  banner,
+  header,
+  footer,
+  children,
+}: {
+  theme: SiteTheme;
+  banner?: ReactNode;
+  header: ReactNode;
+  footer: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <SiteThemeRoot theme={settings.theme} className="flex min-h-screen flex-col">
+    <SiteThemeRoot theme={theme} className="flex min-h-screen flex-col">
       {banner}
-      <SiteHeader settings={settings} />
+      {header}
       <main className="flex-1">{children}</main>
-      <SiteFooter settings={settings} />
+      {footer}
     </SiteThemeRoot>
+  );
+}
+
+/** The frame with a page's resolved header and footer in place (the preview, which has the whole answer at hand). */
+export function SiteChrome({
+  name,
+  theme,
+  chrome,
+  banner,
+  children,
+}: {
+  name: string;
+  theme: SiteTheme;
+  chrome: PublicChrome;
+  banner?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <SiteFrame
+      theme={theme}
+      banner={banner}
+      header={chrome.header ? <SiteHeader name={name} header={chrome.header} /> : null}
+      footer={chrome.footer ? <SiteFooter name={name} footer={chrome.footer} /> : null}
+    >
+      {children}
+    </SiteFrame>
   );
 }

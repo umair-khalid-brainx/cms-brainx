@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { choiceSchema } from '../../chrome/chrome-rules.js';
 
 // Blocks are validated only loosely here (each must be an object with a
 // `type` string) — the full per-type shape is cms-blocks/types.ts's contract,
@@ -35,6 +36,8 @@ export const updateContentSchema = z
     status: z.enum(['draft', 'published', 'archived']).optional(),
     // Search and social-sharing settings, saved whole (SEO-01). Checked field by field in content/seo.ts.
     seo: z.record(z.string(), z.unknown()).optional(),
+    // Which header and footer the page shows: `default`, `hidden` or a saved one's id; a part left out is unchanged.
+    chrome: choiceSchema.optional(),
     blocks: z.array(blockSchema).optional(),
     // Values of a content type's custom fields, by field key (TYP-02). Entries only.
     data: z.record(z.string(), z.unknown()).optional(),

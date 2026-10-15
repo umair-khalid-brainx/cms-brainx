@@ -6,6 +6,7 @@ import { hasLiveBelow, parentChoices } from '../lib/pageTree';
 import { collapseToOne, toggleSection, type SectionId } from '../lib/settingsSections';
 import Select from './Select';
 import SettingsSection from './SettingsSection';
+import PageChromeSection from './PageChromeSection';
 import PageSeoSection from './PageSeoSection';
 import PageTermsSection from './PageTermsSection';
 import { canPublishContent } from '../lib/roles';
@@ -85,7 +86,7 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
   // Stable setters, one per field, so a field's effect doesn't re-run on every render of the panel.
   const dirtyFor = useMemo(() => {
     const make = (key: string) => (value: boolean) => setDirty((current) => (current[key] === value ? current : { ...current, [key]: value }));
-    return { title: make('title'), address: make('address'), parent: make('parent'), seo: make('seo'), terms: make('terms') };
+    return { title: make('title'), address: make('address'), parent: make('parent'), seo: make('seo'), chrome: make('chrome'), terms: make('terms') };
   }, []);
 
   useEffect(() => {
@@ -217,6 +218,22 @@ function PageSettingsPanel({ open, onClose, page, kind, isEntry, hasCategories =
               siteName={getActiveMembership()?.siteName ?? ''}
               announce={setAnnouncement}
               onDirty={dirtyFor.seo}
+              onSaved={onSaved}
+            />
+          </SettingsSection>
+
+          <SettingsSection
+            title="Header and footer"
+            open={openSections.includes('chrome')}
+            onToggle={() => toggle('chrome')}
+            unsaved={!!dirty.chrome}
+          >
+            <PageChromeSection
+              key={`chrome-${session}-${page.slug}`}
+              page={page}
+              kind={kind}
+              announce={setAnnouncement}
+              onDirty={dirtyFor.chrome}
               onSaved={onSaved}
             />
           </SettingsSection>

@@ -18,10 +18,10 @@ const PAGE = { select: { title: true, path: true, status: true } } as const;
 export class MenuRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** One menu, in order, with the pages its items point at. */
-  async findTree(siteId: string, location: MenuLocation): Promise<AdminMenuItem[]> {
+  /** One menu, in order, with the pages its items point at. `presetId` null is the site's own menu. */
+  async findTree(siteId: string, location: MenuLocation, presetId: string | null = null): Promise<AdminMenuItem[]> {
     const items = await this.prisma.menuItem.findMany({
-      where: { siteId, location, parentId: null },
+      where: { siteId, location, presetId, parentId: null },
       orderBy: { position: 'asc' },
       include: { content: PAGE, children: { orderBy: { position: 'asc' }, include: { content: PAGE } } },
     });
@@ -35,10 +35,10 @@ export class MenuRepository {
     return items.map((item) => ({ ...shape(item), children: item.children.map(shape) }));
   }
 
-  /** Both menus as stored, for the public site (it resolves the pages itself, against the live ones). */
+  /** Both of the site's own menus as stored, for the public site (it resolves the pages itself, against the live ones). */
   async findForPublic(siteId: string): Promise<Record<MenuLocation, StoredItem[]>> {
     const items = await this.prisma.menuItem.findMany({
-      where: { siteId, parentId: null },
+      where: { siteId, presetId: null, parentId: null },
       orderBy: { position: 'asc' },
       include: { children: { orderBy: { position: 'asc' } } },
     });
@@ -52,21 +52,36 @@ export class MenuRepository {
     return menus;
   }
 
+  /** The stored links of some saved headers and footers, by preset id. */
+  async findForPresets(siteId: string, presetIds: readonly string[]): Promise<Map<string, StoredItem[]>> {
+    const menus = new Map<string, StoredItem[]>(presetIds.map((id) => [id, []]));
+    if (presetIds.length === 0) return menus;
+    const items = await this.prisma.menuItem.findMany({
+      where: { siteId, presetId: { in: [...presetIds] }, parentId: null },
+      orderBy: { position: 'asc' },
+      include: { children: { orderBy: { position: 'asc' } } },
+    });
+    const shape = (item: { label: string; contentId: string | null; url: string | null }) => ({ label: item.label, contentId: item.contentId, url: item.url });
+    for (const item of items) menus.get(item.presetId as string)?.push({ ...shape(item), children: item.children.map(shape) });
+    return menus;
+  }
+
   /**
    * Replaces one menu with `menu`, all or nothing (GOV-03): the old items go and the new ones, with
    * their children, are written in one transaction, under a lock so two saves of the same menu run one
    * after the other and the last one wins whole, never half of each.
    */
-  replaceTree(siteId: string, location: MenuLocation, menu: MenuInput): Promise<void> {
+  replaceTree(siteId: string, location: MenuLocation, menu: MenuInput, presetId: string | null = null): Promise<void> {
     return this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`menu:${siteId}:${location}`}))`;
-      await tx.menuItem.deleteMany({ where: { siteId, location } });
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`menu:${siteId}:${location}:${presetId ?? ''}`}))`;
+      await tx.menuItem.deleteMany({ where: { siteId, location, presetId } });
       const target = (item: { contentId?: string; url?: string }) => ({ contentId: item.contentId ?? null, url: item.url || null });
       for (const [position, item] of menu.items.entries()) {
         await tx.menuItem.create({
           data: {
             siteId,
             location,
+            presetId,
             position,
             label: item.label,
             ...target(item),
@@ -74,6 +89,7 @@ export class MenuRepository {
               create: item.children.map((child, childPosition) => ({
                 siteId,
                 location,
+                presetId,
                 position: childPosition,
                 label: child.label,
                 ...target(child),
