@@ -308,3 +308,23 @@
     background: var(--ui-accent-wash-dark);
   }
 }
+
+/* Phones: the member and invite tables stack into cards (`stack-table`, ui.css). */
+@media (max-width: 720px) {
+  .team-grid,
+  .team-card,
+  .team-col {
+    min-width: 0;
+  }
+
+  .team-card .stack-table tbody tr {
+    margin-bottom: 0.5rem;
+    background: none;
+  }
+
+  .team-card .stack-table .team-role-select,
+  .team-card .stack-table .team-role-fixed {
+    width: 10rem;
+    max-width: 100%;
+  }
+}

@@ -81,7 +81,7 @@ function TypesPage() {
       </p>
 
       {state.status === 'ready' && (
-        <table className="pages-table">
+        <table className="pages-table stack-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -93,17 +93,17 @@ function TypesPage() {
           <tbody>
             {types.map((type) => (
               <tr key={type.id}>
-                <td>
+                <td className="stack-primary">
                   <Link to={`/content/${type.prefix}`} className="pages-row-title">
                     {type.name}
                   </Link>
                   {type.isBuiltIn && <span className="types-badge">Built in</span>}
                 </td>
-                <td className="pages-row-path">/{type.prefix}</td>
-                <td className="pages-row-path">
+                <td className="pages-row-path" data-label="Address">/{type.prefix}</td>
+                <td className="pages-row-path" data-label="Entries">
                   {type.entryCount === 0 ? 'None yet' : `${type.entryCount} ${type.entryCount === 1 ? 'entry' : 'entries'}`}
                 </td>
-                <td className="pages-row-actions">
+                <td className="pages-row-actions stack-actions">
                   <button type="button" className="types-action" onClick={() => setEditing(type)}>
                     Edit
                   </button>

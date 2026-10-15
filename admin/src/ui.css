@@ -250,3 +250,82 @@
     min-height: 44px;
   }
 }
+
+/* Phones: a `stack-table` turns each row into a card. `.stack-primary` is the card's heading, `data-label` gives
+   every other cell a small caption, and `.stack-actions` sits on the last line. Same idea as Pages' `.pl-table`. */
+@media (max-width: 720px) {
+  table.stack-table.stack-table,
+  .stack-table tbody {
+    display: block;
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+
+  .stack-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .stack-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-radius);
+    background: var(--ui-panel);
+  }
+
+  .stack-table tbody td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    overflow-wrap: anywhere;
+  }
+
+  .stack-table tbody td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ui-text-2);
+  }
+
+  .stack-table tbody td.stack-primary {
+    display: block;
+    font-size: 0.9375rem;
+  }
+
+  .stack-table tbody td.stack-actions {
+    justify-content: flex-start;
+    margin-top: 0.25rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--ui-line-soft);
+    text-align: left;
+  }
+}
+
+@media (max-width: 720px) and (prefers-color-scheme: dark) {
+  .stack-table tbody tr {
+    border-color: var(--ui-line-dark-strong);
+  }
+
+  .stack-table tbody td[data-label]::before {
+    color: var(--ui-text-2-dark);
+  }
+
+  .stack-table tbody td.stack-actions {
+    border-top-color: var(--ui-line-dark);
+  }
+}
