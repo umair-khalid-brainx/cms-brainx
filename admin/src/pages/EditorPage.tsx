@@ -10,6 +10,7 @@ import { listContentTypes, type ContentType } from '../lib/typesApi';
 import { getSiteDetails } from '../lib/siteApi';
 import { readSiteTheme } from '../lib/siteTheme';
 import type { SiteTheme } from 'cms-blocks';
+import { BlockDrawerItem } from '../components/BlockDrawerItem';
 import PageSettingsPanel from '../components/PageSettingsPanel';
 import HistoryPanel from '../components/HistoryPanel';
 import PublishChecksPanel from '../components/PublishChecksPanel';
@@ -81,7 +82,7 @@ function EditorPage() {
   const [theme, setTheme] = useState<SiteTheme | null>(null);
   // The canvas waits for the theme, so it doesn't open in the neutral look and then switch.
   const [themeSettled, setThemeSettled] = useState(false);
-  const puckConfig = useMemo(() => configFor(type?.fields ?? [], theme ?? undefined), [type, theme]);
+  const puckConfig = useMemo(() => configFor(type?.fields ?? [], theme ?? undefined, type?.singularName), [type, theme]);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [published, setPublished] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -409,12 +410,23 @@ function EditorPage() {
   return (
     <div className="editor-page">
       <header className="editor-topbar">
-        <Link to={type ? `/content/${type.prefix}` : '/pages'} className="editor-back">
-          &larr; {type?.name ?? 'Pages'}
+        <Link to={type ? `/content/${type.prefix}` : '/pages'} className="editor-back" aria-label={`Back to ${type?.name ?? 'Pages'}`}>
+          <span aria-hidden="true">&larr;</span> {type?.name ?? 'Pages'}
         </Link>
-        <span className="editor-title">{access.readOnly ? 'Viewing' : 'Editing'}: {page.title}</span>
-        <span ref={statusRef} tabIndex={-1} className="editor-status" role="status">
-          {saveError ?? notice ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : '')}
+        <div className="editor-heading">
+          <span className="editor-mode">{access.readOnly ? 'Viewing' : 'Editing'}</span>
+          <span className="editor-title">{page.title}</span>
+        </div>
+        {/* The dot says the state at a glance (error, saved, quiet); the words carry the detail. */}
+        <span
+          ref={statusRef}
+          tabIndex={-1}
+          className="editor-status"
+          data-state={saveError ? 'error' : published || savedAt ? 'ok' : 'idle'}
+          role="status"
+        >
+          {(saveError || published || savedAt) && !(notice && !saveError) && <span className="editor-status-dot" aria-hidden="true" />}
+          {saveError ?? notice ?? (published ? 'Published' : savedAt ? `Saved ${savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '')}
         </span>
         <span className="editor-site">{getActiveMembership()?.siteName ?? 'No site'}</span>
         {!access.readOnly && (
@@ -555,7 +567,7 @@ function EditorPage() {
           // Suppresses Puck's own native Publish button (see D-028) so only
           // the one in .editor-topbar exists — an empty fragment, not null,
           // since this override's return type is ReactElement, not nullable.
-          overrides={{ headerActions: () => <></> }}
+          overrides={{ headerActions: () => <></>, drawerItem: BlockDrawerItem }}
         />
       </div>
     </div>

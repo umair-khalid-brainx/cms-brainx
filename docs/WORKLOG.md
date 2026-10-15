@@ -7,7 +7,7 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ## 2026-10-15 — Per-page header and footer, saved ones, and editable footer text
 
-Decision in D-073. **API:** `ChromePreset` table, `MenuItem.presetId`, `Content.chrome`, `Site.settings.footerBottom` (migration
+Decision in D-074. **API:** `ChromePreset` table, `MenuItem.presetId`, `Content.chrome`, `Site.settings.footerBottom` (migration
 `20261015100000_add_chrome_presets`); `src/chrome/` (rules, repository, service, `/chrome-presets` CRUD); menus take `?preset=`;
 page save accepts `chrome`; `GET /public/sites/:sub/chrome?path=`; preview responses carry `chrome`. **Web:** layout fills
 header/footer from `@header`/`@footer` slots; `SiteHeader`/`SiteFooter` take the resolved parts; `types.ts` removed.
@@ -19,6 +19,31 @@ headless Chrome for the 404 and the admin screens in the browser pane. **Not don
 the page-save check (only the rules in `chrome-rules.spec.ts`); the reviewer/verifier agents were not run (not a ticket).
 
 ---
+
+## 2026-10-15 — Light theme sitewide
+
+Decision in D-073. Removed all `prefers-color-scheme: dark` blocks from admin and web CSS (34 files), `color-scheme: light`, deleted unused dark tokens. Typecheck clean; admin login checked under an emulated dark OS (stays light); screens behind login and `web` not viewed.
+
+---
+
+## 2026-10-15 — Editor chrome and post view restyled
+
+`EditorPage.tsx/.css`: top bar uses the admin's panel tokens (breadcrumb back link, serif title with an Editing/Viewing
+line, saved/error status chip with a dot, quiet secondary buttons, one filled Publish); light only, per D-073. Puck is themed by overriding its
+*semantic* tokens on `.editor-puck` (its palette tokens are resolved once at `:root`, so remapping `--puck-color-grey-*`
+does nothing); `ImageUploadField.css` now uses Puck's tokens, so
+the post's Featured image/date fields no longer show light-only buttons. `configFor` takes a label: the empty-selection
+panel says "Post", not "Page". Checked in a browser on a page and a post before the light-theme merge; after it the dark rules were removed and the
+light result is NOT seen in a browser (API was down). Typecheck and 260 tests pass. Not checked: phone width.
+
+## 2026-10-15 — Grouped block picker with icons
+
+`puck/config.tsx` gains `categories` (Text, Layout, Media, Social proof, Calls to action; every block in exactly one).
+`components/BlockDrawerItem.tsx` (new) draws each block as an icon tile (inline SVG, label from the config) via Puck's
+`drawerItem` override; the 3-column grid is in `EditorPage.css`. Inline canvas editing was already on for every top-level
+text prop; text inside lists and button labels stay in the right panel (Puck's limit; custom inline editing would touch
+`cms-blocks` and the JSON contract, not done). Seen in a browser; drag-to-insert from a tile not tried (needs trusted
+mouse input, see CLAUDE.md). Typecheck and tests pass.
 
 ## 2026-10-15 — List titles open the editor again
 

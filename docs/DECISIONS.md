@@ -8,7 +8,7 @@ decisions themselves were made on the dates shown.
 
 ---
 
-## D-073 — 2026-10-15 — Each page or post can pick its own header and footer, a saved one, or none
+## D-074 — 2026-10-15 — Each page or post can pick its own header and footer, a saved one, or none
 
 **Decision:** the site keeps its own header and footer (menu + words + logo) as the default. Besides that a site can keep
 **saved headers and footers** (`ChromePreset`, up to 30 of each kind): a name, a tagline and logo (headers) or a note and a bottom
@@ -38,6 +38,16 @@ fields.
 
 ---
 
+## D-073 — 2026-10-15 — Light theme only, sitewide
+
+**Decision:** every `@media (prefers-color-scheme: dark)` rule is removed from `admin` and `web`, and the admin root sets `color-scheme: light`. Both always render light, whatever the OS preference. Dark-only `--ui-*` tokens with no remaining use were deleted.
+
+**Supersedes:** the "dark mode by paired `prefers-color-scheme` rules" part of D-071.
+
+**Cost accepted:** no dark mode. Bringing it back means re-adding the dark rules per screen.
+
+---
+
 ## D-072 — 2026-10-15 — Page and post titles open the editor again; the side panel is opened from "Details"
 
 **Decision:** on the Pages, Posts and content-type lists, a row's title is a link to the editor, as before D-071.
@@ -54,7 +64,7 @@ action, details the occasional one.
 ## D-071 — 2026-10-14 — Admin redesign: `--ui-*` tokens, light sidebar in three groups, one Menu and Select (`ADM-01`–`ADM-07`)
 
 **Decision:** the admin gets its own token set (`--ui-*`, never `--site-*`): cool-grey surfaces, ink text, one teal accent,
-IBM Plex Sans with Fraunces for page titles, dark mode by paired `prefers-color-scheme` rules. The sidebar is light and
+IBM Plex Sans with Fraunces for page titles, dark mode by paired `prefers-color-scheme` rules (removed, see D-073). The sidebar is light and
 grouped Content / Site / Admin. `Menu` (actions) and `Select` (choice) are the only dropdowns; both open in a portal, so a
 table cannot clip them. Pages and Posts lists search and filter in the browser and open a read-only side panel (`?view=<slug>`).
 
@@ -2333,3 +2343,5 @@ No workspace, no hoisting, no shared root config.
 **Cost accepted:** ~1.05 GB of dependencies across three trees instead of 945 MB hoisted; three CI
 pipelines instead of one; per-repo duplication of editor and lint config; and the loss of the import
 path between `web` and `admin`, which is what D-008 exists to address.
+
+---

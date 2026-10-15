@@ -121,49 +121,6 @@
   outline-offset: 2px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .publish-checks {
-    background: var(--ui-panel-dark);
-    border-color: var(--ui-line-dark-strong);
-    color: var(--ui-text-dark);
-  }
-
-  .publish-checks-blocked {
-    border-left-color: var(--ui-danger-soft);
-  }
-
-  .publish-checks-warn {
-    border-left-color: #f0c33c;
-  }
-
-  .publish-checks-subtitle,
-  .publish-checks-where {
-    color: var(--ui-line-strong);
-  }
-
-  .publish-checks-item-error .publish-checks-icon {
-    fill: var(--ui-danger-soft);
-  }
-
-  .publish-checks-item-warning .publish-checks-icon {
-    fill: #f0c33c;
-  }
-
-  .publish-checks-actions a {
-    color: var(--ui-accent-soft);
-  }
-
-  .publish-checks-secondary {
-    background: transparent;
-    color: var(--ui-accent-soft);
-    border-color: var(--ui-accent-soft);
-  }
-
-  .publish-checks-secondary:hover {
-    background: var(--ui-ink);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .publish-checks-primary,
   .publish-checks-secondary {

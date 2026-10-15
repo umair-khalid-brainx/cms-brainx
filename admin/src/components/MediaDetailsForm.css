@@ -95,49 +95,4 @@
   color: var(--ui-danger);
 }
 
-/* Follows the OS dark preference like the rest of the media page (MediaPage.css). */
-@media (prefers-color-scheme: dark) {
-  .media-details {
-    border-top-color: var(--ui-line-dark-strong);
-  }
 
-  .media-details-heading,
-  .media-details-field label {
-    color: var(--ui-text-dark);
-  }
-
-  .media-details-hint {
-    color: var(--ui-text-2-dark);
-  }
-
-  .media-details-field input,
-  .media-details-field textarea {
-    background: var(--ui-field-dark);
-    border-color: var(--ui-line-dark-strong);
-    color: var(--ui-text-dark);
-  }
-
-  .media-details-field input:focus-visible,
-  .media-details-field textarea:focus-visible {
-    outline-color: var(--ui-accent-soft);
-    border-color: var(--ui-accent-soft);
-  }
-
-  .media-details-save:focus-visible {
-    outline-color: var(--ui-accent-soft);
-  }
-
-  .media-details-save:disabled {
-    border-color: var(--ui-line-dark-strong);
-    background: var(--ui-line-dark);
-    color: var(--ui-input-border);
-  }
-
-  .media-details-status {
-    color: var(--ui-success-bright);
-  }
-
-  .media-details-error {
-    color: var(--ui-danger-soft);
-  }
-}

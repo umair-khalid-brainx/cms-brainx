@@ -245,43 +245,6 @@ a.admin-user-menu {
   display: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  .admin-nav-item:hover {
-    background: var(--ui-panel-dark-2);
-    color: var(--ui-text-dark);
-  }
-
-  .admin-nav-item.is-active {
-    background: var(--ui-accent-wash-dark);
-    color: var(--ui-accent-soft);
-  }
-
-  .admin-nav-heading,
-  .admin-logout {
-    color: var(--ui-text-3-dark);
-  }
-
-  .admin-nav-item {
-    color: var(--ui-text-2-dark);
-  }
-
-  .admin-logout:hover {
-    color: var(--ui-danger-soft);
-    background: var(--ui-panel-dark-2);
-  }
-
-  .admin-site-switcher:hover,
-  .admin-user-menu:hover {
-    background: var(--ui-panel-dark-2);
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .admin-logo-mark,
-  .admin-user-avatar {
-    background: var(--ui-accent);
-  }
-}
-
 /* Under 860px the sidebar becomes a drawer opened from the top bar. */
 @media (max-width: 860px) {
   .admin-menu-button {

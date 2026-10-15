@@ -2,77 +2,154 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background: var(--ui-bg);
 }
 
+/* The bar uses the admin shell's own panel tokens, so the editor reads as part of the same product
+   (the admin is light-only, D-073). Left: where you are. Right: what you can do. */
 .editor-topbar {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.6rem 1rem;
-  background: var(--ui-ink);
-  color: var(--ui-surface);
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0.5rem 1rem;
+  background: var(--ui-panel);
+  color: var(--ui-fg);
+  border-bottom: 1px solid var(--ui-border);
   flex-shrink: 0;
   font-size: 0.8125rem;
 }
 
 .editor-back {
-  color: var(--ui-line-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.5rem;
+  margin-left: -0.25rem;
+  border-radius: var(--ui-radius-sm);
+  color: var(--ui-text-3);
   text-decoration: none;
   font-weight: 500;
+  transition: color var(--ui-ease), background-color var(--ui-ease);
 }
 
 .editor-back:hover {
-  color: #fff;
+  color: var(--ui-fg);
+  background: var(--ui-surface);
+}
+
+.editor-back:focus-visible,
+.editor-secondary:focus-visible,
+.editor-topbar .share-preview-trigger:focus-visible,
+.editor-publish:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus);
+}
+
+/* A hairline between "where back goes" and "what this is" separates the two without a heading. */
+.editor-heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: 0.75rem;
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--ui-border);
+  line-height: 1.2;
+}
+
+.editor-mode {
+  font-size: 0.6875rem;
+  color: var(--ui-text-3);
 }
 
 .editor-title {
+  font-family: var(--ui-font-display);
+  font-size: 1.0625rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--ui-fg);
 }
 
+/* Saving state: one dot (green saved, red failed) and the sentence. Hidden until there's something to say. */
 .editor-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
   font-size: 0.75rem;
-  color: var(--ui-input-border);
+  color: var(--ui-text-2);
+}
+
+/* Empty: no chip, but the live region stays in the page so screen readers announce what lands in it. */
+.editor-status:empty {
+  padding: 0;
+  margin: 0;
+}
+
+.editor-status[data-state='error'] {
+  background: color-mix(in srgb, var(--ui-danger) 14%, transparent);
+  color: var(--ui-danger);
+}
+
+.editor-status-dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+.editor-status[data-state='error'] .editor-status-dot {
+  background: var(--ui-danger);
 }
 
 .editor-site {
   margin-left: auto;
-  color: var(--ui-text-2-dark);
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-text-2);
+  font-size: 0.75rem;
 }
 
-/* Secondary to Publish, like Share preview: outlined on the dark top bar. */
-.editor-secondary {
+/* Quiet by default: only Publish is filled, so the one primary action is never in doubt. */
+.editor-secondary,
+.editor-topbar .share-preview-trigger {
   background: transparent;
-  color: var(--ui-surface);
+  color: var(--ui-fg);
   border: 1px solid var(--ui-input-border);
-  border-radius: 4px;
-  padding: 0.35rem 0.8rem;
+  border-radius: var(--ui-radius-sm);
+  padding: 0.4rem 0.8rem;
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 150ms, background-color 150ms;
+  transition: border-color var(--ui-ease), background-color var(--ui-ease);
 }
 
-.editor-secondary:hover {
-  border-color: var(--ui-surface);
-  background: var(--ui-line-dark);
+.editor-secondary:hover,
+.editor-topbar .share-preview-trigger:hover,
+.editor-topbar .share-preview-trigger[aria-expanded='true'] {
+  border-color: var(--ui-text-3);
+  background: var(--ui-surface);
 }
 
-.editor-secondary:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
+.editor-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .editor-publish {
   background: var(--ui-accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
-  padding: 0.4rem 0.85rem;
+  border-radius: var(--ui-radius-sm);
+  padding: 0.45rem 1.1rem;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
+  transition: background-color var(--ui-ease);
 }
 
 .editor-publish:hover {
@@ -80,13 +157,9 @@
 }
 
 .editor-publish:disabled {
-  background: var(--ui-accent-soft);
+  background: var(--ui-accent-strong);
+  opacity: 0.55;
   cursor: default;
-}
-
-.editor-publish:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
 }
 
 /* Sits between the top bar and the canvas; scrolls if the list is long so
@@ -98,13 +171,6 @@
   padding: 0.75rem 1rem;
   background: var(--ui-surface);
   border-bottom: 1px solid var(--ui-line-strong);
-}
-
-@media (prefers-color-scheme: dark) {
-  .editor-checks {
-    background: #101112;
-    border-bottom-color: var(--ui-line-dark-strong);
-  }
 }
 
 .editor-loading {
@@ -119,15 +185,63 @@
 .editor-puck {
   flex: 1;
   min-height: 0;
-  /* Puck's UI is light-only, but some of it (the Outline rows) uses
-     `color: inherit` — which, in OS dark mode, picks up index.css's
-     near-white --foreground and vanishes on Puck's white panels. Give it
-     the same text colour Puck's own block list uses. */
-  color: var(--puck-color-text, #000);
+  /* Puck's own text colour: some of its rows use `color: inherit`, which would
+     otherwise pick up index.css's foreground rather than Puck's. */
+  color: var(--puck-color-text, var(--ui-fg));
 }
 
 .editor-puck > div {
   height: 100%;
+}
+
+/* Puck is themed by overriding its semantic tokens (surface, text, border, interactive), never by chasing
+   its hashed class names. Puck resolves those once at :root, so the palette beneath them can't be remapped
+   from here; they must be set directly. Its azure (selection, focus ring, active tab) becomes the admin's
+   teal; Puck's own neutrals already suit the light admin. The canvas is an iframe, so none of this reaches the
+   site being edited. */
+.editor-puck {
+  --puck-font-family: var(--ui-font);
+  --puck-color-interactive: var(--ui-accent);
+  --puck-color-interactive-hover: var(--ui-accent-strong);
+  --puck-color-interactive-active: var(--ui-accent-strong);
+  --puck-color-focus-ring: var(--ui-accent);
+}
+
+/* The block picker: three tiles to a row, icon over name, grouped under Puck's collapsible category headings.
+   Puck's own row (border, drag handle) is flattened to a tile; the data attributes are Puck's stable hooks. */
+.editor-puck [data-puck-drawer] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.editor-puck [data-puck-drawer-item] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 5rem;
+  padding: 0.75rem 0.25rem;
+  border: 1px solid var(--puck-color-border);
+  border-radius: var(--ui-radius);
+  background: var(--puck-color-surface);
+  cursor: grab;
+  transition: border-color var(--ui-ease), background-color var(--ui-ease), color var(--ui-ease);
+}
+
+.editor-puck [data-puck-drawer-item]:hover {
+  border-color: var(--puck-color-interactive);
+  background: var(--puck-color-interactive-soft);
+  color: var(--puck-color-interactive);
+}
+
+.editor-puck [data-puck-drawer-item]:hover .block-tile-icon {
+  color: var(--puck-color-interactive);
+}
+
+.editor-puck [data-puck-drawer-item]:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus);
 }
 
 /* Tablet: the top bar holds back link, title, status, site and three buttons.
@@ -167,9 +281,12 @@
     padding: 0.5rem 0.75rem;
   }
 
-  .editor-title {
+  .editor-heading {
     order: 1;
     flex: 1 1 100%;
+    padding-left: 0;
+    margin-left: 0;
+    border-left: none;
   }
 
   .editor-back {
@@ -194,5 +311,15 @@
 
   .editor-publish {
     margin-left: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-puck [data-puck-drawer-item],
+  .editor-back,
+  .editor-secondary,
+  .editor-publish,
+  .editor-topbar .share-preview-trigger {
+    transition: none;
   }
 }

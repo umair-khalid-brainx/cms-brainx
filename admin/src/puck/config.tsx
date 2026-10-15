@@ -175,6 +175,15 @@ const summary = (text: string | undefined, fallback: string, index?: number) =>
 // edits. Only top-level text props can do this, so text inside lists (FAQ answers,
 // team members, pricing plans) and button labels stay sidebar-only.
 export const config: Config<EditorComponents> = {
+  // The left-hand picker, grouped by what a person is trying to do. Every block type must be in exactly
+  // one group, or Puck files it under "Other".
+  categories: {
+    text: { title: 'Text', components: ['RichText', 'Faq'] },
+    layout: { title: 'Layout', components: ['Hero', 'ImageText', 'FeatureGrid', 'Spacer'] },
+    media: { title: 'Media', components: ['Gallery', 'VideoEmbed', 'LogoCloud'] },
+    proof: { title: 'Social proof', components: ['Testimonial', 'Stats', 'TeamGrid'] },
+    action: { title: 'Calls to action', components: ['Cta', 'PricingTable', 'ContactForm'] },
+  },
   root: {
     // No fields on the page itself: its title lives in the page list and the new-page form,
     // so Puck's default "title" box (which saved nowhere) is gone. An entry's own fields

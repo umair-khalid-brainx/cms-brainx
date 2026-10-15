@@ -61,28 +61,3 @@
   font-size: 1rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .file-tile {
-    --tile-ink: var(--ui-text-2-dark);
-    --tile-wash: var(--ui-line-dark);
-  }
-
-  .file-tile--pdf {
-    --tile-ink: var(--ui-danger-soft);
-    --tile-wash: var(--ui-danger-wash-dark);
-  }
-
-  .file-tile--word {
-    --tile-ink: var(--ui-accent-soft);
-    --tile-wash: var(--ui-accent-wash-dark);
-  }
-
-  .file-tile--excel {
-    --tile-ink: var(--ui-success-bright);
-    --tile-wash: var(--ui-success-wash-dark);
-  }
-
-  .file-tile-page {
-    fill: var(--ui-panel-dark-3);
-  }
-}

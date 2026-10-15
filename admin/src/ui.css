@@ -7,32 +7,16 @@
   --ui-success: #00762c;
   --ui-success-bright: #4fd67a;
   --ui-success-wash: #edfaef;
-  --ui-success-wash-dark: #0a2e14;
   --ui-warn-ink: #7a5300;
   --ui-warn-wash: #fcf3dc;
   --ui-warn-bright: #f0c33c;
-  --ui-warn-wash-dark: #33270a;
   --ui-danger-wash: #fcf0f1;
-  --ui-danger-wash-dark: #2e1214;
 
   /* Semantic text/surface pairs that switch with the scheme */
   --ui-text-muted: var(--ui-text-3);
   --ui-surface-sunk: var(--ui-surface-2);
   --ui-field-bg: #ffffff;
   --ui-field-border: var(--ui-input-border);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ui-text-muted: var(--ui-text-3-dark);
-    --ui-surface-sunk: var(--ui-panel-dark-2);
-    --ui-field-bg: var(--ui-field-dark);
-    --ui-field-border: var(--ui-line-dark-strong);
-    --ui-success: var(--ui-success-bright);
-    /* Text-only tokens: the light values are unreadable on dark panels, so they swap here. */
-    --ui-text-3: var(--ui-text-3-dark);
-    --ui-danger: var(--ui-danger-soft);
-  }
 }
 
 /* ---- page chrome: one display-serif heading for every screen (not Puck's canvas) ----------------------------- */
@@ -201,48 +185,6 @@
   color: var(--ui-danger);
 }
 
-@media (prefers-color-scheme: dark) {
-  .ui-btn:hover:not(:disabled) {
-    background: var(--ui-panel-dark-2);
-  }
-
-  .ui-btn,
-  .ui-btn-danger {
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .ui-btn-danger {
-    color: var(--ui-danger-soft);
-  }
-
-  .ui-btn-danger:hover:not(:disabled) {
-    background: var(--ui-danger-wash-dark);
-  }
-
-  .ui-btn-ghost {
-    color: var(--ui-accent-soft);
-  }
-
-  .ui-badge {
-    background: var(--ui-panel-dark-2);
-    color: var(--ui-text-2-dark);
-  }
-
-  .ui-badge-success {
-    background: var(--ui-success-wash-dark);
-  }
-
-  .ui-badge-warn {
-    background: var(--ui-warn-wash-dark);
-    color: var(--ui-warn-bright);
-  }
-
-  .ui-badge-danger {
-    background: var(--ui-danger-wash-dark);
-    color: var(--ui-danger-soft);
-  }
-}
-
 @media (pointer: coarse) {
   .ui-btn,
   .ui-input,
@@ -316,16 +258,3 @@
   }
 }
 
-@media (max-width: 720px) and (prefers-color-scheme: dark) {
-  .stack-table tbody tr {
-    border-color: var(--ui-line-dark-strong);
-  }
-
-  .stack-table tbody td[data-label]::before {
-    color: var(--ui-text-2-dark);
-  }
-
-  .stack-table tbody td.stack-actions {
-    border-top-color: var(--ui-line-dark);
-  }
-}

@@ -51,13 +51,19 @@ function fieldFor(field: ContentField): Field {
  * The editor config for a page (no fields) or for an entry of a type with `fields`, drawn in the site's own
  * `theme` (B-16): the canvas must look like the site being edited, not like another tenant.
  */
-export function configFor(fields: readonly ContentField[], theme: SiteTheme = fallbackTheme): Config<EditorComponents> {
+export function configFor(
+  fields: readonly ContentField[],
+  theme: SiteTheme = fallbackTheme,
+  label?: string,
+): Config<EditorComponents> {
   const rootFields: Record<string, Field> = {}
   for (const field of fields) rootFields[field.key] = fieldFor(field)
   return {
     ...config,
     root: {
       ...config.root,
+      // The panel's heading when nothing is selected: "Post" on a post, not "Page".
+      ...(label ? { label } : {}),
       fields: rootFields,
       render: themedRoot(theme),
     },

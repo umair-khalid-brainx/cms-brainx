@@ -5,22 +5,18 @@
   width: 100%;
 }
 
-/* Puck's own field panel is a fixed light theme — it does not follow the
-   OS/browser dark-mode preference the rest of this app's own screens do
-   (Select.css, TeamPage.css). Matched to Puck's native text field's own
-   computed style (padding/border/font-size) so this sits next to "alt" and
-   "caption" as an obvious text field, not a styled-differently oddity. No
-   dark-mode variant on purpose — one would fight Puck's fixed light chrome
-   instead of blending into it. */
+/* These sit inside Puck's field panel, so they take Puck's own tokens (which the editor page maps to the
+   admin theme in dark mode) and fall back to the admin's where Puck isn't around. Matched to Puck's native
+   text field (padding, border, font-size) so this reads as a field beside "alt" and "caption". */
 .image-upload-input {
   width: 100%;
   font: inherit;
   font-size: 14px;
   padding: 12px 15px;
-  border: 1px solid var(--ui-line);
+  border: 1px solid var(--puck-color-border, var(--ui-line));
   border-radius: var(--ui-radius-sm);
-  background: var(--ui-panel);
-  color: var(--ui-ink);
+  background: var(--puck-color-surface, var(--ui-panel));
+  color: var(--puck-color-text, var(--ui-ink));
   box-sizing: border-box;
 }
 
@@ -31,8 +27,8 @@
 }
 
 .image-upload-input:disabled {
-  background: var(--ui-surface);
-  color: var(--ui-text-3);
+  background: var(--puck-color-surface-muted, var(--ui-surface));
+  color: var(--puck-color-text-muted, var(--ui-text-3));
 }
 
 /* Two equal-weight actions — Upload and Browse — on their own row below the
@@ -50,22 +46,22 @@
   font-size: 13px;
   font-weight: 600;
   padding: 0.6rem 0.9rem;
-  border: 1px solid var(--ui-line);
+  border: 1px solid var(--puck-color-border, var(--ui-line));
   border-radius: var(--ui-radius-sm);
-  background: var(--ui-surface);
-  color: var(--ui-ink);
+  background: var(--puck-color-surface-muted, var(--ui-surface));
+  color: var(--puck-color-text, var(--ui-ink));
   cursor: pointer;
   white-space: nowrap;
 }
 
 .image-upload-button:hover:not(:disabled) {
-  border-color: var(--ui-accent);
-  color: var(--ui-accent);
+  border-color: var(--puck-color-interactive, var(--ui-accent));
+  color: var(--puck-color-interactive, var(--ui-accent));
 }
 
 .image-upload-button:disabled {
-  background: var(--ui-surface);
-  color: var(--ui-text-3-dark);
+  background: var(--puck-color-surface-muted, var(--ui-surface));
+  color: var(--puck-color-text-subtle, var(--ui-text-3-dark));
   cursor: default;
 }
 
