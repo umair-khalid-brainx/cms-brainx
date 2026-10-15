@@ -5,6 +5,7 @@ import type { EditorComponents } from '../puck/config';
 import { ApiError, apiDelete, apiGet, apiSend } from './api';
 import { getSession } from './auth';
 import { readSeo, type Seo } from './seo';
+import { readChrome, type PageChrome } from './chromeApi';
 import type { TermRef } from './terms';
 
 // Replaces the old localStorage-backed pagesStore.ts (D-019) now that CNT-01
@@ -28,6 +29,8 @@ export type PageSummary = {
   id: string;
   /** Search and sharing settings (SEO-01). */
   seo: Seo;
+  /** Which header and footer the page shows: the site's own, none, or a saved one. */
+  chrome: PageChrome;
   /** The page this one sits under (CNT-05); null at the top level and for entries. */
   parentId: string | null;
   slug: string;
@@ -76,6 +79,7 @@ type FlatBlock = { type: string } & Record<string, unknown>;
 type ContentRecord = {
   id: string;
   seo?: unknown;
+  chrome?: unknown;
   parentId: string | null;
   slug: string;
   title: string;
@@ -185,6 +189,7 @@ function toSummary(record: ContentRecord): PageSummary {
   return {
     id: record.id,
     seo: readSeo(record.seo),
+    chrome: readChrome(record.chrome),
     parentId: record.parentId,
     slug: record.slug,
     title: record.title,
@@ -324,7 +329,7 @@ export async function setPageStatus(slug: string, status: PageStatus): Promise<P
 // for the person; the record that comes back has the slug actually saved.
 export async function updatePageSettings(
   slug: string,
-  changes: { title?: string; slug?: string; parentId?: string | null; seo?: Seo; categoryIds?: string[]; tags?: string[] },
+  changes: { title?: string; slug?: string; parentId?: string | null; seo?: Seo; chrome?: Partial<PageChrome>; categoryIds?: string[]; tags?: string[] },
 ): Promise<PageSummary> {
   const session = requireSession();
   const record = await apiSend<ContentRecord>('PATCH', `/content/${slug}`, changes, session.accessToken);

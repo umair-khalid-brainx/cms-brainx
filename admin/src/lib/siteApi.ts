@@ -9,6 +9,8 @@ export type SiteSummary = { id: string; name: string; subdomain: string };
 export type SiteDetails = SiteSummary & {
   tagline: string;
   footerNote: string;
+  /** The line at the very bottom of the footer; empty means "© <year> <site name>". */
+  footerBottom: string;
   /** A picture in the site's media library (`/uploads/<site>/<file>`), or empty. */
   logo: string;
   /** The site's own domain (DEP-02), null until an owner adds one. Display only: nothing serves the site on it yet. */
@@ -42,7 +44,7 @@ export function getSiteDetails(): Promise<SiteDetails> {
  * heading show it straight away.
  */
 export async function updateSiteSettings(
-  changes: Partial<Pick<SiteDetails, 'name' | 'tagline' | 'footerNote' | 'logo'>>,
+  changes: Partial<Pick<SiteDetails, 'name' | 'tagline' | 'footerNote' | 'footerBottom' | 'logo'>>,
 ): Promise<SiteDetails> {
   const { session, membership } = requireMembership();
   const site = await apiSend<SiteDetails>('PATCH', `/sites/${membership.siteId}/settings`, changes, session.accessToken);

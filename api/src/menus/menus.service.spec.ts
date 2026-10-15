@@ -1,5 +1,6 @@
 import { withActive } from '../users/test-support.js';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import type { ChromeRepository } from '../chrome/chrome.repository.js';
 import type { ContentRepository } from '../content/content.repository.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
@@ -36,6 +37,7 @@ function setup() {
     menus as unknown as MenuRepository,
     content as unknown as ContentRepository,
     withActive(users),
+    {} as unknown as ChromeRepository,
     revalidation as unknown as RevalidationService,
   );
   return { service, menus, content, revalidation, saved };
@@ -107,6 +109,6 @@ describe('MenusService.get', () => {
   it('reads the caller’s own site’s menu', async () => {
     const { service, menus } = setup();
     expect(await service.get('alice', 'footer')).toEqual({ location: 'footer', items: [] });
-    expect(menus.findTree).toHaveBeenCalledWith('site-a', 'footer');
+    expect(menus.findTree).toHaveBeenCalledWith('site-a', 'footer', null);
   });
 });

@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import type { ChromeRepository } from '../chrome/chrome.repository.js';
 import type { ContentRepository } from '../content/content.repository.js';
 import type { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import type { SiteRepository } from '../sites/site.repository.js';
@@ -66,13 +67,17 @@ function setup() {
     {} as ContentTypeRepository,
     { get: () => undefined } as unknown as ConfigService,
     {} as RedirectRepository,
-    {} as MenuRepository,
+    NO_MENUS,
     {} as TermRepository,
+    NO_PRESETS,
   );
   return { service, previewLinks };
 }
 
 // getPage reads the site's name for the page's title (SEO-01).
+// A site with no menus and no saved headers or footers: what a page's chrome resolves against when a test doesn't care.
+const NO_MENUS = { findForPublic: async () => ({ header: [], footer: [] }), findForPresets: async () => new Map() } as unknown as MenuRepository;
+const NO_PRESETS = { list: async () => [] } as unknown as ChromeRepository;
 const sites = { findById: vi.fn(async () => ({ name: 'Alpha' })) } as unknown as SiteRepository;
 
 describe('PublicService.getPreview', () => {
@@ -148,8 +153,9 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
     return { service, media };
   }
@@ -188,8 +194,9 @@ describe('PublicService.getPage image alt text (MED-04, D-047)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
 
     const page = await service.getPreview('alpha', TOKEN);
@@ -248,8 +255,9 @@ describe('PublicService entries and listings (TYP-03)', () => {
       types as unknown as ContentTypeRepository,
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
     return { service, content, media };
   }
@@ -329,8 +337,9 @@ describe('PublicService.getRedirect (GOV-05)', () => {
     {} as ContentTypeRepository,
     { get: () => undefined } as unknown as ConfigService,
     redirects as unknown as RedirectRepository,
-    {} as MenuRepository,
+    NO_MENUS,
     {} as TermRepository,
+    NO_PRESETS,
   );
 
   it('answers where an old address goes, normalising the path it is asked about', async () => {
@@ -383,8 +392,9 @@ describe('PublicService.getPage SEO (SEO-01)', () => {
       {} as ContentTypeRepository,
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
   }
 
@@ -434,8 +444,9 @@ describe('PublicService.getSitemap (SEO-02)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
     return { service, content };
   }
@@ -472,8 +483,9 @@ describe('PublicService.getSitemap past the limit (SEO-02)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
     const { entries } = await service.getSitemap('alpha');
     expect(entries).toHaveLength(50_000);
@@ -507,8 +519,9 @@ describe('PublicService.getSite branding (GOV-04)', () => {
       {} as ContentTypeRepository,
       { get: (key: string) => (key === 'API_PUBLIC_URL' ? 'http://api.test/' : undefined) } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
   }
 
@@ -584,8 +597,9 @@ describe('PublicService.getPage looks the logo up only when it would be the pict
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       {} as TermRepository,
+      NO_PRESETS,
     );
     return { service, media };
   }
@@ -633,6 +647,7 @@ describe('PublicService.getMenus (GOV-03)', () => {
       {} as RedirectRepository,
       menus as unknown as MenuRepository,
       {} as TermRepository,
+      NO_PRESETS,
     );
     return { service, menus, content };
   }
@@ -722,8 +737,9 @@ describe('PublicService term archives and related entries (TAX-02)', () => {
       {} as ContentTypeRepository,
       { get: () => undefined } as unknown as ConfigService,
       {} as RedirectRepository,
-      {} as MenuRepository,
+      NO_MENUS,
       terms as unknown as TermRepository,
+      NO_PRESETS,
     );
     return { service, content, terms };
   }
@@ -838,5 +854,57 @@ describe('PublicService term archives and related entries (TAX-02)', () => {
       const page = await entry([post('me', 5, ['cat-news']), other]);
       expect(page.entry?.related).toEqual([]);
     });
+  });
+});
+
+describe('PublicService.getChrome', () => {
+  function build(stored: unknown, presetRows: object[] = []) {
+    const sites = { findById: vi.fn(async () => ({ id: 'site-a', name: 'Alpha', settings: { tagline: 'Site tag', footerNote: 'Site note', footerBottom: '' } })) };
+    const content = {
+      findLiveByPath: vi.fn(async () => (stored === undefined ? null : { chrome: stored })),
+      findFactsByIds: vi.fn(async () => [{ id: 'c1', path: '/farm', status: 'published' }]),
+    };
+    const own = { header: [{ label: 'Own', contentId: null, url: '/own' }], footer: [] };
+    const menus = {
+      findForPublic: vi.fn(async () => own),
+      findForPresets: vi.fn(async () => new Map([['p1', [{ label: 'Farm', contentId: 'c1', url: null }]]])),
+    };
+    const service = new PublicService(
+      sites as unknown as SiteRepository,
+      content as unknown as ContentRepository,
+      {} as PreviewLinkRepository,
+      { resolve: vi.fn(async () => 'site-a') } as unknown as SubdomainCache,
+      {} as SubmissionRepository,
+      {} as MediaRepository,
+      {} as ContentTypeRepository,
+      { get: () => undefined } as unknown as ConfigService,
+      {} as RedirectRepository,
+      menus as unknown as MenuRepository,
+      {} as TermRepository,
+      { list: vi.fn(async () => presetRows) } as unknown as ChromeRepository,
+    );
+    return service;
+  }
+
+  it('gives the site’s own header and footer to a page that picks nothing, and to an address with no page', async () => {
+    const chrome = await build({}).getChrome('alpha', '/x');
+    expect(chrome.header).toMatchObject({ tagline: 'Site tag', nav: [{ label: 'Own', href: '/own' }] });
+    expect(chrome.footer).toMatchObject({ note: 'Site note' });
+    expect(chrome.footer?.bottomLine).toMatch(/^© \d{4} Alpha$/);
+    expect((await build(undefined).getChrome('alpha', '/gone')).header).not.toBeNull();
+  });
+
+  it('hides a part the page hides, and uses a saved one’s words, links and bottom line', async () => {
+    const preset = { id: 'p1', location: 'footer', name: 'Slim', tagline: '', logo: '', note: 'Slim note', bottomText: '© {year} Slim' };
+    const chrome = await build({ header: 'hidden', footer: 'p1' }, [preset]).getChrome('alpha', '/x');
+    expect(chrome.header).toBeNull();
+    expect(chrome.footer).toMatchObject({ note: 'Slim note', groups: [{ label: 'Farm', href: '/farm' }] });
+    expect(chrome.footer?.bottomLine).toMatch(/^© \d{4} Slim$/);
+  });
+
+  it('falls back to the site’s own when the saved one has been deleted', async () => {
+    const chrome = await build({ header: 'gone', footer: 'gone' }).getChrome('alpha', '/x');
+    expect(chrome.header?.tagline).toBe('Site tag');
+    expect(chrome.footer?.note).toBe('Site note');
   });
 });

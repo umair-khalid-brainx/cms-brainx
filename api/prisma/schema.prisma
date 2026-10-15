@@ -51,6 +51,7 @@ model Site {
   media        Media[]
   redirects    Redirect[]
   menuItems    MenuItem[]
+  chromePresets ChromePreset[]
   previewLinks PreviewLink[]
   submissions  Submission[]
   contentTypes ContentType[]
@@ -170,6 +171,9 @@ model Content {
   // social title, description and image, and noindex. Shape and rules: content/seo.ts.
   // Empty means "use the page's own title and text"; the fallbacks live in public/seo-view.ts.
   seo         Json          @default("{}")
+  // Which header and footer this page shows: `{ header, footer }`, each `default`, `hidden` or a
+  // ChromePreset id. Empty means both are the site's own. Shape and rules: chrome/chrome-rules.ts.
+  chrome      Json          @default("{}")
   // When it was archived, for display only — set on entering `archived`,
   // cleared on leaving it. `status` is the source of truth, not this.
   archivedAt  DateTime?     @map("archived_at")
@@ -398,15 +402,43 @@ model MenuItem {
   // Cascade: a page deleted for good (only archived pages can be) leaves the menu with it.
   contentId String?      @map("content_id")
   url       String?
+  // The saved header or footer this item belongs to; null for the site's own menu.
+  presetId  String?      @map("preset_id")
 
   site     Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  preset   ChromePreset? @relation(fields: [presetId], references: [id], onDelete: Cascade)
   parent   MenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
   children MenuItem[] @relation("MenuTree")
   content  Content?   @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
   @@index([siteId, location, parentId, position])
   @@index([contentId])
+  @@index([presetId])
   @@map("menu_items")
+}
+
+// A saved header or footer a page or post can pick instead of the site's own, or share with other pages.
+// Its links are MenuItem rows with this `presetId`. Editing it changes every page that uses it. A page that
+// uses a preset that has since been deleted shows the site's own. `tagline` and `note` are the preset's
+// own (empty means none); an empty `logo` or `bottomText` falls back to the site's, so a header never loses
+// its logo or a footer its bottom line by accident (hide the part instead).
+model ChromePreset {
+  id         String       @id @default(cuid())
+  siteId     String       @map("site_id")
+  location   MenuLocation
+  name       String
+  tagline    String       @default("")
+  logo       String       @default("")
+  note       String       @default("")
+  bottomText String       @default("") @map("bottom_text")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  site  Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  items MenuItem[]
+
+  @@unique([siteId, location, name])
+  @@map("chrome_presets")
 }
 
 // The two kinds of term (TAX-01): categories are picked from a list, tags are typed.

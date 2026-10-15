@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Put, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../auth/jwt-auth.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RequirePermission } from '../auth/permission.decorator.js';
@@ -19,14 +19,14 @@ export class MenusController {
 
   @Get(':location')
   @RequirePermission('content:read')
-  get(@Req() request: AuthenticatedRequest, @Param('location') location: string) {
-    return this.menus.get(request.user.sub, asLocation(location));
+  get(@Req() request: AuthenticatedRequest, @Param('location') location: string, @Query('preset') preset?: string) {
+    return this.menus.get(request.user.sub, asLocation(location), preset || undefined);
   }
 
   // The service checks the body itself, so every problem is named in one answer.
   @Put(':location')
   @RequirePermission('site:manage')
-  save(@Req() request: AuthenticatedRequest, @Param('location') location: string, @Body() body: unknown) {
-    return this.menus.save(request.user.sub, asLocation(location), body);
+  save(@Req() request: AuthenticatedRequest, @Param('location') location: string, @Body() body: unknown, @Query('preset') preset?: string) {
+    return this.menus.save(request.user.sub, asLocation(location), body, preset || undefined);
   }
 }

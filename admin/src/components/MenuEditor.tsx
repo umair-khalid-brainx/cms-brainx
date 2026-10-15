@@ -35,6 +35,8 @@ import './MenuEditor.css';
 
 type Props = {
   location: MenuLocation;
+  /** A saved header or footer's id; null for the site's own menu. */
+  presetId?: string | null;
   canEdit: boolean;
   /** The site's pages (not archived), to add to the menu. */
   pages: PageSummary[];
@@ -67,7 +69,7 @@ const ICONS = {
  * with a keyboard, a screen reader and a finger) or, with a mouse, by dragging an item's handle onto
  * another item. Nothing is stored until Save, which replaces the whole menu at once (GOV-03).
  */
-function MenuEditor({ location, canEdit, pages, pagesError, announce, onDirtyChange }: Props) {
+function MenuEditor({ location, presetId = null, canEdit, pages, pagesError, announce, onDirtyChange }: Props) {
   const id = useId();
   const [saved, setSaved] = useState<Menu | null>(null);
   const [menu, setMenu] = useState<Menu>([]);
@@ -81,7 +83,7 @@ function MenuEditor({ location, canEdit, pages, pagesError, announce, onDirtyCha
 
   useEffect(() => {
     let cancelled = false;
-    getMenu(location)
+    getMenu(location, presetId)
       .then((loaded) => {
         if (cancelled) return;
         setSaved(loaded);
@@ -91,7 +93,7 @@ function MenuEditor({ location, canEdit, pages, pagesError, announce, onDirtyCha
     return () => {
       cancelled = true;
     };
-  }, [location]);
+  }, [location, presetId]);
 
   const dirty = saved !== null && !sameMenu(saved, menu);
   useEffect(() => {
@@ -168,7 +170,7 @@ function MenuEditor({ location, canEdit, pages, pagesError, announce, onDirtyCha
     if (!dirty || status.kind === 'saving') return;
     setStatus({ kind: 'saving' });
     try {
-      const stored = await saveMenu(location, menu);
+      const stored = await saveMenu(location, menu, presetId);
       setSaved(stored);
       setMenu(stored);
       setStatus({ kind: 'saved' });

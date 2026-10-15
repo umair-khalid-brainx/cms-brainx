@@ -14,6 +14,12 @@ export type PublicSite = {
   /** The logo as a full address, or null. */
   logo: { url: string } | null;
 };
+/** The header a page shows (GOV-04), or `null` when the page hides it. */
+export type PublicHeader = { logo: { url: string } | null; tagline: string; nav: MenuItem[] };
+/** The footer a page shows, or `null` when the page hides it. `bottomLine` is final text, the year filled in. */
+export type PublicFooter = { note: string; bottomLine: string; groups: MenuItem[] };
+export type PublicChrome = { header: PublicHeader | null; footer: PublicFooter | null };
+
 /** What search engines and link previews get for a page (SEO-01); `api` has already applied the fallbacks. */
 export type PublicSeo = {
   title: string;
@@ -33,7 +39,7 @@ export type PublicPage = {
   seo: PublicSeo;
 };
 // Any status but archived (GOV-07: a reviewer previews a page in review, or a scheduled one).
-export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' | 'in_review' | 'scheduled' };
+export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' | 'in_review' | 'scheduled'; chrome: PublicChrome };
 
 /**
  * Both reads hit the API's unauthenticated `/public` routes, which only ever
@@ -113,6 +119,14 @@ export type PublicMenus = { header: MenuItem[]; footer: MenuItem[] };
 // so a saved menu, or a page in it going live or off, refreshes them with the rest (GOV-03).
 export const getMenus = cache((subdomain: string) =>
   getJson<PublicMenus>(`/public/sites/${encodeURIComponent(subdomain)}/menus`, { tags: [siteTag(subdomain)] }),
+);
+
+/**
+ * The header and footer for the page at `path`: the site's own, a saved one, or none. Tagged with the
+ * site like the menus, so saving any of them (or a page's choice) refreshes every page.
+ */
+export const getChrome = cache((subdomain: string, path: string) =>
+  getJson<PublicChrome>(`/public/sites/${encodeURIComponent(subdomain)}/chrome?path=${encodeURIComponent(path)}`, { tags: [siteTag(subdomain)] }),
 );
 
 /** The addresses a site wants search engines to find (SEO-02); `null` for a site that doesn't exist. */

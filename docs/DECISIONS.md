@@ -8,6 +8,36 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-073 — 2026-10-15 — Each page or post can pick its own header and footer, a saved one, or none
+
+**Decision:** the site keeps its own header and footer (menu + words + logo) as the default. Besides that a site can keep
+**saved headers and footers** (`ChromePreset`, up to 30 of each kind): a name, a tagline and logo (headers) or a note and a bottom
+line (footers), and its own links (`MenuItem.presetId`). A page or post chooses, per part, `default`, `hidden` or a saved one
+(`Content.chrome` JSON, `{ header, footer }`). Editing a saved one changes every page that uses it; deleting one makes those
+pages show the site's own (never a blank part). The footer's bottom line is now text (`{year}` becomes the current year; empty
+means "© year site name"), site-wide in `Site.settings.footerBottom`, per saved footer in `bottomText`. A new saved one starts as
+a copy of the site's own links and words.
+
+**How the public site does it:** a layout can't see which page it wraps, so `web`'s site layout fills the header and footer from
+two parallel-route slots (`@header`, `@footer`, each `[[...path]]`) that get the page's address and ask the API's
+`GET /public/sites/:sub/chrome?path=`. Pages that aren't live pages (listings, archives, a 404) get the site's own. The API
+resolves everything (a page's choice, the saved one's menu, logo, bottom line); `web` only draws it. Fetches are tagged with the
+site, so saving a page's choice or a saved one refreshes the site's pages. Checked with `next build && next start`: page-specific
+footer, hidden header, and a saved footer edit all show up without waiting for the 60 s timer.
+
+**Why:** the client asked for per-page and per-post headers/footers, reuse of existing ones, and hiding them; and found the
+footer's words and bottom line could not be edited (only links could).
+
+**Options not taken:** copying header/footer content onto each page (reuse becomes copy-paste, edits don't propagate); a
+header preset that swaps only the menu (the client wanted tagline and logo too).
+
+**Cost accepted:** a saved one's `tagline` and `note` are its own (empty means none) while an empty `logo` or `bottomText` falls
+back to the site's; a page's choice is a plain string in JSON, not a foreign key, so a deleted preset is tolerated on read rather
+than prevented; "used on N pages" ignores archived pages; the Menus screen's unsaved-changes guard covers the links, not the text
+fields.
+
+---
+
 ## D-072 — 2026-10-15 — Page and post titles open the editor again; the side panel is opened from "Details"
 
 **Decision:** on the Pages, Posts and content-type lists, a row's title is a link to the editor, as before D-071.

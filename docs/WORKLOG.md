@@ -5,6 +5,21 @@ where, how it was verified, what is not done. Absolute dates only.
 
 ---
 
+## 2026-10-15 — Per-page header and footer, saved ones, and editable footer text
+
+Decision in D-073. **API:** `ChromePreset` table, `MenuItem.presetId`, `Content.chrome`, `Site.settings.footerBottom` (migration
+`20261015100000_add_chrome_presets`); `src/chrome/` (rules, repository, service, `/chrome-presets` CRUD); menus take `?preset=`;
+page save accepts `chrome`; `GET /public/sites/:sub/chrome?path=`; preview responses carry `chrome`. **Web:** layout fills
+header/footer from `@header`/`@footer` slots; `SiteHeader`/`SiteFooter` take the resolved parts; `types.ts` removed.
+**Admin:** Menus screen picks the site's own or a saved header/footer, edits its words/logo (`ChromeTextCard`) and links;
+Page settings has a "Header and footer" group (`PageChromeSection`); Site Identity gains "Footer bottom line".
+**Verified:** api 819 tests, admin 263, web 23, typechecks and `next build` pass; curl against a real API; `next start` with
+revalidation (choose a saved footer on a page, hide the header, edit the saved footer: each showed without the timer);
+headless Chrome for the 404 and the admin screens in the browser pane. **Not done:** no automated test for `ChromeService` or
+the page-save check (only the rules in `chrome-rules.spec.ts`); the reviewer/verifier agents were not run (not a ticket).
+
+---
+
 ## 2026-10-15 — List titles open the editor again
 
 Decision in D-072. `PagesListPage.tsx`: title is a `Link` to `/editor/<slug>` (archived rows keep the button that opens

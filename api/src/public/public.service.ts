@@ -10,6 +10,8 @@ import { TermRepository } from '../taxonomy/term.repository.js';
 import type { TermKind } from '../taxonomy/term-rules.js';
 import { PreviewLinkRepository } from '../content/preview-link.repository.js';
 import { MediaRepository } from '../media/media.repository.js';
+import { ChromeRepository } from '../chrome/chrome.repository.js';
+import { bottomLine, readChoice, resolveChoice } from '../chrome/chrome-rules.js';
 import { MenuRepository } from '../menus/menu.repository.js';
 import { publicMenu, storedPageIds, type PublicMenuItem } from '../menus/menu-tree.js';
 import { RedirectRepository } from '../redirects/redirect.repository.js';
@@ -33,6 +35,12 @@ import {
 } from './entry-view.js';
 import { ARCHIVE_PAGE_SIZE, mergeRelated, pageCount, parsePage, RELATED_LIMIT } from './term-view.js';
 import { filenamesNeedingAlt, withLibraryAlt } from './image-alt.js';
+
+/** A header as a page shows it, or null when the page hides it. */
+export type PublicHeader = { logo: { url: string } | null; tagline: string; nav: PublicMenuItem[] };
+/** A footer as a page shows it, or null when the page hides it. `bottomLine` is final text. */
+export type PublicFooter = { note: string; bottomLine: string; groups: PublicMenuItem[] };
+export type PublicChrome = { header: PublicHeader | null; footer: PublicFooter | null };
 
 export type PublicSite = {
   name: string;
@@ -86,7 +94,7 @@ export type PublicTermArchive = {
 const LISTING_LIMIT = 50;
 // A preview is never indexed (CNT-09), so it carries no search settings.
 // Any status but archived (that is a 404): a reviewer previews a page in review, or a scheduled one (GOV-07).
-export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' | 'in_review' | 'scheduled' };
+export type PreviewPage = Omit<PublicPage, 'seo'> & { status: 'draft' | 'published' | 'in_review' | 'scheduled'; chrome: PublicChrome };
 
 // What `randomBytes(32).toString('base64url')` produces; anything else is
 // refused before touching the database.
@@ -114,6 +122,7 @@ export class PublicService {
     private readonly redirects: RedirectRepository,
     private readonly menus: MenuRepository,
     private readonly terms: TermRepository,
+    private readonly chromes: ChromeRepository,
   ) {}
 
   async getSite(subdomain: string): Promise<PublicSite> {
@@ -253,7 +262,58 @@ export class PublicService {
       blocks: await this.withLibraryAlt(siteId, page.blocks),
       updatedAt: page.updatedAt,
       status: page.status,
+      chrome: await this.chromeOf(siteId, page.chrome),
       ...(entry && { entry }),
+    };
+  }
+
+  /**
+   * The header and footer for the page at `rawPath` (live pages only; anything else, like a listing or
+   * a missing page, gets the site's own). A part the page hides is null; one it names that no longer
+   * exists falls back to the site's own.
+   */
+  async getChrome(subdomain: string, rawPath: string | undefined): Promise<PublicChrome> {
+    if (rawPath?.includes('\u0000')) return this.chromeOf(await this.findSiteId(subdomain), undefined);
+    const siteId = await this.findSiteId(subdomain);
+    const page = await this.content.findLiveByPath(siteId, normalisePath(rawPath));
+    return this.chromeOf(siteId, page?.chrome);
+  }
+
+  private async chromeOf(siteId: string, stored: unknown): Promise<PublicChrome> {
+    const [site, presets, own] = await Promise.all([this.sites.findById(siteId), this.chromes.list(siteId), this.menus.findForPublic(siteId)]);
+    if (!site) throw new NotFoundException('Site not found');
+    const settings = readSettings(site.settings);
+    const choice = readChoice(stored);
+    const header = resolveChoice(choice.header, 'header', presets);
+    const footer = resolveChoice(choice.footer, 'footer', presets);
+    const used = presets.filter((preset) => (header.kind === 'preset' && preset.id === header.id) || (footer.kind === 'preset' && preset.id === footer.id));
+    const theirs = await this.menus.findForPresets(siteId, used.map((preset) => preset.id));
+    const preset = (resolved: typeof header) => (resolved.kind === 'preset' ? used.find((candidate) => candidate.id === resolved.id) : undefined);
+    const headerPreset = preset(header);
+    const footerPreset = preset(footer);
+    const ids = storedPageIds(own.header, own.footer, ...theirs.values());
+    const pages = new Map((ids.length > 0 ? await this.content.findFactsByIds(siteId, ids) : []).map((p) => [p.id, p]));
+    const year = new Date().getFullYear();
+
+    const logoPath = headerPreset?.logo || settings.logo;
+    const logo = header.kind === 'hidden' || !logoPath ? null : await this.libraryImage(siteId, logoPath);
+    return {
+      header:
+        header.kind === 'hidden'
+          ? null
+          : {
+              logo: logo && { url: logo.url },
+              tagline: headerPreset ? headerPreset.tagline : settings.tagline,
+              nav: publicMenu(headerPreset ? (theirs.get(headerPreset.id) ?? []) : own.header, pages),
+            },
+      footer:
+        footer.kind === 'hidden'
+          ? null
+          : {
+              note: footerPreset ? footerPreset.note : settings.footerNote,
+              bottomLine: bottomLine(footerPreset?.bottomText || settings.footerBottom, site.name, year),
+              groups: publicMenu(footerPreset ? (theirs.get(footerPreset.id) ?? []) : own.footer, pages),
+            },
     };
   }
 

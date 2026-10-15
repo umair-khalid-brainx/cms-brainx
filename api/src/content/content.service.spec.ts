@@ -7,6 +7,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { RevalidationService } from '../revalidation/revalidation.service.js';
+import type { ChromeRepository } from '../chrome/chrome.repository.js';
 import type { ContentRepository } from './content.repository.js';
 import type { StarterLayoutRepository } from '../starter-layouts/starter-layout.repository.js';
 import type { ContentTypeRepository } from '../content-types/content-type.repository.js';
@@ -164,6 +165,7 @@ function fakeContent(
       withActive(users),
       revalidation as unknown as RevalidationService,
     ),
+    { list: vi.fn(async () => []) } as unknown as ChromeRepository,
   );
   return { service, table, content, revalidation, types, layouts, redirects, menus, termKit, revisionKit };
 }
@@ -1142,7 +1144,7 @@ describe('ContentService page tree (CNT-05, CNT-06)', () => {
     const { service, menus } = setup();
     await service.update('alice', 'leads', { status: 'archived' });
     menus.locationsUsing.mockResolvedValueOnce(['header', 'footer']);
-    await expect(service.remove('alice', 'leads')).rejects.toThrow(/header and footer menu/);
+    await expect(service.remove('alice', 'leads')).rejects.toThrow(/header or footer menu/);
   });
 
   it('puts a copy next to the original, under the same parent', async () => {

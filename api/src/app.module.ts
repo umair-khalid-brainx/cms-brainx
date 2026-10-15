@@ -4,6 +4,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { activeSiteMiddleware } from './common/active-site.js';
 import { AuthModule } from './auth/auth.module.js';
+import { ChromeModule } from './chrome/chrome.module.js';
 import { ContentModule } from './content/content.module.js';
 import { ContentTypesModule } from './content-types/content-types.module.js';
 import { HealthModule } from './health/health.module.js';
@@ -25,6 +26,7 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     AuthModule,
     ContentModule,
+    ChromeModule,
     ContentTypesModule,
     TeamModule,
     MediaModule,

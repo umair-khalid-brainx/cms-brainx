@@ -71,6 +71,7 @@ describe('SitesService.getDetails (GOV-04)', () => {
       subdomain: 'corrick',
       tagline: 'Old tagline',
       footerNote: 'Old note',
+      footerBottom: '',
       logo: '',
       customDomain: null,
       domainStatus: null,
@@ -87,8 +88,8 @@ describe('SitesService.updateSettings (GOV-04)', () => {
   it('changes only what is sent, keeps the rest, and refreshes every page of the site', async () => {
     const { service, table, revalidation } = setup();
     const result = await service.updateSettings(SITE_ID, { tagline: '  Damariscotta River, Maine ' });
-    expect(result).toMatchObject({ name: 'Corrick', tagline: 'Damariscotta River, Maine', footerNote: 'Old note', logo: '' });
-    expect(table[SITE_ID].settings).toEqual({ tagline: 'Damariscotta River, Maine', footerNote: 'Old note', logo: '' });
+    expect(result).toMatchObject({ name: 'Corrick', tagline: 'Damariscotta River, Maine', footerNote: 'Old note', footerBottom: '', logo: '' });
+    expect(table[SITE_ID].settings).toEqual({ tagline: 'Damariscotta River, Maine', footerNote: 'Old note', footerBottom: '', logo: '' });
     expect(revalidation.site).toHaveBeenCalledExactlyOnceWith('corrick');
   });
 
