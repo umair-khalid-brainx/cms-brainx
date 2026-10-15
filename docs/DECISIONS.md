@@ -8,6 +8,19 @@ decisions themselves were made on the dates shown.
 
 ---
 
+## D-072 — 2026-10-15 — Page and post titles open the editor again; the side panel is opened from "Details"
+
+**Decision:** on the Pages, Posts and content-type lists, a row's title is a link to the editor, as before D-071.
+The side panel (`ContentSidePanel`) opens from the row menu's "Details" item. Archived rows have no editor, so
+their title still opens the panel. Closing the panel returns focus to what opened it.
+
+**Why:** the owner found the title opening a side panel instead of the editor surprising; editing is the common
+action, details the occasional one.
+
+**Supersedes:** the part of D-071 (and `ADM-05`'s "selecting a row") that made the title open the panel.
+
+---
+
 ## D-071 — 2026-10-14 — Admin redesign: `--ui-*` tokens, light sidebar in three groups, one Menu and Select (`ADM-01`–`ADM-07`)
 
 **Decision:** the admin gets its own token set (`--ui-*`, never `--site-*`): cool-grey surfaces, ink text, one teal accent,
