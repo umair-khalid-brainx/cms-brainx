@@ -57,7 +57,7 @@ function ReviewPage() {
       )}
 
       {load.status === 'ready' && load.items.length > 0 && (
-        <table className="pages-table review-table">
+        <table className="pages-table review-table stack-table">
           <thead>
             <tr>
               <th>Title</th>
@@ -72,22 +72,22 @@ function ReviewPage() {
           <tbody>
             {load.items.map((item) => (
               <tr key={item.id}>
-                <td>
+                <td className="stack-primary">
                   <Link to={`/editor/${item.slug}`} className="pages-row-title">
                     {item.title}
                   </Link>
                   <span className="review-path">{item.path}</span>
                 </td>
-                <td>{item.type?.singularName ?? 'Page'}</td>
-                <td>{item.submittedBy?.name ?? 'A removed user'}</td>
-                <td>
+                <td data-label="Kind">{item.type?.singularName ?? 'Page'}</td>
+                <td data-label="Submitted by">{item.submittedBy?.name ?? 'A removed user'}</td>
+                <td data-label="Waiting">
                   {item.submittedAt ? (
                     <time dateTime={item.submittedAt} title={new Date(item.submittedAt).toLocaleString()}>
                       {waitingFor(item.submittedAt, now)}
                     </time>
                   ) : null}
                 </td>
-                <td className="pages-row-actions">
+                <td className="pages-row-actions stack-actions">
                   <Link to={`/editor/${item.slug}`} className="review-open" aria-label={`Review “${item.title}”`}>
                     Review
                   </Link>

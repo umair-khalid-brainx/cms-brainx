@@ -127,7 +127,7 @@ function TeamPage() {
             <section className="team-card">
               <h2 className="team-card-title">Members</h2>
               {actionError ? <p className="team-error">{actionError}</p> : null}
-              <table className="team-table">
+              <table className="team-table stack-table">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -138,11 +138,11 @@ function TeamPage() {
                 <tbody>
                   {members.map((member) => (
                     <tr key={member.id}>
-                      <td>
+                      <td className="stack-primary">
                         <div className="team-member-name">{member.user.name}</div>
                         <div className="team-member-email">{member.user.email}</div>
                       </td>
-                      <td>
+                      <td data-label="Role">
                         {member.role === 'owner' ? (
                           <span className="team-role-fixed">{ROLE_LABELS.owner}</span>
                         ) : (
@@ -154,7 +154,7 @@ function TeamPage() {
                           />
                         )}
                       </td>
-                      <td className="team-row-actions">
+                      <td className="team-row-actions stack-actions">
                         <button
                           type="button"
                           className="team-row-remove"
@@ -176,7 +176,7 @@ function TeamPage() {
               {invites.length === 0 ? (
                 <p className="team-empty">No pending invites.</p>
               ) : (
-                <table className="team-table">
+                <table className="team-table stack-table">
                   <thead>
                     <tr>
                       <th>Email</th>
@@ -188,10 +188,10 @@ function TeamPage() {
                   <tbody>
                     {invites.map((invite) => (
                       <tr key={invite.id}>
-                        <td>{invite.email}</td>
-                        <td>{ROLE_LABELS[invite.role]}</td>
-                        <td className="team-invite-expires">{new Date(invite.expiresAt).toLocaleDateString()}</td>
-                        <td className="team-row-actions">
+                        <td className="stack-primary">{invite.email}</td>
+                        <td data-label="Role">{ROLE_LABELS[invite.role]}</td>
+                        <td className="team-invite-expires" data-label="Expires">{new Date(invite.expiresAt).toLocaleDateString()}</td>
+                        <td className="team-row-actions stack-actions">
                           <button type="button" className="team-row-remove" onClick={() => handleRevoke(invite)}>
                             Revoke
                           </button>
